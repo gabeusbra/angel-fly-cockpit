@@ -232,6 +232,13 @@ export default function PMProjectDetail() {
     reloadTasks();
   };
 
+  const handleDeleteTask = async () => {
+    if (!activeTask) return;
+    await base44.entities.Task.delete(activeTask.id);
+    setActiveTask(null);
+    reloadTasks();
+  };
+
   // --- Subtasks ---
   const addSubtask = async () => {
     if (!newSubtask || !activeTask) return;
@@ -523,9 +530,18 @@ export default function PMProjectDetail() {
                 </div>
               </div>
 
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setActiveTask(null)}>Cancel</Button>
-                <Button onClick={handleEditSave}>Save Changes</Button>
+              <div className="flex items-center justify-between">
+                {!isPro && (
+                  <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700 hover:bg-red-50 text-xs gap-1"
+                    onClick={() => { if (window.confirm("Delete this task permanently?")) handleDeleteTask(); }}>
+                    <Trash2 className="w-3.5 h-3.5" /> Delete
+                  </Button>
+                )}
+                {isPro && <span />}
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setActiveTask(null)}>Cancel</Button>
+                  <Button onClick={handleEditSave}>Save Changes</Button>
+                </div>
               </div>
             </div>
           )}
