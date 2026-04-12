@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useNavigate } from "react-router-dom";
 import { filterMyRecords, safeList } from "@/lib/entity-helpers";
 import PageHeader from "../components/PageHeader";
 import StatusBadge from "../components/StatusBadge";
 
 export default function ProProjects() {
   const { user } = useOutletContext();
+  const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +41,7 @@ export default function ProProjects() {
             const myTasks = getMyTasks(p.id);
             const done = myTasks.filter(t => t.status === "done").length;
             return (
-              <div key={p.id} className="bg-card rounded-xl border border-border p-5 hover:shadow-md transition-shadow">
+              <div key={p.id} className="bg-card rounded-xl border border-border p-5 hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate(`/pro/projects/${p.id}`)}>
                 <div className="flex items-start justify-between gap-4 mb-3">
                   <div>
                     <h3 className="text-sm font-semibold mb-0.5">{p.name}</h3>

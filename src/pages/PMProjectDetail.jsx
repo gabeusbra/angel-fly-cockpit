@@ -80,7 +80,7 @@ export default function PMProjectDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const backPath = location.pathname.startsWith("/admin") ? "/admin/projects" : "/pm/projects";
+  const backPath = location.pathname.startsWith("/admin") ? "/admin/projects" : location.pathname.startsWith("/pro") ? "/pro/projects" : "/pm/projects";
   const [project, setProject] = useState(null);
   const [projectDocs, setProjectDocs] = useState([]);
   const [tasks, setTasks] = useState([]);
