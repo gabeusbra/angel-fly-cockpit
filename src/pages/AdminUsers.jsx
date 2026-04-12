@@ -14,10 +14,9 @@ export default function AdminUsers() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
 
-  // Invite dialog
+  // Invite dialog — email + cockpit role + details in one step
   const [showInvite, setShowInvite] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState("user");
+  const [inviteForm, setInviteForm] = useState({ email: "", cockpitRole: "client", specialty: "", hourly_rate: "", company: "", phone: "" });
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState("");
 
@@ -36,16 +35,37 @@ export default function AdminUsers() {
     setLoading(false);
   };
 
-  // --- Invite user via Base44 auth ---
+  // --- Invite + assign role in one step ---
   const handleInvite = async () => {
-    if (!inviteEmail) return;
+    if (!inviteForm.email) return;
     setInviting(true);
     setInviteError("");
     try {
-      await base44.auth.inviteUser(inviteEmail, inviteRole);
+      // 1. Send the invite via Base44 auth
+      const authRole = inviteForm.cockpitRole === "admin" ? "admin" : "user";
+      await base44.auth.inviteUser(inviteForm.email, authRole);
+
+      // 2. Try to find the newly created user and set their cockpit role
+      const updatedUsers = await base44.entities.User.list();
+      const newUser = updatedUsers.find(u => u.email === inviteForm.email);
+      if (newUser) {
+        const payload = {
+          role: inviteForm.cockpitRole,
+          status: "active",
+          phone: inviteForm.phone || "",
+        };
+        if (inviteForm.cockpitRole === "professional") {
+          payload.specialty = inviteForm.specialty;
+          payload.hourly_rate = inviteForm.hourly_rate ? parseFloat(inviteForm.hourly_rate) : null;
+        }
+        if (inviteForm.cockpitRole === "client") {
+          payload.company = inviteForm.company;
+        }
+        await base44.entities.User.update(newUser.id, payload);
+      }
+
       setShowInvite(false);
-      setInviteEmail("");
-      setInviteRole("user");
+      setInviteForm({ email: "", cockpitRole: "client", specialty: "", hourly_rate: "", company: "", phone: "" });
       load();
     } catch (err) {
       setInviteError(err?.response?.data?.message || err?.message || "Failed to invite user");
@@ -53,7 +73,7 @@ export default function AdminUsers() {
     setInviting(false);
   };
 
-  // --- Edit user cockpit role + details ---
+  // --- Edit user ---
   const openEdit = (user) => {
     setEditing(user);
     setEditForm({
@@ -81,7 +101,7 @@ export default function AdminUsers() {
     load();
   };
 
-  // --- Deactivate user ---
+  // --- Deactivate ---
   const handleDeactivate = async () => {
     if (!confirmDelete) return;
     await base44.entities.User.update(confirmDelete.id, { status: "inactive" });
@@ -112,7 +132,7 @@ export default function AdminUsers() {
           <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-semibold text-amber-800">{unconfigured.length} user{unconfigured.length > 1 ? "s" : ""} need a cockpit role</p>
-            <p className="text-xs text-amber-700 mt-0.5">Click the edit button to assign them as PM, Professional, or Client.</p>
+            <p className="text-xs text-amber-700 mt-0.5">Click edit to assign them as PM, Professional, or Client.</p>
             <div className="flex flex-wrap gap-2 mt-2">
               {unconfigured.map(u => (
                 <button key={u.id} onClick={() => openEdit(u)}
@@ -227,26 +247,49 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      {/* Invite dialog */}
+      {/* Invite dialog — all in one step */}
       <Dialog open={showInvite} onOpenChange={setShowInvite}>
         <DialogContent>
           <DialogHeader><DialogTitle>Invite User</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-2">
-            <p className="text-xs text-muted-foreground">
-              Send an email invite. After they sign up, come back here to assign their cockpit role (PM, Professional, or Client).
-            </p>
-            <Input type="email" placeholder="Email address" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} />
-            <Select value={inviteRole} onValueChange={setInviteRole}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="user">Regular User</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-              </SelectContent>
-            </Select>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">Email</label>
+              <Input type="email" placeholder="user@example.com" value={inviteForm.email} onChange={e => setInviteForm({ ...inviteForm, email: e.target.value })} />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">Cockpit Role</label>
+              <Select value={inviteForm.cockpitRole} onValueChange={v => setInviteForm({ ...inviteForm, cockpitRole: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="pm">Project Manager</SelectItem>
+                  <SelectItem value="professional">Professional</SelectItem>
+                  <SelectItem value="client">Client</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {inviteForm.cockpitRole === "professional" && (
+              <>
+                <Input placeholder="Specialty (e.g. Designer, Developer)" value={inviteForm.specialty} onChange={e => setInviteForm({ ...inviteForm, specialty: e.target.value })} />
+                <Input type="number" placeholder="Hourly Rate (R$)" value={inviteForm.hourly_rate} onChange={e => setInviteForm({ ...inviteForm, hourly_rate: e.target.value })} />
+              </>
+            )}
+
+            {inviteForm.cockpitRole === "client" && (
+              <Input placeholder="Company Name" value={inviteForm.company} onChange={e => setInviteForm({ ...inviteForm, company: e.target.value })} />
+            )}
+
+            <Input placeholder="Phone (optional)" value={inviteForm.phone} onChange={e => setInviteForm({ ...inviteForm, phone: e.target.value })} />
+
             {inviteError && <p className="text-xs text-red-600">{inviteError}</p>}
+
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setShowInvite(false)}>Cancel</Button>
-              <Button onClick={handleInvite} disabled={inviting || !inviteEmail}>{inviting ? "Sending..." : "Send Invite"}</Button>
+              <Button onClick={handleInvite} disabled={inviting || !inviteForm.email}>
+                {inviting ? "Sending..." : "Send Invite"}
+              </Button>
             </div>
           </div>
         </DialogContent>
