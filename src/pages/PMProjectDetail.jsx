@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { Plus, ArrowLeft, Sparkles, Pencil, MessageSquare, CheckSquare, FileText, ExternalLink, Download, Globe, FileUp, Link2, Trash2, Eye } from "lucide-react";
+import { Plus, ArrowLeft, Sparkles, Pencil, MessageSquare, CheckSquare, FileText, ExternalLink, Download, Globe, FileUp, Link2, Trash2, Eye, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -61,6 +61,10 @@ export default function PMProjectDetail() {
   const [newComment, setNewComment] = useState("");
   const [newSubtask, setNewSubtask] = useState("");
 
+  // Project settings
+  const [showSettings, setShowSettings] = useState(false);
+  const [projectForm, setProjectForm] = useState({ name: "", client_name: "", scope_description: "", status: "active", start_date: "", end_date: "", total_budget: "", payment_type: "one-time", recurrence_interval: "none" });
+
   // Project docs
   const [showDocs, setShowDocs] = useState(false);
   const [viewDoc, setViewDoc] = useState(null);
@@ -77,6 +81,29 @@ export default function PMProjectDetail() {
       base44.entities.User.filter({ role: "professional", status: "active" }),
     ]);
     setProject(p[0] || null); setTasks(t); setAllTasks(at); setPros(u); setLoading(false);
+  };
+
+  const openSettings = () => {
+    if (!project) return;
+    setProjectForm({
+      name: project.name || "", client_name: project.client_name || "",
+      scope_description: project.scope_description || "", status: project.status || "active",
+      start_date: project.start_date || "", end_date: project.end_date || "",
+      total_budget: project.total_budget ? String(project.total_budget) : "",
+      payment_type: project.payment_type || "one-time",
+      recurrence_interval: project.recurrence_interval || "none",
+    });
+    setShowSettings(true);
+  };
+
+  const handleSaveProject = async () => {
+    if (!project) return;
+    await base44.entities.Project.update(project.id, {
+      ...projectForm,
+      total_budget: projectForm.total_budget ? parseFloat(projectForm.total_budget) : 0,
+    });
+    setProject({ ...project, ...projectForm, total_budget: projectForm.total_budget ? parseFloat(projectForm.total_budget) : 0 });
+    setShowSettings(false);
   };
 
   const reloadTasks = async () => {
@@ -227,6 +254,7 @@ export default function PMProjectDetail() {
             <p className="text-sm text-muted-foreground">{project.client_name} · {progress}% complete</p>
           </div>
           <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={openSettings} className="h-9 w-9 p-0" title="Project Settings"><Settings className="w-4 h-4" /></Button>
             <Button variant="outline" size="sm" onClick={() => setShowDocs(true)} className="gap-1"><FileText className="w-4 h-4" /> Docs ({docs.length})</Button>
             <Button onClick={() => setShowCreate(true)} className="gap-2"><Plus className="w-4 h-4" /> Add Task</Button>
           </div>
@@ -549,6 +577,82 @@ export default function PMProjectDetail() {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Project settings */}
+      <Dialog open={showSettings} onOpenChange={setShowSettings}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Project Settings</DialogTitle></DialogHeader>
+          <div className="space-y-3 pt-2">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">Project Name</label>
+              <Input value={projectForm.name} onChange={e => setProjectForm({ ...projectForm, name: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">Client Name</label>
+              <Input value={projectForm.client_name} onChange={e => setProjectForm({ ...projectForm, client_name: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">Scope Description</label>
+              <Textarea value={projectForm.scope_description} onChange={e => setProjectForm({ ...projectForm, scope_description: e.target.value })} rows={3} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">Status</label>
+                <Select value={projectForm.status} onValueChange={v => setProjectForm({ ...projectForm, status: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="paused">Paused</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">Budget (R$)</label>
+                <Input type="number" value={projectForm.total_budget} onChange={e => setProjectForm({ ...projectForm, total_budget: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">Start Date</label>
+                <Input type="date" value={projectForm.start_date} onChange={e => setProjectForm({ ...projectForm, start_date: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">End Date</label>
+                <Input type="date" value={projectForm.end_date} onChange={e => setProjectForm({ ...projectForm, end_date: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">Payment Type</label>
+                <Select value={projectForm.payment_type} onValueChange={v => setProjectForm({ ...projectForm, payment_type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="one-time">One-time</SelectItem>
+                    <SelectItem value="recurring">Recurring</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {projectForm.payment_type === "recurring" && (
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1">Recurrence</label>
+                  <Select value={projectForm.recurrence_interval} onValueChange={v => setProjectForm({ ...projectForm, recurrence_interval: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="quarterly">Quarterly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2 justify-end pt-2">
+              <Button variant="outline" onClick={() => setShowSettings(false)}>Cancel</Button>
+              <Button onClick={handleSaveProject} disabled={!projectForm.name}>Save Changes</Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
