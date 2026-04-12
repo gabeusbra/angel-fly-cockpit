@@ -54,7 +54,7 @@ export default function ClientDashboard({ user }) {
       <div className="bg-card rounded-xl border border-border p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold">My Projects</h3>
-          <a href="/client/projects" className="text-xs text-primary font-medium hover:underline">View all \u2192</a>
+          <a href="/client/projects" className="text-xs text-primary font-medium hover:underline">View all →</a>
         </div>
         {projects.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

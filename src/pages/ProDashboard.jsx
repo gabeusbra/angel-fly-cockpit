@@ -185,7 +185,7 @@ export default function ProDashboard({ user }) {
         <div className="bg-card rounded-xl border border-border p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold">Upcoming Deadlines</h3>
-            <a href="/pro/tasks" className="text-xs text-primary font-medium hover:underline">View tasks \u2192</a>
+            <a href="/pro/tasks" className="text-xs text-primary font-medium hover:underline">View tasks →</a>
           </div>
           {upcoming.length > 0 ? (
             <div className="space-y-2.5">
@@ -224,7 +224,7 @@ export default function ProDashboard({ user }) {
       <div className="bg-card rounded-xl border border-border p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold">Active Tasks</h3>
-          <a href="/pro/tasks" className="text-xs text-primary font-medium hover:underline">Open board \u2192</a>
+          <a href="/pro/tasks" className="text-xs text-primary font-medium hover:underline">Open board →</a>
         </div>
         {activeTasks.length > 0 ? (
           <div className="space-y-2">
