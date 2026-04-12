@@ -1,13 +1,12 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { useOutletContext, useNavigate } from "react-router-dom";
+import { useOutletContext, Link } from "react-router-dom";
 import { FolderKanban, Clock, CheckCircle2, ArrowRight } from "lucide-react";
 import { filterMyRecords, safeList } from "@/lib/entity-helpers";
 import StatusBadge from "../components/StatusBadge";
 
 export default function ProProjects() {
   const { user } = useOutletContext();
-  const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -57,9 +56,8 @@ export default function ProProjects() {
             const progress = myTasks.length > 0 ? Math.round((done / myTasks.length) * 100) : 0;
 
             return (
-              <div key={p.id}
-                className="bg-card rounded-xl border border-border p-5 hover:shadow-lg hover:shadow-black/5 transition-all cursor-pointer group"
-                onClick={() => navigate(`/pro/projects/${p.id}`)}>
+              <Link key={p.id} to={`/pro/projects/${p.id}`}
+                className="bg-card rounded-xl border border-border p-5 hover:shadow-lg hover:shadow-black/5 transition-all cursor-pointer group block">
 
                 {/* Project header */}
                 <div className="flex items-start justify-between mb-4">
@@ -127,7 +125,7 @@ export default function ProProjects() {
                     Open <ArrowRight className="w-3 h-3" />
                   </span>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>
