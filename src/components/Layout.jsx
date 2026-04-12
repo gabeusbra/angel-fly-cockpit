@@ -2,7 +2,7 @@ import { Outlet } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import Sidebar from "./Sidebar";
-import { ShieldX, Clock } from "lucide-react";
+import { ShieldX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const COCKPIT_ROLES = ["admin", "pm", "professional", "client"];
@@ -26,6 +26,15 @@ function BlockedScreen({ icon: Icon, iconBg, iconColor, title, message }) {
 
 function SetupScreen({ retryCount }) {
   const progress = Math.min(((retryCount + 1) / MAX_RETRIES) * 100, 95);
+
+  useEffect(() => {
+    // Auto-reload the entire page every 10 seconds to get fresh auth data
+    const timer = setTimeout(() => {
+      window.location.reload();
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center" style={{ fontFamily: "var(--font-inter)" }}>
       <div className="text-center max-w-sm px-6">
@@ -39,7 +48,8 @@ function SetupScreen({ retryCount }) {
         <div className="w-full h-2 bg-muted rounded-full overflow-hidden mb-3">
           <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${progress}%`, background: "linear-gradient(to right, #FF4D35, #FFB74D)" }} />
         </div>
-        <p className="text-xs text-muted-foreground">Checking configuration...</p>
+        <p className="text-xs text-muted-foreground mb-4">Auto-refreshing...</p>
+        <Button variant="outline" size="sm" onClick={() => window.location.reload()}>Refresh Now</Button>
       </div>
     </div>
   );
@@ -159,9 +169,23 @@ export default function Layout() {
   }
 
   if (blockType === "no_role") {
-    return <BlockedScreen icon={Clock} iconBg="bg-blue-100" iconColor="text-blue-600"
-      title="Account Pending Setup"
-      message="Your account has been created but an administrator still needs to assign your role. Please contact your administrator to get access." />;
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center" style={{ fontFamily: "var(--font-inter)" }}>
+        <div className="text-center max-w-md px-6">
+          <div className="w-16 h-16 rounded-2xl brand-gradient flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/20">
+            <span className="text-white font-extrabold text-lg">AF</span>
+          </div>
+          <h1 className="text-xl font-bold text-foreground mb-2">Almost there!</h1>
+          <p className="text-sm text-muted-foreground mb-6">
+            Your account is ready but your role is still being configured. Try refreshing, or contact your administrator.
+          </p>
+          <div className="flex gap-3 justify-center">
+            <Button onClick={() => window.location.reload()}>Refresh</Button>
+            <Button variant="outline" onClick={() => base44.auth.logout()}>Sign Out</Button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
