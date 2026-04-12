@@ -36,7 +36,7 @@ export default function AdminUsers() {
 
   // Invite dialog
   const [showInvite, setShowInvite] = useState(false);
-  const [inviteForm, setInviteForm] = useState({ email: "", cockpitRole: "client", specialty: "", hourly_rate: "", company: "", phone: "" });
+  const [inviteForm, setInviteForm] = useState({ name: "", email: "", cockpitRole: "client", specialty: "", hourly_rate: "", company: "", phone: "" });
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState("");
 
@@ -61,6 +61,7 @@ export default function AdminUsers() {
       const match = data.find(u => u.email === inv.email);
       if (match && !hasCockpitRole(match)) {
         const payload = { role: inv.cockpitRole, status: "active", phone: inv.phone || "" };
+        if (inv.name) payload.full_name = inv.name;
         if (inv.cockpitRole === "professional") {
           payload.specialty = inv.specialty || "";
           payload.hourly_rate = inv.hourly_rate ? parseFloat(inv.hourly_rate) : null;
@@ -95,6 +96,7 @@ export default function AdminUsers() {
       const newUser = updatedUsers.find(u => u.email === inviteForm.email);
       if (newUser) {
         const payload = { role: inviteForm.cockpitRole, status: "active", phone: inviteForm.phone || "" };
+        if (inviteForm.name) payload.full_name = inviteForm.name;
         if (inviteForm.cockpitRole === "professional") {
           payload.specialty = inviteForm.specialty;
           payload.hourly_rate = inviteForm.hourly_rate ? parseFloat(inviteForm.hourly_rate) : null;
@@ -105,6 +107,7 @@ export default function AdminUsers() {
         // User not created yet — save to pending so we track it
         const pendingList = getPendingInvites();
         pendingList.push({
+          name: inviteForm.name,
           email: inviteForm.email,
           cockpitRole: inviteForm.cockpitRole,
           specialty: inviteForm.specialty,
@@ -118,7 +121,7 @@ export default function AdminUsers() {
       }
 
       setShowInvite(false);
-      setInviteForm({ email: "", cockpitRole: "client", specialty: "", hourly_rate: "", company: "", phone: "" });
+      setInviteForm({ name: "", email: "", cockpitRole: "client", specialty: "", hourly_rate: "", company: "", phone: "" });
       load();
     } catch (err) {
       setInviteError(err?.response?.data?.message || err?.message || "Failed to invite user");
@@ -348,13 +351,20 @@ export default function AdminUsers() {
           <div className="space-y-5 pt-2">
             {/* Email */}
             <div className="bg-muted/30 rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
-                  <Mail className="w-5 h-5 text-muted-foreground" />
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                    <Mail className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1">
+                    <Input placeholder="Full Name" value={inviteForm.name}
+                      onChange={e => setInviteForm({ ...inviteForm, name: e.target.value })}
+                      className="border-0 bg-transparent text-sm font-semibold p-0 h-auto mb-1 focus-visible:ring-0 placeholder:text-muted-foreground/50" />
+                    <Input type="email" placeholder="user@example.com" value={inviteForm.email}
+                      onChange={e => setInviteForm({ ...inviteForm, email: e.target.value })}
+                      className="border-0 bg-transparent text-xs p-0 h-auto focus-visible:ring-0 placeholder:text-muted-foreground/50 text-muted-foreground" />
+                  </div>
                 </div>
-                <Input type="email" placeholder="user@example.com" value={inviteForm.email}
-                  onChange={e => setInviteForm({ ...inviteForm, email: e.target.value })}
-                  className="border-0 bg-transparent text-sm font-medium p-0 h-auto focus-visible:ring-0 placeholder:text-muted-foreground/50" />
               </div>
             </div>
 
