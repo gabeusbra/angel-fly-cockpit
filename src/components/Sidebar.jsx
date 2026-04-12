@@ -15,6 +15,7 @@ const navByRole = {
     { label: "Client Payments", path: "/admin/payments", icon: CreditCard, badgeKey: "overduePayments" },
     { label: "All Projects", path: "/admin/projects", icon: FolderKanban },
     { label: "Reports", path: "/admin/reports", icon: BarChart3 },
+    { label: "Users", path: "/admin/users", icon: Users },
   ],
   pm: [
     { label: "Dashboard", path: "/", icon: LayoutDashboard },

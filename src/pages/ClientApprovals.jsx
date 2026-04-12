@@ -16,23 +16,28 @@ export default function ClientApprovals() {
   const [comment, setComment] = useState("");
 
   useEffect(() => {
-    base44.entities.Task.filter({ status: "client_approval" }).then(t => { setTasks(t); setLoading(false); });
+    if (!user) return;
+    loadTasks();
   }, [user]);
 
-  const load = async () => {
-    const t = await base44.entities.Task.filter({ status: "client_approval" });
-    setTasks(t);
+  const loadTasks = async () => {
+    // Get client's projects first, then filter approval tasks to only those projects
+    const projects = await base44.entities.Project.filter({ client_id: user.id });
+    const projectIds = new Set(projects.map(p => p.id));
+    const allApproval = await base44.entities.Task.filter({ status: "client_approval" });
+    setTasks(allApproval.filter(t => projectIds.has(t.project_id)));
+    setLoading(false);
   };
 
   const handleApprove = async (task) => {
     await base44.entities.Task.update(task.id, { status: "done" });
-    load();
+    loadTasks();
   };
 
   const handleRequestChanges = async () => {
     await base44.entities.Task.update(dialog.id, { status: "review", description: (dialog.description || "") + (comment ? `\n\n[Client feedback]: ${comment}` : "") });
     setDialog(null); setComment("");
-    load();
+    loadTasks();
   };
 
   return (
