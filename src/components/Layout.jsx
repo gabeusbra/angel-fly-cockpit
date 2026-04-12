@@ -104,7 +104,7 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-background" style={{ fontFamily: "var(--font-inter)" }}>
       <Sidebar user={user} collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
-      <main className={`transition-all duration-300 min-h-screen ${collapsed ? "ml-[68px]" : "ml-[240px]"}`}>
+      <main className={`transition-all duration-300 min-h-screen ${collapsed ? "ml-[68px]" : "ml-[260px]"}`}>
         <div className="p-6 lg:p-8">
           <Outlet context={{ user }} />
         </div>

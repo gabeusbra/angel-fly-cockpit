@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard, FolderKanban, ListChecks, TicketCheck,
   DollarSign, Users, CheckSquare, CreditCard,
-  UserCircle, ChevronLeft, ChevronRight, LogOut, BarChart3,
+  ChevronLeft, ChevronRight, LogOut, BarChart3,
   Moon, Sun
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -102,25 +102,31 @@ export default function Sidebar({ user, collapsed, onToggle }) {
 
   return (
     <aside
-      className={`fixed top-0 left-0 h-screen z-40 flex flex-col transition-all duration-300 ${collapsed ? "w-[68px]" : "w-[240px]"}`}
-      style={{ backgroundColor: "hsl(240, 22%, 11%)" }}
+      className={`fixed top-0 left-0 h-screen z-40 flex flex-col transition-all duration-300 ${collapsed ? "w-[68px]" : "w-[260px]"}`}
+      style={{ backgroundColor: "hsl(228, 25%, 10%)" }}
     >
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 h-16 shrink-0" style={{ borderBottom: "1px solid hsl(240, 15%, 20%)" }}>
-        <div className="w-9 h-9 rounded-xl shrink-0 flex items-center justify-center font-bold text-white text-sm"
-          style={{ background: "linear-gradient(135deg, hsl(8,100%,60%), hsl(35,95%,65%))" }}>
+      <div className="flex items-center gap-3 px-4 h-16 shrink-0" style={{ borderBottom: "1px solid hsl(228, 20%, 16%)" }}>
+        <div className="w-9 h-9 rounded-xl shrink-0 flex items-center justify-center font-extrabold text-white text-xs tracking-tight brand-gradient shadow-lg shadow-primary/20">
           AF
         </div>
         {!collapsed && (
           <div className="overflow-hidden">
-            <h1 className="text-sm font-bold text-white truncate leading-tight">Angel Fly</h1>
-            <p className="text-[10px] truncate" style={{ color: "hsl(240,5%,55%)" }}>Cockpit</p>
+            <h1 className="text-sm font-extrabold text-white truncate leading-tight tracking-tight">Angel Fly</h1>
+            <p className="text-[10px] font-medium truncate" style={{ color: "hsl(220,10%,50%)" }}>Marketing Cockpit</p>
           </div>
         )}
       </div>
 
+      {/* Role label */}
+      {!collapsed && (
+        <div className="px-4 pt-4 pb-2">
+          <p className="text-[9px] font-bold uppercase tracking-[0.15em]" style={{ color: "hsl(220,10%,40%)" }}>{roleLabels[role]}</p>
+        </div>
+      )}
+
       {/* Nav */}
-      <nav className="flex-1 py-4 px-2 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
         {items.map((item) => {
           const isActive = location.pathname === item.path;
           const Icon = item.icon;
@@ -129,22 +135,22 @@ export default function Sidebar({ user, collapsed, onToggle }) {
             <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 relative ${
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-200 relative ${
                 isActive
-                  ? "text-white shadow-lg"
+                  ? "text-white"
                   : "hover:text-white"
               }`}
               style={isActive
-                ? { backgroundColor: "hsl(8, 100%, 60%)", boxShadow: "0 4px 12px rgba(255,77,53,0.3)" }
-                : { color: "hsl(240,5%,65%)", backgroundColor: "transparent" }
+                ? { background: "linear-gradient(135deg, hsl(8,100%,60%), hsl(20,90%,62%))", boxShadow: "0 4px 16px rgba(255,77,53,0.35)" }
+                : { color: "hsl(220,10%,55%)", backgroundColor: "transparent" }
               }
-              onMouseEnter={e => { if (!isActive) e.currentTarget.style.backgroundColor = "hsl(240,15%,18%)"; }}
+              onMouseEnter={e => { if (!isActive) e.currentTarget.style.backgroundColor = "hsl(228,20%,15%)"; }}
               onMouseLeave={e => { if (!isActive) e.currentTarget.style.backgroundColor = "transparent"; }}
             >
-              <Icon className="w-5 h-5 shrink-0" />
+              <Icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? "" : "opacity-70"}`} />
               {!collapsed && <span className="truncate flex-1">{item.label}</span>}
               {badgeCount > 0 && (
-                <span className={`${collapsed ? "absolute top-1 right-1" : ""} min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-bold text-white bg-red-500`}>
+                <span className={`${collapsed ? "absolute top-1 right-1" : ""} min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-bold text-white bg-red-500 shadow-sm shadow-red-500/30`}>
                   {badgeCount > 9 ? "9+" : badgeCount}
                 </span>
               )}
@@ -154,36 +160,36 @@ export default function Sidebar({ user, collapsed, onToggle }) {
       </nav>
 
       {/* Footer */}
-      <div className="p-3 space-y-2" style={{ borderTop: "1px solid hsl(240, 15%, 20%)" }}>
-        <div className="flex items-center gap-2 px-1">
-          <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "hsl(240,15%,20%)" }}>
-            <UserCircle className="w-4 h-4" style={{ color: "hsl(240,5%,55%)" }} />
+      <div className="p-3 space-y-2" style={{ borderTop: "1px solid hsl(228, 20%, 16%)" }}>
+        <div className="flex items-center gap-2.5 px-1">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-[10px] font-bold text-white" style={{ backgroundColor: "hsl(228,20%,18%)" }}>
+            {(user?.full_name || "U").split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
           </div>
           {!collapsed && (
             <div className="overflow-hidden flex-1 min-w-0">
-              <p className="text-xs font-medium text-white truncate">{user?.full_name || "User"}</p>
-              <p className="text-[10px] truncate" style={{ color: "hsl(240,5%,50%)" }}>{roleLabels[role]}</p>
+              <p className="text-xs font-semibold text-white truncate">{user?.full_name || "User"}</p>
+              <p className="text-[10px] truncate" style={{ color: "hsl(220,10%,45%)" }}>{user?.email || ""}</p>
             </div>
           )}
         </div>
         <div className="flex items-center gap-1">
           <button
             onClick={() => base44.auth.logout()}
-            className="flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors flex-1"
-            style={{ color: "hsl(240,5%,50%)" }}
-            onMouseEnter={e => { e.currentTarget.style.backgroundColor = "hsl(240,15%,18%)"; e.currentTarget.style.color = "white"; }}
-            onMouseLeave={e => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "hsl(240,5%,50%)"; }}
+            className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex-1"
+            style={{ color: "hsl(220,10%,45%)" }}
+            onMouseEnter={e => { e.currentTarget.style.backgroundColor = "hsl(228,20%,15%)"; e.currentTarget.style.color = "white"; }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "hsl(220,10%,45%)"; }}
           >
             <LogOut className="w-3.5 h-3.5" />
             {!collapsed && "Sign out"}
           </button>
           <button
             onClick={() => setDark(d => !d)}
-            className="p-1.5 rounded-md transition-colors"
-            style={{ color: "hsl(240,5%,50%)" }}
-            onMouseEnter={e => { e.currentTarget.style.backgroundColor = "hsl(240,15%,18%)"; e.currentTarget.style.color = "white"; }}
-            onMouseLeave={e => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "hsl(240,5%,50%)"; }}
-            title={dark ? "Switch to light mode" : "Switch to dark mode"}
+            className="p-1.5 rounded-lg transition-colors"
+            style={{ color: "hsl(220,10%,45%)" }}
+            onMouseEnter={e => { e.currentTarget.style.backgroundColor = "hsl(228,20%,15%)"; e.currentTarget.style.color = "white"; }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "hsl(220,10%,45%)"; }}
+            title={dark ? "Light mode" : "Dark mode"}
           >
             {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
