@@ -9,7 +9,7 @@ import PageHeader from "../components/PageHeader";
 import StatusBadge from "../components/StatusBadge";
 
 const emptyForm = { role: "client", specialty: "", hourly_rate: "", company: "", phone: "", status: "active" };
-const emptyInvite = { email: "", role: "client" };
+const emptyInvite = { email: "", role: "user" };
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -214,12 +214,11 @@ export default function AdminUsers() {
                 <Select value={invite.role} onValueChange={v => setInvite({ ...invite, role: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="user">Regular User</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="pm">Project Manager</SelectItem>
-                    <SelectItem value="professional">Professional</SelectItem>
-                    <SelectItem value="client">Client</SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">After they join, you can update their specific role (PM, Professional, Client) via the edit button.</p>
                 <div className="flex gap-2 justify-end">
                   <Button variant="outline" onClick={() => setShowInvite(false)}>Cancel</Button>
                   <Button onClick={handleInvite} disabled={!invite.email || inviting}>{inviting ? "Sending…" : "Send Invite"}</Button>
