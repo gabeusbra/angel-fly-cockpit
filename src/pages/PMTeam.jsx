@@ -34,7 +34,7 @@ export default function PMTeam() {
     setInviting(true);
     setInviteError("");
     try {
-      await base44.auth.inviteUser(inviteEmail, "user");
+      await base44.users.inviteUser(inviteEmail, "user");
       // After invite, we need to wait for the user to appear and then update their role.
       // For now, show success — admin can assign the cockpit role from User Management.
       setShowInvite(false);

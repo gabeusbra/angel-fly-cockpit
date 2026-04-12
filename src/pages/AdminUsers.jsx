@@ -41,9 +41,9 @@ export default function AdminUsers() {
     setInviting(true);
     setInviteError("");
     try {
-      // 1. Send the invite via Base44 auth
+      // 1. Send the invite via Base44
       const authRole = inviteForm.cockpitRole === "admin" ? "admin" : "user";
-      await base44.auth.inviteUser(inviteForm.email, authRole);
+      await base44.users.inviteUser(inviteForm.email, authRole);
 
       // 2. Try to find the newly created user and set their cockpit role
       const updatedUsers = await base44.entities.User.list();
