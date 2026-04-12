@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { Plus } from "lucide-react";
+import { Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,9 +11,11 @@ export default function PMTeam() {
   const [users, setUsers] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showAdd, setShowAdd] = useState(false);
-  const [addType, setAddType] = useState("professional");
-  const [form, setForm] = useState({ specialty: "", hourly_rate: "", company: "", phone: "" });
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteType, setInviteType] = useState("professional");
+  const [inviting, setInviting] = useState(false);
+  const [inviteError, setInviteError] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -27,22 +29,21 @@ export default function PMTeam() {
     setUsers(u);
   };
 
-  const handleAdd = async () => {
-    const payload = {
-      role: addType,
-      status: "active",
-      phone: form.phone || "",
-    };
-    if (addType === "professional") {
-      payload.specialty = form.specialty;
-      payload.hourly_rate = form.hourly_rate ? parseFloat(form.hourly_rate) : null;
-    } else {
-      payload.company = form.company;
+  const handleInvite = async () => {
+    if (!inviteEmail) return;
+    setInviting(true);
+    setInviteError("");
+    try {
+      await base44.auth.inviteUser(inviteEmail, "user");
+      // After invite, we need to wait for the user to appear and then update their role.
+      // For now, show success — admin can assign the cockpit role from User Management.
+      setShowInvite(false);
+      setInviteEmail("");
+      load();
+    } catch (err) {
+      setInviteError(err?.response?.data?.message || err?.message || "Failed to send invite");
     }
-    await base44.entities.User.create(payload);
-    setShowAdd(false);
-    setForm({ specialty: "", hourly_rate: "", company: "", phone: "" });
-    load();
+    setInviting(false);
   };
 
   const professionals = users.filter(u => u.role === "professional" && u.status === "active");
@@ -53,14 +54,14 @@ export default function PMTeam() {
     const active = myTasks.filter(t => t.status !== "done").length;
     const done = myTasks.filter(t => t.status === "done").length;
     const overdue = myTasks.filter(t => t.deadline && new Date(t.deadline) < new Date() && t.status !== "done").length;
-    const load = myTasks.length > 0 ? Math.round((active / Math.max(myTasks.length, 1)) * 100) : 0;
-    return { active, done, overdue, load, total: myTasks.length };
+    const workload = myTasks.length > 0 ? Math.round((active / Math.max(myTasks.length, 1)) * 100) : 0;
+    return { active, done, overdue, load: workload, total: myTasks.length };
   };
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Team & Clients" subtitle="Manage your professionals and client accounts">
-        <Button onClick={() => { setAddType("professional"); setShowAdd(true); }} className="gap-2"><Plus className="w-4 h-4" /> Add Member</Button>
+      <PageHeader title="Team & Clients" subtitle="View your professionals and client accounts">
+        <Button onClick={() => { setInviteType("professional"); setShowInvite(true); }} className="gap-2"><Mail className="w-4 h-4" /> Invite Member</Button>
       </PageHeader>
 
       {/* Professionals */}
@@ -118,7 +119,7 @@ export default function PMTeam() {
           </div>
         ) : (
           <div className="bg-card rounded-xl border border-border p-8 text-center text-sm text-muted-foreground">
-            No professionals yet. Add your first team member above.
+            No professionals yet. Invite your first team member above.
           </div>
         )}
       </div>
@@ -129,8 +130,8 @@ export default function PMTeam() {
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Clients ({clients.length})
           </h3>
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => { setAddType("client"); setShowAdd(true); }}>
-            <Plus className="w-3 h-3" /> Add Client
+          <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => { setInviteType("client"); setShowInvite(true); }}>
+            <Mail className="w-3 h-3" /> Invite Client
           </Button>
         </div>
         {clients.length > 0 ? (
@@ -151,12 +152,18 @@ export default function PMTeam() {
         )}
       </div>
 
-      {/* Add dialog */}
-      <Dialog open={showAdd} onOpenChange={setShowAdd}>
+      {/* Invite dialog */}
+      <Dialog open={showInvite} onOpenChange={setShowInvite}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{addType === "professional" ? "Add Professional" : "Add Client"}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Invite {inviteType === "professional" ? "Professional" : "Client"}</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-2">
-            <Select value={addType} onValueChange={setAddType}>
+            <p className="text-xs text-muted-foreground">
+              Send an email invite. After they sign up, an admin can assign their cockpit role and details from User Management.
+            </p>
+
+            <Input type="email" placeholder="Email address" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} />
+
+            <Select value={inviteType} onValueChange={setInviteType}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="professional">Professional</SelectItem>
@@ -164,20 +171,11 @@ export default function PMTeam() {
               </SelectContent>
             </Select>
 
-            {addType === "professional" ? (
-              <>
-                <Input placeholder="Specialty (e.g. Designer, Developer, Marketer)" value={form.specialty} onChange={e => setForm({ ...form, specialty: e.target.value })} />
-                <Input type="number" placeholder="Hourly Rate (R$)" value={form.hourly_rate} onChange={e => setForm({ ...form, hourly_rate: e.target.value })} />
-              </>
-            ) : (
-              <Input placeholder="Company Name" value={form.company} onChange={e => setForm({ ...form, company: e.target.value })} />
-            )}
-
-            <Input placeholder="Phone" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
+            {inviteError && <p className="text-xs text-red-600">{inviteError}</p>}
 
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setShowAdd(false)}>Cancel</Button>
-              <Button onClick={handleAdd}>Add {addType === "professional" ? "Professional" : "Client"}</Button>
+              <Button variant="outline" onClick={() => setShowInvite(false)}>Cancel</Button>
+              <Button onClick={handleInvite} disabled={inviting || !inviteEmail}>{inviting ? "Sending..." : "Send Invite"}</Button>
             </div>
           </div>
         </DialogContent>

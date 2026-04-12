@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { Plus, Search, Pencil, Trash2, UserCircle, Mail } from "lucide-react";
+import { Mail, Search, Pencil, Trash2, UserCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -8,17 +8,24 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import PageHeader from "../components/PageHeader";
 import StatusBadge from "../components/StatusBadge";
 
-const emptyForm = { role: "client", specialty: "", hourly_rate: "", company: "", phone: "", status: "active" };
-const emptyInvite = { email: "", role: "user" };
-
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
-  const [showForm, setShowForm] = useState(false);
+
+  // Invite dialog
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("user");
+  const [inviting, setInviting] = useState(false);
+  const [inviteError, setInviteError] = useState("");
+
+  // Edit dialog
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState(emptyForm);
+  const [editForm, setEditForm] = useState({ role: "", specialty: "", hourly_rate: "", company: "", phone: "", status: "active" });
+
+  // Deactivate dialog
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [showInvite, setShowInvite] = useState(false);
   const [invite, setInvite] = useState(emptyInvite);
@@ -33,50 +40,53 @@ export default function AdminUsers() {
     setLoading(false);
   };
 
-  const openInvite = () => {
-    setInvite(emptyInvite);
-    setInviteSuccess(false);
-    setShowInvite(true);
-  };
-
+  // --- Invite user via Base44 auth ---
   const handleInvite = async () => {
+    if (!inviteEmail) return;
     setInviting(true);
-    await base44.users.inviteUser(invite.email, invite.role);
+    setInviteError("");
+    try {
+      await base44.auth.inviteUser(inviteEmail, inviteRole);
+      setShowInvite(false);
+      setInviteEmail("");
+      setInviteRole("user");
+      load();
+    } catch (err) {
+      setInviteError(err?.response?.data?.message || err?.message || "Failed to invite user");
+    }
     setInviting(false);
-    setInviteSuccess(true);
-    load();
   };
 
+  // --- Edit user cockpit role + details ---
   const openEdit = (user) => {
     setEditing(user);
-    setForm({
-      role: user.role || "client",
+    setEditForm({
+      role: user.role || "",
       specialty: user.specialty || "",
       hourly_rate: user.hourly_rate ? String(user.hourly_rate) : "",
       company: user.company || "",
       phone: user.phone || "",
       status: user.status || "active",
     });
-    setShowForm(true);
   };
 
   const handleSave = async () => {
+    if (!editing) return;
     const payload = {
-      role: form.role,
-      specialty: form.role === "professional" ? form.specialty : "",
-      hourly_rate: form.role === "professional" && form.hourly_rate ? parseFloat(form.hourly_rate) : null,
-      company: form.role === "client" ? form.company : "",
-      phone: form.phone,
-      status: form.status,
+      role: editForm.role,
+      specialty: editForm.role === "professional" ? editForm.specialty : "",
+      hourly_rate: editForm.role === "professional" && editForm.hourly_rate ? parseFloat(editForm.hourly_rate) : null,
+      company: editForm.role === "client" ? editForm.company : "",
+      phone: editForm.phone,
+      status: editForm.status,
     };
-    if (editing) {
-      await base44.entities.User.update(editing.id, payload);
-    }
-    setShowForm(false);
+    await base44.entities.User.update(editing.id, payload);
+    setEditing(null);
     load();
   };
 
-  const handleDelete = async () => {
+  // --- Deactivate user ---
+  const handleDeactivate = async () => {
     if (!confirmDelete) return;
     await base44.entities.User.update(confirmDelete.id, { status: "inactive" });
     setConfirmDelete(null);
@@ -92,20 +102,40 @@ export default function AdminUsers() {
 
   const roleCounts = { admin: 0, pm: 0, professional: 0, client: 0 };
   users.forEach(u => { if (u.role && roleCounts[u.role] !== undefined) roleCounts[u.role]++; });
+  const unconfigured = users.filter(u => !u.role);
 
   return (
     <div className="space-y-6">
-      <PageHeader title="User Management" subtitle="Manage all users, roles, and access">
-        <Button onClick={openInvite} className="gap-2"><Mail className="w-4 h-4" /> Invite User</Button>
+      <PageHeader title="User Management" subtitle="Invite users and assign cockpit roles">
+        <Button onClick={() => setShowInvite(true)} className="gap-2"><Mail className="w-4 h-4" /> Invite User</Button>
       </PageHeader>
+
+      {/* Unconfigured users alert */}
+      {unconfigured.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-amber-800">{unconfigured.length} user{unconfigured.length > 1 ? "s" : ""} need a cockpit role</p>
+            <p className="text-xs text-amber-700 mt-0.5">Click the edit button to assign them as PM, Professional, or Client.</p>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {unconfigured.map(u => (
+                <button key={u.id} onClick={() => openEdit(u)}
+                  className="text-xs bg-white border border-amber-200 rounded-lg px-2.5 py-1.5 hover:bg-amber-100 transition-colors text-amber-800 font-medium">
+                  {u.full_name || u.email} — Set Role
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Role summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { role: "admin", label: "Admins", color: "bg-purple-100 text-purple-700" },
-          { role: "pm", label: "Project Managers", color: "bg-blue-100 text-blue-700" },
-          { role: "professional", label: "Professionals", color: "bg-orange-100 text-orange-700" },
-          { role: "client", label: "Clients", color: "bg-emerald-100 text-emerald-700" },
+          { role: "admin", label: "Admins" },
+          { role: "pm", label: "Project Managers" },
+          { role: "professional", label: "Professionals" },
+          { role: "client", label: "Clients" },
         ].map(r => (
           <div key={r.role} className="bg-card rounded-xl border border-border p-4 text-center">
             <p className="text-xs text-muted-foreground">{r.label}</p>
@@ -138,7 +168,7 @@ export default function AdminUsers() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-border bg-muted/30">
-                {["User", "Role", "Details", "Status", "Actions"].map(h => (
+                {["User", "Cockpit Role", "Details", "Status", "Actions"].map(h => (
                   <th key={h} className="text-left text-xs font-medium text-muted-foreground px-4 py-3">{h}</th>
                 ))}
               </tr>
@@ -147,7 +177,7 @@ export default function AdminUsers() {
               {loading ? (
                 [...Array(5)].map((_, i) => <tr key={i}><td colSpan={5}><div className="h-4 bg-muted rounded animate-pulse mx-4 my-3" /></td></tr>)
               ) : filtered.length > 0 ? filtered.map(u => (
-                <tr key={u.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                <tr key={u.id} className={`border-b border-border last:border-0 hover:bg-muted/20 transition-colors ${!u.role ? "bg-amber-50/50" : ""}`}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
@@ -160,28 +190,33 @@ export default function AdminUsers() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                      u.role === "admin" ? "bg-purple-100 text-purple-700" :
-                      u.role === "pm" ? "bg-blue-100 text-blue-700" :
-                      u.role === "professional" ? "bg-orange-100 text-orange-700" :
-                      "bg-emerald-100 text-emerald-700"
-                    }`}>
-                      {u.role === "pm" ? "PM" : (u.role || "client").charAt(0).toUpperCase() + (u.role || "client").slice(1)}
-                    </span>
+                    {u.role ? (
+                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                        u.role === "admin" ? "bg-purple-100 text-purple-700" :
+                        u.role === "pm" ? "bg-blue-100 text-blue-700" :
+                        u.role === "professional" ? "bg-orange-100 text-orange-700" :
+                        "bg-emerald-100 text-emerald-700"
+                      }`}>
+                        {u.role === "pm" ? "PM" : u.role.charAt(0).toUpperCase() + u.role.slice(1)}
+                      </span>
+                    ) : (
+                      <span className="text-xs font-medium text-amber-600 bg-amber-100 px-2 py-1 rounded-full">Not assigned</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">
                     {u.role === "professional" && u.specialty && <span>{u.specialty} · R${u.hourly_rate || 0}/hr</span>}
                     {u.role === "client" && u.company && <span>{u.company}</span>}
                     {u.phone && <span className="block">{u.phone}</span>}
+                    {!u.role && <span className="text-amber-600">Needs role assignment</span>}
                   </td>
                   <td className="px-4 py-3"><StatusBadge status={u.status || "active"} size="xs" /></td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openEdit(u)}>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openEdit(u)} title="Edit user">
                         <Pencil className="w-3.5 h-3.5" />
                       </Button>
                       {u.role !== "admin" && (
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500 hover:text-red-700" onClick={() => setConfirmDelete(u)}>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500 hover:text-red-700" onClick={() => setConfirmDelete(u)} title="Deactivate user">
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       )}
@@ -201,79 +236,79 @@ export default function AdminUsers() {
         <DialogContent>
           <DialogHeader><DialogTitle>Invite User</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-2">
-            {inviteSuccess ? (
-              <div className="text-center py-4">
-                <p className="text-2xl mb-2">✉️</p>
-                <p className="text-sm font-medium">Invitation sent!</p>
-                <p className="text-xs text-muted-foreground mt-1">They will receive an email to join the platform.</p>
-                <Button className="mt-4" onClick={() => setShowInvite(false)}>Done</Button>
-              </div>
-            ) : (
-              <>
-                <Input placeholder="Email address" type="email" value={invite.email} onChange={e => setInvite({ ...invite, email: e.target.value })} />
-                <Select value={invite.role} onValueChange={v => setInvite({ ...invite, role: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="user">Regular User</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">After they join, you can update their specific role (PM, Professional, Client) via the edit button.</p>
-                <div className="flex gap-2 justify-end">
-                  <Button variant="outline" onClick={() => setShowInvite(false)}>Cancel</Button>
-                  <Button onClick={handleInvite} disabled={!invite.email || inviting}>{inviting ? "Sending…" : "Send Invite"}</Button>
-                </div>
-              </>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit dialog */}
-      <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Edit User</DialogTitle></DialogHeader>
-          <div className="space-y-3 pt-2">
-            <Select value={form.role} onValueChange={v => setForm({ ...form, role: v })}>
+            <p className="text-xs text-muted-foreground">
+              Send an email invite. After they sign up, come back here to assign their cockpit role (PM, Professional, or Client).
+            </p>
+            <Input type="email" placeholder="Email address" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} />
+            <Select value={inviteRole} onValueChange={setInviteRole}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
+                <SelectItem value="user">Regular User</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="pm">Project Manager</SelectItem>
-                <SelectItem value="professional">Professional</SelectItem>
-                <SelectItem value="client">Client</SelectItem>
               </SelectContent>
             </Select>
-
-            {form.role === "professional" && (
-              <>
-                <Input placeholder="Specialty (e.g. Designer, Developer)" value={form.specialty} onChange={e => setForm({ ...form, specialty: e.target.value })} />
-                <Input type="number" placeholder="Hourly Rate (R$)" value={form.hourly_rate} onChange={e => setForm({ ...form, hourly_rate: e.target.value })} />
-              </>
-            )}
-
-            {form.role === "client" && (
-              <Input placeholder="Company Name" value={form.company} onChange={e => setForm({ ...form, company: e.target.value })} />
-            )}
-
-            <Input placeholder="Phone" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
-
-            <Select value={form.status} onValueChange={v => setForm({ ...form, status: v })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-
+            {inviteError && <p className="text-xs text-red-600">{inviteError}</p>}
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
-              <Button onClick={handleSave}>Save Changes</Button>
+              <Button variant="outline" onClick={() => setShowInvite(false)}>Cancel</Button>
+              <Button onClick={handleInvite} disabled={inviting || !inviteEmail}>{inviting ? "Sending..." : "Send Invite"}</Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Delete confirmation */}
+      {/* Edit role dialog */}
+      <Dialog open={!!editing} onOpenChange={() => setEditing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Configure User — {editing?.full_name || editing?.email}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">Cockpit Role</label>
+              <Select value={editForm.role} onValueChange={v => setEditForm({ ...editForm, role: v })}>
+                <SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="pm">Project Manager</SelectItem>
+                  <SelectItem value="professional">Professional</SelectItem>
+                  <SelectItem value="client">Client</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {editForm.role === "professional" && (
+              <>
+                <Input placeholder="Specialty (e.g. Designer, Developer)" value={editForm.specialty} onChange={e => setEditForm({ ...editForm, specialty: e.target.value })} />
+                <Input type="number" placeholder="Hourly Rate (R$)" value={editForm.hourly_rate} onChange={e => setEditForm({ ...editForm, hourly_rate: e.target.value })} />
+              </>
+            )}
+
+            {editForm.role === "client" && (
+              <Input placeholder="Company Name" value={editForm.company} onChange={e => setEditForm({ ...editForm, company: e.target.value })} />
+            )}
+
+            <Input placeholder="Phone" value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} />
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">Status</label>
+              <Select value={editForm.status} onValueChange={v => setEditForm({ ...editForm, status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+              <Button onClick={handleSave} disabled={!editForm.role}>Save Changes</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Deactivate confirmation */}
       <Dialog open={!!confirmDelete} onOpenChange={() => setConfirmDelete(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Deactivate User</DialogTitle></DialogHeader>
@@ -281,7 +316,7 @@ export default function AdminUsers() {
             <p className="text-sm">Are you sure you want to deactivate <strong>{confirmDelete?.full_name}</strong>? They will lose access to their portal.</p>
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setConfirmDelete(null)}>Cancel</Button>
-              <Button variant="destructive" onClick={handleDelete}>Deactivate</Button>
+              <Button variant="destructive" onClick={handleDeactivate}>Deactivate</Button>
             </div>
           </div>
         </DialogContent>
