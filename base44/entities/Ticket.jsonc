@@ -1,0 +1,93 @@
+{
+  "name": "Ticket",
+  "type": "object",
+  "properties": {
+    "client_id": {
+      "type": "string",
+      "title": "Client ID"
+    },
+    "client_name": {
+      "type": "string",
+      "title": "Client Name"
+    },
+    "project_id": {
+      "type": "string",
+      "title": "Project ID"
+    },
+    "project_name": {
+      "type": "string",
+      "title": "Project Name"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "bug",
+        "change_request",
+        "complaint",
+        "question"
+      ],
+      "title": "Category"
+    },
+    "subject": {
+      "type": "string",
+      "title": "Subject"
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "in_progress",
+        "resolved",
+        "closed"
+      ],
+      "title": "Status"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "title": "Priority"
+    },
+    "assigned_to": {
+      "type": "string",
+      "title": "Assigned To (User ID)"
+    },
+    "assigned_to_name": {
+      "type": "string",
+      "title": "Assigned To Name"
+    },
+    "estimated_resolution": {
+      "type": "string",
+      "format": "date",
+      "title": "Estimated Resolution"
+    },
+    "resolution_notes": {
+      "type": "string",
+      "title": "Resolution Notes"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "title": "Attachments"
+    },
+    "satisfaction_rating": {
+      "type": "number",
+      "title": "Satisfaction Rating (1-5)"
+    }
+  },
+  "required": [
+    "subject",
+    "status",
+    "priority",
+    "category"
+  ]
+}

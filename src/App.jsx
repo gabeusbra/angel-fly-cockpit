@@ -5,7 +5,24 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-// Add page imports here
+import Layout from './components/Layout';
+import RoleRouter from './pages/RoleRouter';
+import AdminDashboard from './pages/AdminDashboard';
+import AdminPaymentApprovals from './pages/AdminPaymentApprovals';
+import AdminClientPayments from './pages/AdminClientPayments';
+import AdminProjects from './pages/AdminProjects';
+import PMProjects from './pages/PMProjects';
+import PMProjectDetail from './pages/PMProjectDetail';
+import PMTickets from './pages/PMTickets';
+import PMPaymentRequests from './pages/PMPaymentRequests';
+import PMTeam from './pages/PMTeam';
+import ProTasks from './pages/ProTasks';
+import ProProjects from './pages/ProProjects';
+import ProPayments from './pages/ProPayments';
+import ClientProjects from './pages/ClientProjects';
+import ClientApprovals from './pages/ClientApprovals';
+import ClientTickets from './pages/ClientTickets';
+import ClientPayments from './pages/ClientPayments';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -33,8 +50,25 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Routes>
-      {/* Add your page Route elements here */}
-      <Route path="*" element={<PageNotFound />} />
+      <Route element={<Layout />}>
+        <Route path="/" element={<RoleRouter />} />
+        <Route path="/admin/approvals" element={<AdminPaymentApprovals />} />
+        <Route path="/admin/payments" element={<AdminClientPayments />} />
+        <Route path="/admin/projects" element={<AdminProjects />} />
+        <Route path="/pm/projects" element={<PMProjects />} />
+        <Route path="/pm/projects/:id" element={<PMProjectDetail />} />
+        <Route path="/pm/tickets" element={<PMTickets />} />
+        <Route path="/pm/payments" element={<PMPaymentRequests />} />
+        <Route path="/pm/team" element={<PMTeam />} />
+        <Route path="/pro/tasks" element={<ProTasks />} />
+        <Route path="/pro/projects" element={<ProProjects />} />
+        <Route path="/pro/payments" element={<ProPayments />} />
+        <Route path="/client/projects" element={<ClientProjects />} />
+        <Route path="/client/approvals" element={<ClientApprovals />} />
+        <Route path="/client/tickets" element={<ClientTickets />} />
+        <Route path="/client/payments" element={<ClientPayments />} />
+        <Route path="*" element={<PageNotFound />} />
+      </Route>
     </Routes>
   );
 };

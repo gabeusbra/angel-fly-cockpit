@@ -1,0 +1,44 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "role": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "pm",
+        "professional",
+        "client"
+      ],
+      "title": "Role"
+    },
+    "specialty": {
+      "type": "string",
+      "title": "Specialty"
+    },
+    "hourly_rate": {
+      "type": "number",
+      "title": "Hourly Rate"
+    },
+    "company": {
+      "type": "string",
+      "title": "Company"
+    },
+    "phone": {
+      "type": "string",
+      "title": "Phone"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive"
+      ],
+      "title": "Status"
+    },
+    "avatar_url": {
+      "type": "string",
+      "title": "Avatar URL"
+    }
+  }
+}
