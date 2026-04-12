@@ -115,13 +115,22 @@ export default function PMProjectDetail() {
   useEffect(() => { loadAll(); }, [id]);
 
   const loadAll = async () => {
-    const [p, t, at, u] = await Promise.all([
-      base44.entities.Project.filter({ id }),
-      base44.entities.Task.filter({ project_id: id }),
-      base44.entities.Task.list(),
-      base44.entities.User.filter({ role: "professional", status: "active" }),
-    ]);
-    const proj = p[0] || null;
+    // Try multiple approaches to load project (permissions vary by role)
+    let proj = null;
+    try { const r = await base44.entities.Project.filter({ id }); proj = r[0] || null; } catch { /* ignore */ }
+    if (!proj) {
+      try { const all = await base44.entities.Project.list(); proj = all.find(p => p.id === id) || null; } catch { /* ignore */ }
+    }
+
+    let t = [], at = [], u = [];
+    try { t = await base44.entities.Task.filter({ project_id: id }); } catch {
+      try { const allT = await base44.entities.Task.list(); t = allT.filter(tk => tk.project_id === id); } catch { /* ignore */ }
+    }
+    try { at = await base44.entities.Task.list(); } catch { /* ignore */ }
+    try { u = await base44.entities.User.filter({ role: "professional", status: "active" }); } catch {
+      try { const allU = await base44.entities.User.list(); u = allU.filter(usr => usr.role === "professional" && usr.status === "active"); } catch { /* ignore */ }
+    }
+
     setProject(proj); setTasks(t); setAllTasks(at); setPros(u); setLoading(false);
 
     // Load docs after project is set
