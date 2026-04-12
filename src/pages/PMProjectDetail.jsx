@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { Plus, ArrowLeft, Sparkles, Pencil, MessageSquare, CheckSquare, FileText } from "lucide-react";
+import { Plus, ArrowLeft, Sparkles, Pencil, MessageSquare, CheckSquare, FileText, ExternalLink, Download, Globe, FileUp, Link2, Trash2, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -63,7 +63,9 @@ export default function PMProjectDetail() {
 
   // Project docs
   const [showDocs, setShowDocs] = useState(false);
-  const [newDoc, setNewDoc] = useState({ title: "", content: "" });
+  const [viewDoc, setViewDoc] = useState(null);
+  const [newDoc, setNewDoc] = useState({ title: "", type: "html", content: "", url: "" });
+  const [uploadingDoc, setUploadingDoc] = useState(false);
 
   useEffect(() => { loadAll(); }, [id]);
 
@@ -157,13 +159,35 @@ export default function PMProjectDetail() {
   };
 
   // --- Docs ---
+  const handleDocFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingDoc(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setNewDoc(d => ({ ...d, url: file_url }));
+    } catch { /* ignore */ }
+    setUploadingDoc(false);
+  };
+
   const addDoc = async () => {
     if (!newDoc.title || !project) return;
+    if (newDoc.type === "link" && !newDoc.url) return;
+    if (newDoc.type === "pdf" && !newDoc.url) return;
+    if (newDoc.type === "html" && !newDoc.content) return;
     const docs = parseJson(project.docs, []);
-    docs.push({ ...newDoc, at: new Date().toISOString() });
+    docs.push({ title: newDoc.title, type: newDoc.type, content: newDoc.content, url: newDoc.url, at: new Date().toISOString() });
     await base44.entities.Project.update(project.id, { docs: JSON.stringify(docs) });
     setProject({ ...project, docs: JSON.stringify(docs) });
-    setNewDoc({ title: "", content: "" });
+    setNewDoc({ title: "", type: "html", content: "", url: "" });
+  };
+
+  const removeDoc = async (idx) => {
+    if (!project) return;
+    const docs = parseJson(project.docs, []);
+    docs.splice(idx, 1);
+    await base44.entities.Project.update(project.id, { docs: JSON.stringify(docs) });
+    setProject({ ...project, docs: JSON.stringify(docs) });
   };
 
   if (loading) return <div className="animate-pulse space-y-4"><div className="h-8 w-64 bg-muted rounded" /><div className="h-64 bg-muted rounded-xl" /></div>;
@@ -414,26 +438,117 @@ export default function PMProjectDetail() {
       </Dialog>
 
       {/* Project docs */}
-      <Dialog open={showDocs} onOpenChange={setShowDocs}>
+      <Dialog open={showDocs && !viewDoc} onOpenChange={setShowDocs}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Project Documents</DialogTitle></DialogHeader>
-          <div className="space-y-4 pt-2">
+          <div className="space-y-3 pt-2">
             {docs.map((d, i) => (
-              <div key={i} className="border border-border rounded-lg p-4">
-                <div className="flex justify-between mb-1">
-                  <h4 className="text-sm font-semibold">{d.title}</h4>
-                  <span className="text-[10px] text-muted-foreground">{new Date(d.at).toLocaleDateString()}</span>
+              <div key={i} className="border border-border rounded-lg p-4 flex items-center justify-between gap-3 hover:shadow-sm transition-shadow">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                    d.type === "pdf" ? "bg-red-100" : d.type === "link" ? "bg-blue-100" : "bg-emerald-100"
+                  }`}>
+                    {d.type === "pdf" ? <Download className="w-4 h-4 text-red-600" /> :
+                     d.type === "link" ? <Link2 className="w-4 h-4 text-blue-600" /> :
+                     <Globe className="w-4 h-4 text-emerald-600" />}
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-semibold truncate">{d.title}</h4>
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                      <span className="uppercase font-medium">{d.type}</span>
+                      <span>{new Date(d.at).toLocaleDateString()}</span>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-sm whitespace-pre-wrap">{d.content}</p>
+                <div className="flex items-center gap-1 shrink-0">
+                  {d.type === "html" && (
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setViewDoc(d)} title="View">
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                  )}
+                  {d.type === "pdf" && d.url && (
+                    <a href={d.url} download className="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-muted transition-colors" title="Download PDF">
+                      <Download className="w-4 h-4" />
+                    </a>
+                  )}
+                  {d.type === "link" && d.url && (
+                    <a href={d.url} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-muted transition-colors" title="Open link">
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  )}
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500 hover:text-red-700" onClick={() => removeDoc(i)} title="Remove">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
               </div>
             ))}
-            {docs.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No documents yet</p>}
+            {docs.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">No documents yet. Add your PRD, specs, or reference links below.</p>}
+
+            {/* Add new document */}
             <div className="border-t border-border pt-4 space-y-3">
-              <Input placeholder="Document title" value={newDoc.title} onChange={e => setNewDoc({ ...newDoc, title: e.target.value })} />
-              <Textarea placeholder="Content (PRD, specs, notes, decisions...)" value={newDoc.content} onChange={e => setNewDoc({ ...newDoc, content: e.target.value })} rows={6} />
-              <Button onClick={addDoc} disabled={!newDoc.title}>Add Document</Button>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Add Document</p>
+              <Input placeholder="Document title (e.g. PRD v2.2, API Specs, Design Link)" value={newDoc.title} onChange={e => setNewDoc({ ...newDoc, title: e.target.value })} />
+              <div className="flex gap-2">
+                {[
+                  { val: "html", label: "HTML / Text", icon: Globe },
+                  { val: "pdf", label: "PDF Upload", icon: FileUp },
+                  { val: "link", label: "External Link", icon: Link2 },
+                ].map(opt => (
+                  <button key={opt.val} onClick={() => setNewDoc({ ...newDoc, type: opt.val, content: "", url: "" })}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors border ${
+                      newDoc.type === opt.val ? "border-primary bg-primary/5 text-primary" : "border-border text-muted-foreground hover:border-primary/50"
+                    }`}>
+                    <opt.icon className="w-3.5 h-3.5" /> {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              {newDoc.type === "html" && (
+                <Textarea placeholder="Paste your PRD, specs, or HTML content here..." value={newDoc.content} onChange={e => setNewDoc({ ...newDoc, content: e.target.value })} rows={8} />
+              )}
+
+              {newDoc.type === "pdf" && (
+                <div className="space-y-2">
+                  <Input type="file" accept=".pdf" onChange={handleDocFileUpload} disabled={uploadingDoc} />
+                  {uploadingDoc && <p className="text-xs text-muted-foreground">Uploading PDF...</p>}
+                  {newDoc.url && <p className="text-xs text-emerald-600">PDF uploaded successfully</p>}
+                </div>
+              )}
+
+              {newDoc.type === "link" && (
+                <Input type="url" placeholder="https://..." value={newDoc.url} onChange={e => setNewDoc({ ...newDoc, url: e.target.value })} />
+              )}
+
+              <Button onClick={addDoc} disabled={!newDoc.title || (newDoc.type === "html" && !newDoc.content) || ((newDoc.type === "pdf" || newDoc.type === "link") && !newDoc.url)}>
+                Add Document
+              </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* HTML doc viewer — full screen dialog */}
+      <Dialog open={!!viewDoc} onOpenChange={() => setViewDoc(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{viewDoc?.title}</DialogTitle>
+          </DialogHeader>
+          {viewDoc && (
+            <div className="pt-2">
+              <div className="flex items-center gap-2 mb-4 text-xs text-muted-foreground">
+                <Globe className="w-3.5 h-3.5" />
+                <span>HTML Document</span>
+                <span>{new Date(viewDoc.at).toLocaleDateString()}</span>
+              </div>
+              {viewDoc.content?.trim().startsWith("<") ? (
+                <div className="prose prose-sm max-w-none border border-border rounded-lg p-6 bg-white" dangerouslySetInnerHTML={{ __html: viewDoc.content }} />
+              ) : (
+                <div className="border border-border rounded-lg p-6 bg-white">
+                  <pre className="text-sm whitespace-pre-wrap font-sans">{viewDoc.content}</pre>
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
