@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useNavigate, useLocation, useOutletContext } from "react-router-dom";
 import { Plus, ArrowLeft, Sparkles, Pencil, MessageSquare, CheckSquare, FileText, ExternalLink, Download, Globe, FileUp, Link2, Trash2, Eye, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,8 +78,10 @@ const TAG_COLORS = {
 
 export default function PMProjectDetail() {
   const { id } = useParams();
+  const { user } = useOutletContext();
   const navigate = useNavigate();
   const location = useLocation();
+  const isPro = user?.role === "professional";
   const backPath = location.pathname.startsWith("/admin") ? "/admin/projects" : location.pathname.startsWith("/pro") ? "/pro/projects" : "/pm/projects";
   const [project, setProject] = useState(null);
   const [projectDocs, setProjectDocs] = useState([]);
@@ -131,7 +133,11 @@ export default function PMProjectDetail() {
       try { const allU = await base44.entities.User.list(); u = allU.filter(usr => usr.role === "professional" && usr.status === "active"); } catch { /* ignore */ }
     }
 
-    setProject(proj); setTasks(t); setAllTasks(at); setPros(u); setLoading(false);
+    // For professionals: only show their tasks
+    const myTasks = isPro
+      ? t.filter(tk => tk.assigned_to === user?.id || tk.assigned_to_name?.toLowerCase() === user?.full_name?.toLowerCase())
+      : t;
+    setProject(proj); setTasks(myTasks); setAllTasks(at); setPros(u); setLoading(false);
 
     // Load docs after project is set
     if (proj) {
@@ -360,9 +366,9 @@ export default function PMProjectDetail() {
             <p className="text-sm text-muted-foreground">{project.client_name} · {progress}% complete</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={openSettings} className="h-9 w-9 p-0" title="Project Settings"><Settings className="w-4 h-4" /></Button>
+            {!isPro && <Button variant="ghost" size="sm" onClick={openSettings} className="h-9 w-9 p-0" title="Project Settings"><Settings className="w-4 h-4" /></Button>}
             <Button variant="outline" size="sm" onClick={() => setShowDocs(true)} className="gap-1"><FileText className="w-4 h-4" /> Docs ({docs.length})</Button>
-            <Button onClick={() => setShowCreate(true)} className="gap-2"><Plus className="w-4 h-4" /> Add Task</Button>
+            {!isPro && <Button onClick={() => setShowCreate(true)} className="gap-2"><Plus className="w-4 h-4" /> Add Task</Button>}
           </div>
         </div>
       </div>
