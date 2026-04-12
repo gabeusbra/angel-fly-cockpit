@@ -168,6 +168,14 @@ export default function AdminUsers() {
     load();
   };
 
+  // --- Permanent delete ---
+  const handlePermanentDelete = async () => {
+    if (!confirmDelete) return;
+    await base44.entities.User.delete(confirmDelete.id);
+    setConfirmDelete(null);
+    load();
+  };
+
   const filtered = users.filter(u => {
     const q = search.toLowerCase();
     const matchesSearch = (u.full_name || "").toLowerCase().includes(q) || (u.email || "").toLowerCase().includes(q) || (u.company || "").toLowerCase().includes(q);
@@ -175,9 +183,10 @@ export default function AdminUsers() {
     return matchesSearch && matchesRole;
   });
 
+  const activeUsers = users.filter(u => u.status !== "inactive");
   const roleCounts = { admin: 0, pm: 0, professional: 0, client: 0 };
-  users.forEach(u => { if (u.role && roleCounts[u.role] !== undefined) roleCounts[u.role]++; });
-  const unconfigured = users.filter(u => !hasCockpitRole(u));
+  activeUsers.forEach(u => { if (u.role && roleCounts[u.role] !== undefined) roleCounts[u.role]++; });
+  const unconfigured = activeUsers.filter(u => !hasCockpitRole(u));
 
   return (
     <div className="space-y-6">
@@ -417,15 +426,23 @@ export default function AdminUsers() {
         </DialogContent>
       </Dialog>
 
-      {/* Deactivate confirmation */}
+      {/* Delete / Deactivate confirmation */}
       <Dialog open={!!confirmDelete} onOpenChange={() => setConfirmDelete(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Deactivate User</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Remove User — {confirmDelete?.full_name || confirmDelete?.email}</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
-            <p className="text-sm">Are you sure you want to deactivate <strong>{confirmDelete?.full_name}</strong>? They will lose access to their portal.</p>
-            <div className="flex gap-2 justify-end">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-sm font-medium text-amber-800">Deactivate</p>
+              <p className="text-xs text-amber-700 mt-0.5">Block access but keep their data. Can be reactivated later.</p>
+              <Button className="mt-2 bg-amber-600 hover:bg-amber-700" size="sm" onClick={handleDeactivate}>Deactivate User</Button>
+            </div>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+              <p className="text-sm font-medium text-red-800">Permanently Delete</p>
+              <p className="text-xs text-red-700 mt-0.5">Remove the user and all their data. This cannot be undone.</p>
+              <Button variant="destructive" className="mt-2" size="sm" onClick={handlePermanentDelete}>Delete Permanently</Button>
+            </div>
+            <div className="flex justify-end">
               <Button variant="outline" onClick={() => setConfirmDelete(null)}>Cancel</Button>
-              <Button variant="destructive" onClick={handleDeactivate}>Deactivate</Button>
             </div>
           </div>
         </DialogContent>
