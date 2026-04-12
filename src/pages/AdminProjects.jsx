@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -7,6 +8,7 @@ import PageHeader from "../components/PageHeader";
 import StatusBadge from "../components/StatusBadge";
 
 export default function AdminProjects() {
+  const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [incoming, setIncoming] = useState([]);
@@ -74,7 +76,7 @@ export default function AdminProjects() {
                 const prog = getProgress(p.id);
                 const used = getBudgetUsed(p.id);
                 return (
-                  <tr key={p.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
+                  <tr key={p.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => navigate(`/admin/projects/${p.id}`)}>
                     <td className="px-4 py-3 text-sm font-medium">{p.name}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{p.client_name || "—"}</td>
                     <td className="px-4 py-3"><StatusBadge status={p.status} size="xs" /></td>

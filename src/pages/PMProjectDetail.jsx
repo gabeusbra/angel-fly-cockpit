@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Plus, ArrowLeft, Sparkles, Pencil, MessageSquare, CheckSquare, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,9 @@ const TAG_COLORS = {
 
 export default function PMProjectDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const backPath = location.pathname.startsWith("/admin") ? "/admin/projects" : "/pm/projects";
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [allTasks, setAllTasks] = useState([]);
@@ -193,7 +196,7 @@ export default function PMProjectDetail() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Link to="/pm/projects" className="p-2 hover:bg-muted rounded-lg transition-colors"><ArrowLeft className="w-4 h-4" /></Link>
+        <button onClick={() => navigate(backPath)} className="p-2 hover:bg-muted rounded-lg transition-colors"><ArrowLeft className="w-4 h-4" /></button>
         <div className="flex-1 flex items-center justify-between flex-wrap gap-2">
           <div>
             <h1 className="text-xl font-bold">{project.name}</h1>

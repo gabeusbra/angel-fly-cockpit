@@ -58,6 +58,7 @@ const AuthenticatedApp = () => {
         <Route path="/admin/approvals" element={<AdminPaymentApprovals />} />
         <Route path="/admin/payments" element={<AdminClientPayments />} />
         <Route path="/admin/projects" element={<AdminProjects />} />
+        <Route path="/admin/projects/:id" element={<PMProjectDetail />} />
         <Route path="/admin/reports" element={<AdminReports />} />
         <Route path="/admin/users" element={<AdminUsers />} />
         <Route path="/admin/tickets" element={<AdminTickets />} />
