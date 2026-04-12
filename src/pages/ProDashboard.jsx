@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Clock, DollarSign, FolderKanban } from "lucide-react";
+import { filterMyRecords } from "@/lib/entity-helpers";
 import StatCard from "../components/StatCard";
 import PageHeader from "../components/PageHeader";
 import StatusBadge from "../components/StatusBadge";
@@ -12,24 +13,10 @@ export default function ProDashboard({ user }) {
 
   useEffect(() => {
     if (!user) return;
-    const loadData = async () => {
-      let myTasks = [];
-      try {
-        myTasks = await base44.entities.Task.filter({ assigned_to: user.id });
-      } catch { /* ignore */ }
-      if (myTasks.length === 0 && user.full_name) {
-        try {
-          const all = await base44.entities.Task.list();
-          myTasks = all.filter(t => t.assigned_to === user.id || t.assigned_to_name?.toLowerCase() === user.full_name?.toLowerCase());
-        } catch { /* ignore */ }
-      }
-      let myPayments = [];
-      try { myPayments = await base44.entities.PaymentOutgoing.filter({ professional_id: user.id }); } catch { /* ignore */ }
-      setTasks(myTasks);
-      setPayments(myPayments);
-      setLoading(false);
-    };
-    loadData();
+    Promise.all([
+      filterMyRecords(base44.entities.Task, "assigned_to", user, "assigned_to_name"),
+      filterMyRecords(base44.entities.PaymentOutgoing, "professional_id", user, "professional_name"),
+    ]).then(([t, p]) => { setTasks(t); setPayments(p); setLoading(false); });
   }, [user]);
 
   const dueSoon = tasks.filter(t => {
@@ -38,7 +25,7 @@ export default function ProDashboard({ user }) {
     return diff <= 7 && diff >= 0;
   }).length;
 
-  const earnedThisMonth = payments.filter(p => p.status === "paid").reduce((s, p) => s + (p.amount || 0), 0);
+  const earnedTotal = payments.filter(p => p.status === "paid").reduce((s, p) => s + (p.amount || 0), 0);
   const pendingPay = payments.filter(p => p.status === "requested" || p.status === "approved").length;
   const activeProjects = [...new Set(tasks.filter(t => t.status !== "done").map(t => t.project_id))].length;
 
@@ -52,16 +39,16 @@ export default function ProDashboard({ user }) {
       <PageHeader title="My Dashboard" subtitle={`Welcome back, ${user?.full_name || "Professional"}`} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Due This Week" value={loading ? "…" : dueSoon} icon={Clock} color="yellow" />
-        <StatCard label="Earned Total" value={loading ? "…" : `R$${earnedThisMonth.toLocaleString()}`} icon={DollarSign} color="green" />
-        <StatCard label="Pending Payments" value={loading ? "…" : pendingPay} icon={DollarSign} color="blue" />
-        <StatCard label="Active Projects" value={loading ? "…" : activeProjects} icon={FolderKanban} color="primary" />
+        <StatCard label="Due This Week" value={loading ? "\u2026" : dueSoon} icon={Clock} color="yellow" />
+        <StatCard label="Earned Total" value={loading ? "\u2026" : `R$${earnedTotal.toLocaleString()}`} icon={DollarSign} color="green" />
+        <StatCard label="Pending Payments" value={loading ? "\u2026" : pendingPay} icon={DollarSign} color="blue" />
+        <StatCard label="Active Projects" value={loading ? "\u2026" : activeProjects} icon={FolderKanban} color="primary" />
       </div>
 
       <div className="bg-card rounded-xl border border-border p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold">Upcoming Tasks</h3>
-          <a href="/pro/tasks" className="text-xs text-primary font-medium hover:underline">View all →</a>
+          <a href="/pro/tasks" className="text-xs text-primary font-medium hover:underline">View all \u2192</a>
         </div>
         {upcomingTasks.length > 0 ? (
           <div className="divide-y divide-border">

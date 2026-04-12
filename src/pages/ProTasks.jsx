@@ -5,6 +5,7 @@ import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { filterMyRecords } from "@/lib/entity-helpers";
 import PageHeader from "../components/PageHeader";
 import StatusBadge from "../components/StatusBadge";
 
@@ -29,26 +30,7 @@ export default function ProTasks() {
   }, [user]);
 
   const loadTasks = async () => {
-    // Try multiple approaches to find this professional's tasks
-    let myTasks = [];
-
-    // Approach 1: filter by assigned_to ID
-    try {
-      const byId = await base44.entities.Task.filter({ assigned_to: user.id });
-      if (byId.length > 0) myTasks = byId;
-    } catch { /* ignore */ }
-
-    // Approach 2: if no results, try matching by name from all tasks
-    if (myTasks.length === 0 && user.full_name) {
-      try {
-        const all = await base44.entities.Task.list();
-        myTasks = all.filter(t =>
-          t.assigned_to === user.id ||
-          t.assigned_to_name?.toLowerCase() === user.full_name?.toLowerCase()
-        );
-      } catch { /* ignore */ }
-    }
-
+    const myTasks = await filterMyRecords(base44.entities.Task, "assigned_to", user, "assigned_to_name");
     setTasks(myTasks);
     setLoading(false);
   };
@@ -83,7 +65,7 @@ export default function ProTasks() {
         <div className="flex gap-4">{[...Array(4)].map((_, i) => <div key={i} className="w-60 h-40 bg-muted rounded-xl animate-pulse" />)}</div>
       ) : (
         <div className="flex gap-4 overflow-x-auto pb-4">
-          {COLS.map(({ key, label }) => (
+          {COLS.map(({ key }) => (
             <div key={key} className="min-w-[240px] flex-shrink-0">
               <div className="flex items-center gap-2 mb-3">
                 <StatusBadge status={key} size="xs" />

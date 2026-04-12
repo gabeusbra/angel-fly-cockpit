@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useOutletContext } from "react-router-dom";
 import { DollarSign } from "lucide-react";
+import { filterMyRecords } from "@/lib/entity-helpers";
 import PageHeader from "../components/PageHeader";
 import StatusBadge from "../components/StatusBadge";
 import StatCard from "../components/StatCard";
@@ -13,7 +14,8 @@ export default function ProPayments() {
 
   useEffect(() => {
     if (!user) return;
-    base44.entities.PaymentOutgoing.filter({ professional_id: user.id }).then(p => { setPayments(p); setLoading(false); });
+    filterMyRecords(base44.entities.PaymentOutgoing, "professional_id", user, "professional_name")
+      .then(p => { setPayments(p); setLoading(false); });
   }, [user]);
 
   const pending = payments.filter(p => p.status === "requested" || p.status === "approved");

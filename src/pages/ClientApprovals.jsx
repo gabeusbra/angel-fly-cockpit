@@ -5,6 +5,7 @@ import { Check, X, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { filterMyRecords, safeFilter } from "@/lib/entity-helpers";
 import PageHeader from "../components/PageHeader";
 import StatusBadge from "../components/StatusBadge";
 
@@ -21,10 +22,9 @@ export default function ClientApprovals() {
   }, [user]);
 
   const loadTasks = async () => {
-    // Get client's projects first, then filter approval tasks to only those projects
-    const projects = await base44.entities.Project.filter({ client_id: user.id });
+    const projects = await filterMyRecords(base44.entities.Project, "client_id", user, "client_name");
     const projectIds = new Set(projects.map(p => p.id));
-    const allApproval = await base44.entities.Task.filter({ status: "client_approval" });
+    const allApproval = await safeFilter(base44.entities.Task, { status: "client_approval" });
     setTasks(allApproval.filter(t => projectIds.has(t.project_id)));
     setLoading(false);
   };
@@ -58,14 +58,12 @@ export default function ClientApprovals() {
                 </div>
                 <StatusBadge status="client_approval" size="xs" />
               </div>
-
               {t.deliverable_url && (
                 <a href={t.deliverable_url} target="_blank" rel="noreferrer"
                   className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline mb-4">
                   <ExternalLink className="w-3.5 h-3.5" /> View Deliverable
                 </a>
               )}
-
               <div className="flex gap-2">
                 <Button className="gap-1.5 bg-emerald-600 hover:bg-emerald-700" size="sm" onClick={() => handleApprove(t)}>
                   <Check className="w-4 h-4" /> Approve
@@ -79,7 +77,7 @@ export default function ClientApprovals() {
         </div>
       ) : (
         <div className="bg-card rounded-xl border border-border p-16 text-center">
-          <p className="text-2xl mb-2">✓</p>
+          <p className="text-2xl mb-2">&#10003;</p>
           <p className="text-sm font-medium mb-1">All caught up!</p>
           <p className="text-xs text-muted-foreground">No deliverables waiting for your approval.</p>
         </div>

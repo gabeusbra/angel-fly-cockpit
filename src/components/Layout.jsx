@@ -22,6 +22,34 @@ function BlockedScreen({ icon: Icon, iconBg, iconColor, title, message }) {
   );
 }
 
+async function resolveUser(authUser) {
+  const email = authUser.email?.toLowerCase();
+  if (!email) return authUser;
+
+  // Try multiple approaches to find entity record
+  const attempts = [
+    () => base44.entities.User.list(),
+    () => base44.entities.User.filter({ email: authUser.email }),
+  ];
+
+  for (const attempt of attempts) {
+    try {
+      const results = await attempt();
+      const match = Array.isArray(results)
+        ? results.find(u => u.email?.toLowerCase() === email)
+        : null;
+      if (match) {
+        // Merge: entity data takes priority, but keep auth fields too
+        return { ...authUser, ...match, authId: authUser.id };
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return authUser;
+}
+
 export default function Layout() {
   const [user, setUser] = useState(null);
   const [collapsed, setCollapsed] = useState(false);
@@ -32,25 +60,8 @@ export default function Layout() {
     base44.auth.me().then(async (authUser) => {
       if (!authUser) { setUser(null); setChecked(true); return; }
 
-      // For admins: look up entity data to get the full picture
-      // For regular users: auth.me() should include entity fields
-      let finalUser = { ...authUser };
+      const finalUser = await resolveUser(authUser);
 
-      // Try to enrich with entity data (works for admins, may fail for regular users)
-      try {
-        const allUsers = await base44.entities.User.list();
-        const dbUser = allUsers.find(u =>
-          u.email?.toLowerCase() === authUser.email?.toLowerCase()
-        );
-        if (dbUser) {
-          finalUser = { ...authUser, ...dbUser };
-        }
-      } catch {
-        // Regular users may not have list permission — that's OK,
-        // auth.me() should already include their entity fields
-      }
-
-      // Check status
       if (finalUser.status === "inactive") {
         setBlockType("inactive");
         setUser(finalUser);
@@ -58,14 +69,12 @@ export default function Layout() {
         return;
       }
 
-      // Check cockpit role
       if (COCKPIT_ROLES.includes(finalUser.role)) {
         setUser(finalUser);
         setChecked(true);
         return;
       }
 
-      // No valid cockpit role — show pending
       setBlockType("no_role");
       setUser(finalUser);
       setChecked(true);

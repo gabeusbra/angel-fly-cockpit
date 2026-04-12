@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useOutletContext } from "react-router-dom";
 import { Plus, Star } from "lucide-react";
+import { filterMyRecords } from "@/lib/entity-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,13 +47,13 @@ export default function ClientTickets() {
   useEffect(() => {
     if (!user) return;
     Promise.all([
-      base44.entities.Ticket.filter({ client_id: user.id }),
-      base44.entities.Project.filter({ client_id: user.id }),
+      filterMyRecords(base44.entities.Ticket, "client_id", user, "client_name"),
+      filterMyRecords(base44.entities.Project, "client_id", user, "client_name"),
     ]).then(([t, p]) => { setTickets(t); setProjects(p); setLoading(false); });
   }, [user]);
 
   const load = async () => {
-    const t = await base44.entities.Ticket.filter({ client_id: user.id });
+    const t = await filterMyRecords(base44.entities.Ticket, "client_id", user, "client_name");
     setTickets(t);
   };
 

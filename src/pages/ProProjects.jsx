@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useOutletContext } from "react-router-dom";
+import { filterMyRecords, safeList } from "@/lib/entity-helpers";
 import PageHeader from "../components/PageHeader";
 import StatusBadge from "../components/StatusBadge";
 
@@ -12,15 +13,17 @@ export default function ProProjects() {
 
   useEffect(() => {
     if (!user) return;
-    base44.entities.Task.filter({ assigned_to: user.id }).then(async (t) => {
-      setTasks(t);
-      const projectIds = [...new Set(t.map(task => task.project_id).filter(Boolean))];
+    const loadData = async () => {
+      const myTasks = await filterMyRecords(base44.entities.Task, "assigned_to", user, "assigned_to_name");
+      setTasks(myTasks);
+      const projectIds = [...new Set(myTasks.map(t => t.project_id).filter(Boolean))];
       if (projectIds.length > 0) {
-        const projs = await Promise.all(projectIds.map(id => base44.entities.Project.filter({ id }).then(r => r[0])));
-        setProjects(projs.filter(Boolean));
+        const allProjects = await safeList(base44.entities.Project);
+        setProjects(allProjects.filter(p => projectIds.includes(p.id)));
       }
       setLoading(false);
-    });
+    };
+    loadData();
   }, [user]);
 
   const getMyTasks = (pid) => tasks.filter(t => t.project_id === pid);

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useOutletContext } from "react-router-dom";
+import { filterMyRecords, safeList } from "@/lib/entity-helpers";
 import PageHeader from "../components/PageHeader";
 import StatusBadge from "../components/StatusBadge";
 
@@ -14,8 +15,8 @@ export default function ClientProjects() {
   useEffect(() => {
     if (!user) return;
     Promise.all([
-      base44.entities.Project.filter({ client_id: user.id }),
-      base44.entities.Task.list(),
+      filterMyRecords(base44.entities.Project, "client_id", user, "client_name"),
+      safeList(base44.entities.Task),
     ]).then(([p, t]) => { setProjects(p); setTasks(t); setLoading(false); });
   }, [user]);
 
