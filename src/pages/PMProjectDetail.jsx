@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useParams, Link } from "react-router-dom";
-import { Plus, ArrowLeft, Sparkles } from "lucide-react";
+import { Plus, ArrowLeft, Sparkles, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,14 +19,9 @@ function scoreProfessionals(pros, allTasks, projectName) {
     const overdue = myTasks.filter(t => t.deadline && new Date(t.deadline) < new Date() && t.status !== "done").length;
     const total = myTasks.length;
     const onTimeRate = total > 0 ? Math.round(((done - overdue) / Math.max(total, 1)) * 100) : 100;
-
-    // Lower active tasks = more available (0-40 points)
     const availScore = Math.max(0, 40 - active * 8);
-    // Higher on-time rate = more reliable (0-35 points)
     const reliabilityScore = Math.round((onTimeRate / 100) * 35);
-    // Specialty keyword match bonus (0-25 points)
     const specMatch = pro.specialty && projectName && pro.specialty.toLowerCase().split(/[\s,]+/).some(w => projectName.toLowerCase().includes(w)) ? 25 : 0;
-
     const score = availScore + reliabilityScore + specMatch;
     return { ...pro, active, done, onTimeRate, score };
   }).sort((a, b) => b.score - a.score);
@@ -40,16 +35,31 @@ export default function PMProjectDetail() {
   const [pros, setPros] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
   const [form, setForm] = useState({ title: "", description: "", assigned_to: "", priority: "medium", deadline: "", estimated_hours: "" });
+  const [editForm, setEditForm] = useState({ title: "", description: "", assigned_to: "", priority: "medium", deadline: "", estimated_hours: "", status: "" });
 
   useEffect(() => {
-    Promise.all([
+    loadAll();
+  }, [id]);
+
+  const loadAll = async () => {
+    const [p, t, at, u] = await Promise.all([
       base44.entities.Project.filter({ id }),
       base44.entities.Task.filter({ project_id: id }),
       base44.entities.Task.list(),
       base44.entities.User.filter({ role: "professional", status: "active" }),
-    ]).then(([p, t, at, u]) => { setProject(p[0] || null); setTasks(t); setAllTasks(at); setPros(u); setLoading(false); });
-  }, [id]);
+    ]);
+    setProject(p[0] || null); setTasks(t); setAllTasks(at); setPros(u); setLoading(false);
+  };
+
+  const reloadTasks = async () => {
+    const [t, at] = await Promise.all([
+      base44.entities.Task.filter({ project_id: id }),
+      base44.entities.Task.list(),
+    ]);
+    setTasks(t); setAllTasks(at);
+  };
 
   const handleCreate = async () => {
     const pro = pros.find(u => u.id === form.assigned_to);
@@ -64,10 +74,37 @@ export default function PMProjectDetail() {
     });
     setShowCreate(false);
     setForm({ title: "", description: "", assigned_to: "", priority: "medium", deadline: "", estimated_hours: "" });
-    const t = await base44.entities.Task.filter({ project_id: id });
-    setTasks(t);
-    const at = await base44.entities.Task.list();
-    setAllTasks(at);
+    reloadTasks();
+  };
+
+  const openEdit = (task) => {
+    setEditingTask(task);
+    setEditForm({
+      title: task.title || "",
+      description: task.description || "",
+      assigned_to: task.assigned_to || "",
+      priority: task.priority || "medium",
+      deadline: task.deadline || "",
+      estimated_hours: task.estimated_hours ? String(task.estimated_hours) : "",
+      status: task.status || "backlog",
+    });
+  };
+
+  const handleEditSave = async () => {
+    if (!editingTask) return;
+    const pro = pros.find(u => u.id === editForm.assigned_to);
+    await base44.entities.Task.update(editingTask.id, {
+      title: editForm.title,
+      description: editForm.description,
+      assigned_to: editForm.assigned_to,
+      assigned_to_name: pro?.full_name || editingTask.assigned_to_name || "",
+      priority: editForm.priority,
+      deadline: editForm.deadline,
+      estimated_hours: editForm.estimated_hours ? parseFloat(editForm.estimated_hours) : 0,
+      status: editForm.status,
+    });
+    setEditingTask(null);
+    reloadTasks();
   };
 
   if (loading) return <div className="animate-pulse space-y-4"><div className="h-8 w-64 bg-muted rounded" /><div className="h-64 bg-muted rounded-xl" /></div>;
@@ -75,7 +112,6 @@ export default function PMProjectDetail() {
 
   const byStatus = Object.fromEntries(COLUMNS.map(s => [s, tasks.filter(t => t.status === s)]));
   const progress = tasks.length > 0 ? Math.round((byStatus.done.length / tasks.length) * 100) : 0;
-
   const rankedPros = scoreProfessionals(pros, allTasks, project.name);
   const topPick = rankedPros[0];
 
@@ -110,8 +146,11 @@ export default function PMProjectDetail() {
             </div>
             <div className="space-y-2">
               {byStatus[col].map(t => (
-                <div key={t.id} className="bg-card rounded-lg border border-border p-3 hover:shadow-md transition-shadow">
-                  <p className="text-sm font-medium mb-1">{t.title}</p>
+                <div key={t.id} className="bg-card rounded-lg border border-border p-3 hover:shadow-md transition-shadow group cursor-pointer" onClick={() => openEdit(t)}>
+                  <div className="flex items-start justify-between">
+                    <p className="text-sm font-medium mb-1 flex-1">{t.title}</p>
+                    <Pencil className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5" />
+                  </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">{t.assigned_to_name || "Unassigned"}</span>
                     <StatusBadge status={t.priority} size="xs" />
@@ -127,14 +166,13 @@ export default function PMProjectDetail() {
         ))}
       </div>
 
+      {/* Create task dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Add Task</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-2">
             <Input placeholder="Task Title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
             <Textarea placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
-
-            {/* AI Suggestion Box */}
             {topPick && (
               <div className="border border-blue-200 bg-blue-50 rounded-lg p-3">
                 <div className="flex items-center gap-1.5 mb-2">
@@ -145,22 +183,16 @@ export default function PMProjectDetail() {
                   {rankedPros.slice(0, 3).map((p, i) => (
                     <button key={p.id} onClick={() => setForm({ ...form, assigned_to: p.id })}
                       className={`w-full text-left px-2.5 py-1.5 rounded text-xs flex items-center justify-between transition-colors ${form.assigned_to === p.id ? "bg-blue-200 text-blue-900" : "hover:bg-blue-100 text-blue-800"}`}>
-                      <span className="font-medium">
-                        {i === 0 && "★ "}{p.full_name}
-                        {p.specialty ? ` (${p.specialty})` : ""}
-                      </span>
+                      <span className="font-medium">{i === 0 && "\u2605 "}{p.full_name}{p.specialty ? ` (${p.specialty})` : ""}</span>
                       <span className="text-blue-600">{p.active} active · {p.onTimeRate}% on-time</span>
                     </button>
                   ))}
                 </div>
               </div>
             )}
-
             <Select value={form.assigned_to} onValueChange={v => setForm({ ...form, assigned_to: v })}>
               <SelectTrigger><SelectValue placeholder="Assign to professional" /></SelectTrigger>
-              <SelectContent>
-                {pros.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name} {u.specialty ? `(${u.specialty})` : ""}</SelectItem>)}
-              </SelectContent>
+              <SelectContent>{pros.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name} {u.specialty ? `(${u.specialty})` : ""}</SelectItem>)}</SelectContent>
             </Select>
             <Select value={form.priority} onValueChange={v => setForm({ ...form, priority: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -178,6 +210,51 @@ export default function PMProjectDetail() {
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
               <Button onClick={handleCreate}>Create Task</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit task dialog */}
+      <Dialog open={!!editingTask} onOpenChange={() => setEditingTask(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Edit Task</DialogTitle></DialogHeader>
+          <div className="space-y-3 pt-2">
+            <Input placeholder="Task Title" value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} />
+            <Textarea placeholder="Description" value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} />
+            <Select value={editForm.assigned_to} onValueChange={v => setEditForm({ ...editForm, assigned_to: v })}>
+              <SelectTrigger><SelectValue placeholder="Assign to professional" /></SelectTrigger>
+              <SelectContent>{pros.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name} {u.specialty ? `(${u.specialty})` : ""}</SelectItem>)}</SelectContent>
+            </Select>
+            <div className="grid grid-cols-2 gap-3">
+              <Select value={editForm.status} onValueChange={v => setEditForm({ ...editForm, status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="backlog">Backlog</SelectItem>
+                  <SelectItem value="assigned">Assigned</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="review">Review</SelectItem>
+                  <SelectItem value="client_approval">Client Approval</SelectItem>
+                  <SelectItem value="done">Done</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={editForm.priority} onValueChange={v => setEditForm({ ...editForm, priority: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="urgent">Urgent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Input type="date" value={editForm.deadline} onChange={e => setEditForm({ ...editForm, deadline: e.target.value })} />
+              <Input type="number" placeholder="Est. Hours" value={editForm.estimated_hours} onChange={e => setEditForm({ ...editForm, estimated_hours: e.target.value })} />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setEditingTask(null)}>Cancel</Button>
+              <Button onClick={handleEditSave}>Save Changes</Button>
             </div>
           </div>
         </DialogContent>

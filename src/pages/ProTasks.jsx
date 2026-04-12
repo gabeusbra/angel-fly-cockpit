@@ -25,17 +25,37 @@ export default function ProTasks() {
 
   useEffect(() => {
     if (!user) return;
-    base44.entities.Task.filter({ assigned_to: user.id }).then(t => { setTasks(t); setLoading(false); });
+    loadTasks();
   }, [user]);
 
-  const reload = async () => {
-    const t = await base44.entities.Task.filter({ assigned_to: user.id });
-    setTasks(t);
+  const loadTasks = async () => {
+    // Try multiple approaches to find this professional's tasks
+    let myTasks = [];
+
+    // Approach 1: filter by assigned_to ID
+    try {
+      const byId = await base44.entities.Task.filter({ assigned_to: user.id });
+      if (byId.length > 0) myTasks = byId;
+    } catch { /* ignore */ }
+
+    // Approach 2: if no results, try matching by name from all tasks
+    if (myTasks.length === 0 && user.full_name) {
+      try {
+        const all = await base44.entities.Task.list();
+        myTasks = all.filter(t =>
+          t.assigned_to === user.id ||
+          t.assigned_to_name?.toLowerCase() === user.full_name?.toLowerCase()
+        );
+      } catch { /* ignore */ }
+    }
+
+    setTasks(myTasks);
+    setLoading(false);
   };
 
   const handleStatus = async (taskId, status) => {
     await base44.entities.Task.update(taskId, { status });
-    reload();
+    loadTasks();
   };
 
   const handleFileUpload = async (e) => {
@@ -50,7 +70,7 @@ export default function ProTasks() {
   const handleSubmitDeliverable = async () => {
     await base44.entities.Task.update(uploadTask.id, { deliverable_url: deliverableUrl, status: "review" });
     setUploadTask(null); setDeliverableUrl("");
-    reload();
+    loadTasks();
   };
 
   const byCol = Object.fromEntries(COLS.map(c => [c.key, tasks.filter(t => t.status === c.key)]));
@@ -103,8 +123,8 @@ export default function ProTasks() {
           <div className="space-y-4 pt-2">
             <p className="text-sm font-medium">{uploadTask?.title}</p>
             <Input type="file" onChange={handleFileUpload} disabled={uploading} />
-            {uploading && <p className="text-xs text-muted-foreground">Uploading…</p>}
-            {deliverableUrl && <p className="text-xs text-emerald-600">✓ File uploaded</p>}
+            {uploading && <p className="text-xs text-muted-foreground">Uploading...</p>}
+            {deliverableUrl && <p className="text-xs text-emerald-600">File uploaded</p>}
             <Input placeholder="Or paste a URL" value={deliverableUrl} onChange={e => setDeliverableUrl(e.target.value)} />
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => { setUploadTask(null); setDeliverableUrl(""); }}>Cancel</Button>

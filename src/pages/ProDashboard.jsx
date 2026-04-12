@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { ListChecks, Clock, DollarSign, FolderKanban } from "lucide-react";
+import { Clock, DollarSign, FolderKanban } from "lucide-react";
 import StatCard from "../components/StatCard";
 import PageHeader from "../components/PageHeader";
 import StatusBadge from "../components/StatusBadge";
@@ -12,10 +12,24 @@ export default function ProDashboard({ user }) {
 
   useEffect(() => {
     if (!user) return;
-    Promise.all([
-      base44.entities.Task.filter({ assigned_to: user.id }),
-      base44.entities.PaymentOutgoing.filter({ professional_id: user.id }),
-    ]).then(([t, p]) => { setTasks(t); setPayments(p); setLoading(false); });
+    const loadData = async () => {
+      let myTasks = [];
+      try {
+        myTasks = await base44.entities.Task.filter({ assigned_to: user.id });
+      } catch { /* ignore */ }
+      if (myTasks.length === 0 && user.full_name) {
+        try {
+          const all = await base44.entities.Task.list();
+          myTasks = all.filter(t => t.assigned_to === user.id || t.assigned_to_name?.toLowerCase() === user.full_name?.toLowerCase());
+        } catch { /* ignore */ }
+      }
+      let myPayments = [];
+      try { myPayments = await base44.entities.PaymentOutgoing.filter({ professional_id: user.id }); } catch { /* ignore */ }
+      setTasks(myTasks);
+      setPayments(myPayments);
+      setLoading(false);
+    };
+    loadData();
   }, [user]);
 
   const dueSoon = tasks.filter(t => {
