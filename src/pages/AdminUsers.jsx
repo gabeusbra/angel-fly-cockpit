@@ -18,6 +18,8 @@ function savePendingInvites(list) {
   localStorage.setItem(PENDING_KEY, JSON.stringify(list));
 }
 
+const COCKPIT_ROLES = ["admin", "pm", "professional", "client"];
+const hasCockpitRole = (u) => u?.role && COCKPIT_ROLES.includes(u.role);
 const roleLabel = (r) => r === "pm" ? "PM" : r ? r.charAt(0).toUpperCase() + r.slice(1) : "—";
 const roleBadgeClass = (r) =>
   r === "admin" ? "bg-purple-100 text-purple-700" :
@@ -57,7 +59,7 @@ export default function AdminUsers() {
     const remaining = [];
     for (const inv of pendingList) {
       const match = data.find(u => u.email === inv.email);
-      if (match && !match.role) {
+      if (match && !hasCockpitRole(match)) {
         const payload = { role: inv.cockpitRole, status: "active", phone: inv.phone || "" };
         if (inv.cockpitRole === "professional") {
           payload.specialty = inv.specialty || "";
@@ -134,7 +136,7 @@ export default function AdminUsers() {
   const openEdit = (user) => {
     setEditing(user);
     setEditForm({
-      role: user.role || "",
+      role: hasCockpitRole(user) ? user.role : "",
       specialty: user.specialty || "",
       hourly_rate: user.hourly_rate ? String(user.hourly_rate) : "",
       company: user.company || "",
@@ -175,7 +177,7 @@ export default function AdminUsers() {
 
   const roleCounts = { admin: 0, pm: 0, professional: 0, client: 0 };
   users.forEach(u => { if (u.role && roleCounts[u.role] !== undefined) roleCounts[u.role]++; });
-  const unconfigured = users.filter(u => !u.role);
+  const unconfigured = users.filter(u => !hasCockpitRole(u));
 
   return (
     <div className="space-y-6">
@@ -281,7 +283,7 @@ export default function AdminUsers() {
               {loading ? (
                 [...Array(5)].map((_, i) => <tr key={i}><td colSpan={5}><div className="h-4 bg-muted rounded animate-pulse mx-4 my-3" /></td></tr>)
               ) : filtered.length > 0 ? filtered.map(u => (
-                <tr key={u.id} className={`border-b border-border last:border-0 hover:bg-muted/20 transition-colors ${!u.role ? "bg-amber-50/50" : ""}`}>
+                <tr key={u.id} className={`border-b border-border last:border-0 hover:bg-muted/20 transition-colors ${!hasCockpitRole(u) ? "bg-amber-50/50" : ""}`}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
@@ -294,7 +296,7 @@ export default function AdminUsers() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    {u.role ? (
+                    {hasCockpitRole(u) ? (
                       <span className={`text-xs font-semibold px-2 py-1 rounded-full ${roleBadgeClass(u.role)}`}>
                         {roleLabel(u.role)}
                       </span>
@@ -306,7 +308,7 @@ export default function AdminUsers() {
                     {u.role === "professional" && u.specialty && <span>{u.specialty} · R${u.hourly_rate || 0}/hr</span>}
                     {u.role === "client" && u.company && <span>{u.company}</span>}
                     {u.phone && <span className="block">{u.phone}</span>}
-                    {!u.role && <span className="text-amber-600">Needs role assignment</span>}
+                    {!hasCockpitRole(u) && <span className="text-amber-600">Needs role assignment</span>}
                   </td>
                   <td className="px-4 py-3"><StatusBadge status={u.status || "active"} size="xs" /></td>
                   <td className="px-4 py-3">
