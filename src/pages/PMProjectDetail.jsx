@@ -11,6 +11,46 @@ import StatusBadge from "../components/StatusBadge";
 
 const COLUMNS = ["backlog", "assigned", "in_progress", "review", "client_approval", "done"];
 
+function HtmlDocViewer({ doc }) {
+  const [content, setContent] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!doc?.url) { setLoading(false); return; }
+    fetch(doc.url)
+      .then(r => r.text())
+      .then(text => { setContent(text); setLoading(false); })
+      .catch(() => { setContent(null); setLoading(false); });
+  }, [doc?.url]);
+
+  if (loading) return <div className="py-12 text-center"><div className="w-6 h-6 border-2 border-muted border-t-primary rounded-full animate-spin mx-auto" /></div>;
+
+  if (!content) return (
+    <div className="py-8 text-center">
+      <p className="text-sm text-muted-foreground">Could not load document.</p>
+      {doc?.url && <a href={doc.url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline mt-2 inline-block">Open file directly</a>}
+    </div>
+  );
+
+  return (
+    <div className="pt-2">
+      <div className="flex items-center gap-2 mb-4 text-xs text-muted-foreground">
+        <Globe className="w-3.5 h-3.5" />
+        <span>HTML Document</span>
+        <span>{new Date(doc.at).toLocaleDateString()}</span>
+        {doc.url && <a href={doc.url} target="_blank" rel="noreferrer" className="text-primary hover:underline ml-auto">Open in new tab</a>}
+      </div>
+      {content.trim().startsWith("<") ? (
+        <iframe srcDoc={content} className="w-full border border-border rounded-lg bg-white" style={{ minHeight: "70vh" }} title={doc.title} sandbox="allow-same-origin" />
+      ) : (
+        <div className="border border-border rounded-lg p-6 bg-white">
+          <pre className="text-sm whitespace-pre-wrap font-sans">{content}</pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function parseTags(str) { return str ? str.split(",").map(s => s.trim()).filter(Boolean) : []; }
 function parseJson(str, fallback) { try { return JSON.parse(str || "null") || fallback; } catch { return fallback; } }
 
@@ -202,8 +242,27 @@ export default function PMProjectDetail() {
     if (newDoc.type === "link" && !newDoc.url) return;
     if (newDoc.type === "pdf" && !newDoc.url) return;
     if (newDoc.type === "html" && !newDoc.content) return;
+
+    let docUrl = newDoc.url;
+
+    // For HTML: upload content as a file to avoid field size limits
+    if (newDoc.type === "html" && newDoc.content) {
+      setUploadingDoc(true);
+      try {
+        const blob = new Blob([newDoc.content], { type: "text/html" });
+        const file = new File([blob], `${newDoc.title.replace(/[^a-zA-Z0-9]/g, "_")}.html`, { type: "text/html" });
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        docUrl = file_url;
+      } catch {
+        setUploadingDoc(false);
+        return;
+      }
+      setUploadingDoc(false);
+    }
+
     const docs = parseJson(project.docs, []);
-    docs.push({ title: newDoc.title, type: newDoc.type, content: newDoc.content, url: newDoc.url, at: new Date().toISOString() });
+    // Store only metadata + URL (never large content in the field)
+    docs.push({ title: newDoc.title, type: newDoc.type, url: docUrl, at: new Date().toISOString() });
     await base44.entities.Project.update(project.id, { docs: JSON.stringify(docs) });
     setProject({ ...project, docs: JSON.stringify(docs) });
     setNewDoc({ title: "", type: "html", content: "", url: "" });
@@ -555,28 +614,13 @@ export default function PMProjectDetail() {
         </DialogContent>
       </Dialog>
 
-      {/* HTML doc viewer — full screen dialog */}
+      {/* HTML doc viewer — fetches content from uploaded file URL */}
       <Dialog open={!!viewDoc} onOpenChange={() => setViewDoc(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{viewDoc?.title}</DialogTitle>
           </DialogHeader>
-          {viewDoc && (
-            <div className="pt-2">
-              <div className="flex items-center gap-2 mb-4 text-xs text-muted-foreground">
-                <Globe className="w-3.5 h-3.5" />
-                <span>HTML Document</span>
-                <span>{new Date(viewDoc.at).toLocaleDateString()}</span>
-              </div>
-              {viewDoc.content?.trim().startsWith("<") ? (
-                <div className="prose prose-sm max-w-none border border-border rounded-lg p-6 bg-white" dangerouslySetInnerHTML={{ __html: viewDoc.content }} />
-              ) : (
-                <div className="border border-border rounded-lg p-6 bg-white">
-                  <pre className="text-sm whitespace-pre-wrap font-sans">{viewDoc.content}</pre>
-                </div>
-              )}
-            </div>
-          )}
+          {viewDoc && <HtmlDocViewer doc={viewDoc} />}
         </DialogContent>
       </Dialog>
 
