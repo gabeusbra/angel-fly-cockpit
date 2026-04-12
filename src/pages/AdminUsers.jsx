@@ -27,10 +27,6 @@ export default function AdminUsers() {
 
   // Deactivate dialog
   const [confirmDelete, setConfirmDelete] = useState(null);
-  const [showInvite, setShowInvite] = useState(false);
-  const [invite, setInvite] = useState(emptyInvite);
-  const [inviting, setInviting] = useState(false);
-  const [inviteSuccess, setInviteSuccess] = useState(false);
 
   useEffect(() => { load(); }, []);
 
