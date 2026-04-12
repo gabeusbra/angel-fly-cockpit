@@ -1,11 +1,13 @@
 import { Outlet } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import Sidebar from "./Sidebar";
 import { ShieldX, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const COCKPIT_ROLES = ["admin", "pm", "professional", "client"];
+const MAX_RETRIES = 6;
+const RETRY_INTERVAL = 5000;
 
 function BlockedScreen({ icon: Icon, iconBg, iconColor, title, message }) {
   return (
@@ -22,11 +24,31 @@ function BlockedScreen({ icon: Icon, iconBg, iconColor, title, message }) {
   );
 }
 
+function SetupScreen({ retryCount }) {
+  const progress = Math.min(((retryCount + 1) / MAX_RETRIES) * 100, 95);
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center" style={{ fontFamily: "var(--font-inter)" }}>
+      <div className="text-center max-w-sm px-6">
+        <div className="w-16 h-16 rounded-2xl brand-gradient flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/20">
+          <span className="text-white font-extrabold text-lg">AF</span>
+        </div>
+        <h1 className="text-xl font-bold text-foreground mb-2">Setting up your account</h1>
+        <p className="text-sm text-muted-foreground mb-6">
+          Your workspace is being configured. This usually takes a few seconds...
+        </p>
+        <div className="w-full h-2 bg-muted rounded-full overflow-hidden mb-3">
+          <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${progress}%`, background: "linear-gradient(to right, #FF4D35, #FFB74D)" }} />
+        </div>
+        <p className="text-xs text-muted-foreground">Checking configuration...</p>
+      </div>
+    </div>
+  );
+}
+
 async function resolveUser(authUser) {
   const email = authUser.email?.toLowerCase();
   if (!email) return authUser;
 
-  // Try multiple approaches to find entity record
   const attempts = [
     () => base44.entities.User.list(),
     () => base44.entities.User.filter({ email: authUser.email }),
@@ -39,7 +61,6 @@ async function resolveUser(authUser) {
         ? results.find(u => u.email?.toLowerCase() === email)
         : null;
       if (match) {
-        // Merge: entity data takes priority, but keep auth fields too
         return { ...authUser, ...match, authId: authUser.id };
       }
     } catch {
@@ -55,31 +76,69 @@ export default function Layout() {
   const [collapsed, setCollapsed] = useState(false);
   const [blockType, setBlockType] = useState(null);
   const [checked, setChecked] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const retryRef = useRef(null);
+  const authUserRef = useRef(null);
+
+  const checkUser = async (authUser) => {
+    const finalUser = await resolveUser(authUser);
+
+    if (finalUser.status === "inactive") {
+      setBlockType("inactive");
+      setUser(finalUser);
+      setChecked(true);
+      return true;
+    }
+
+    if (COCKPIT_ROLES.includes(finalUser.role)) {
+      setUser(finalUser);
+      setBlockType(null);
+      setChecked(true);
+      return true;
+    }
+
+    return false;
+  };
 
   useEffect(() => {
     base44.auth.me().then(async (authUser) => {
       if (!authUser) { setUser(null); setChecked(true); return; }
+      authUserRef.current = authUser;
 
-      const finalUser = await resolveUser(authUser);
-
-      if (finalUser.status === "inactive") {
-        setBlockType("inactive");
-        setUser(finalUser);
+      const resolved = await checkUser(authUser);
+      if (!resolved) {
+        // No valid role yet — start polling
+        setBlockType("setting_up");
         setChecked(true);
-        return;
       }
-
-      if (COCKPIT_ROLES.includes(finalUser.role)) {
-        setUser(finalUser);
-        setChecked(true);
-        return;
-      }
-
-      setBlockType("no_role");
-      setUser(finalUser);
-      setChecked(true);
     });
+
+    return () => { if (retryRef.current) clearInterval(retryRef.current); };
   }, []);
+
+  // Polling for role assignment
+  useEffect(() => {
+    if (blockType !== "setting_up" || !authUserRef.current) return;
+
+    retryRef.current = setInterval(async () => {
+      setRetryCount(prev => {
+        const next = prev + 1;
+        if (next >= MAX_RETRIES) {
+          clearInterval(retryRef.current);
+          setBlockType("no_role");
+          return next;
+        }
+        return next;
+      });
+
+      const resolved = await checkUser(authUserRef.current);
+      if (resolved && retryRef.current) {
+        clearInterval(retryRef.current);
+      }
+    }, RETRY_INTERVAL);
+
+    return () => { if (retryRef.current) clearInterval(retryRef.current); };
+  }, [blockType]);
 
   if (!checked) {
     return (
@@ -93,6 +152,10 @@ export default function Layout() {
     return <BlockedScreen icon={ShieldX} iconBg="bg-red-100" iconColor="text-red-600"
       title="Access Deactivated"
       message="Your account has been deactivated. Please contact your administrator for assistance." />;
+  }
+
+  if (blockType === "setting_up") {
+    return <SetupScreen retryCount={retryCount} />;
   }
 
   if (blockType === "no_role") {
