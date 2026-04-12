@@ -14,6 +14,7 @@ const navByRole = {
     { label: "Payment Approvals", path: "/admin/approvals", icon: CheckSquare, badgeKey: "pendingApprovals" },
     { label: "Client Payments", path: "/admin/payments", icon: CreditCard, badgeKey: "overduePayments" },
     { label: "All Projects", path: "/admin/projects", icon: FolderKanban },
+    { label: "Tickets", path: "/admin/tickets", icon: TicketCheck, badgeKey: "openTickets" },
     { label: "Reports", path: "/admin/reports", icon: BarChart3 },
     { label: "Users", path: "/admin/users", icon: Users },
   ],
@@ -71,12 +72,14 @@ export default function Sidebar({ user, collapsed, onToggle }) {
       try {
         const counts = {};
         if (role === "admin") {
-          const [out, inc] = await Promise.all([
+          const [out, inc, tickets] = await Promise.all([
             base44.entities.PaymentOutgoing.list(),
             base44.entities.PaymentIncoming.list(),
+            base44.entities.Ticket.list(),
           ]);
           counts.pendingApprovals = out.filter(p => p.status === "requested").length;
           counts.overduePayments = inc.filter(p => p.status === "overdue").length;
+          counts.openTickets = tickets.filter(t => t.status === "open").length;
         } else if (role === "pm") {
           const tickets = await base44.entities.Ticket.list();
           counts.openTickets = tickets.filter(t => t.status === "open").length;

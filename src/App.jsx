@@ -13,6 +13,7 @@ import AdminClientPayments from './pages/AdminClientPayments';
 import AdminProjects from './pages/AdminProjects';
 import AdminReports from './pages/AdminReports';
 import AdminUsers from './pages/AdminUsers';
+import AdminTickets from './pages/AdminTickets';
 import PMProjects from './pages/PMProjects';
 import PMProjectDetail from './pages/PMProjectDetail';
 import PMTickets from './pages/PMTickets';
@@ -59,6 +60,7 @@ const AuthenticatedApp = () => {
         <Route path="/admin/projects" element={<AdminProjects />} />
         <Route path="/admin/reports" element={<AdminReports />} />
         <Route path="/admin/users" element={<AdminUsers />} />
+        <Route path="/admin/tickets" element={<AdminTickets />} />
         <Route path="/pm/projects" element={<PMProjects />} />
         <Route path="/pm/projects/:id" element={<PMProjectDetail />} />
         <Route path="/pm/tickets" element={<PMTickets />} />
