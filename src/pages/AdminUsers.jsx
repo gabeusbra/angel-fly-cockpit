@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { Plus, Search, Pencil, Trash2, UserCircle } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, UserCircle, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,6 +9,7 @@ import PageHeader from "../components/PageHeader";
 import StatusBadge from "../components/StatusBadge";
 
 const emptyForm = { role: "client", specialty: "", hourly_rate: "", company: "", phone: "", status: "active" };
+const emptyInvite = { email: "", role: "client" };
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -19,6 +20,10 @@ export default function AdminUsers() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [showInvite, setShowInvite] = useState(false);
+  const [invite, setInvite] = useState(emptyInvite);
+  const [inviting, setInviting] = useState(false);
+  const [inviteSuccess, setInviteSuccess] = useState(false);
 
   useEffect(() => { load(); }, []);
 
@@ -28,10 +33,18 @@ export default function AdminUsers() {
     setLoading(false);
   };
 
-  const openCreate = () => {
-    setEditing(null);
-    setForm(emptyForm);
-    setShowForm(true);
+  const openInvite = () => {
+    setInvite(emptyInvite);
+    setInviteSuccess(false);
+    setShowInvite(true);
+  };
+
+  const handleInvite = async () => {
+    setInviting(true);
+    await base44.users.inviteUser(invite.email, invite.role);
+    setInviting(false);
+    setInviteSuccess(true);
+    load();
   };
 
   const openEdit = (user) => {
@@ -58,8 +71,6 @@ export default function AdminUsers() {
     };
     if (editing) {
       await base44.entities.User.update(editing.id, payload);
-    } else {
-      await base44.entities.User.create(payload);
     }
     setShowForm(false);
     load();
@@ -85,7 +96,7 @@ export default function AdminUsers() {
   return (
     <div className="space-y-6">
       <PageHeader title="User Management" subtitle="Manage all users, roles, and access">
-        <Button onClick={openCreate} className="gap-2"><Plus className="w-4 h-4" /> Add User</Button>
+        <Button onClick={openInvite} className="gap-2"><Mail className="w-4 h-4" /> Invite User</Button>
       </PageHeader>
 
       {/* Role summary cards */}
@@ -185,10 +196,44 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      {/* Create / Edit dialog */}
+      {/* Invite dialog */}
+      <Dialog open={showInvite} onOpenChange={setShowInvite}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Invite User</DialogTitle></DialogHeader>
+          <div className="space-y-3 pt-2">
+            {inviteSuccess ? (
+              <div className="text-center py-4">
+                <p className="text-2xl mb-2">✉️</p>
+                <p className="text-sm font-medium">Invitation sent!</p>
+                <p className="text-xs text-muted-foreground mt-1">They will receive an email to join the platform.</p>
+                <Button className="mt-4" onClick={() => setShowInvite(false)}>Done</Button>
+              </div>
+            ) : (
+              <>
+                <Input placeholder="Email address" type="email" value={invite.email} onChange={e => setInvite({ ...invite, email: e.target.value })} />
+                <Select value={invite.role} onValueChange={v => setInvite({ ...invite, role: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="pm">Project Manager</SelectItem>
+                    <SelectItem value="professional">Professional</SelectItem>
+                    <SelectItem value="client">Client</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" onClick={() => setShowInvite(false)}>Cancel</Button>
+                  <Button onClick={handleInvite} disabled={!invite.email || inviting}>{inviting ? "Sending…" : "Send Invite"}</Button>
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{editing ? "Edit User" : "Add User"}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Edit User</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-2">
             <Select value={form.role} onValueChange={v => setForm({ ...form, role: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -223,7 +268,7 @@ export default function AdminUsers() {
 
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
-              <Button onClick={handleSave}>{editing ? "Save Changes" : "Add User"}</Button>
+              <Button onClick={handleSave}>Save Changes</Button>
             </div>
           </div>
         </DialogContent>
