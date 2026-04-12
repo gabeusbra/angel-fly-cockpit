@@ -57,6 +57,14 @@
         "none"
       ],
       "title": "Recurrence Interval"
+    },
+    "milestones": {
+      "type": "string",
+      "title": "Milestones (JSON)"
+    },
+    "docs": {
+      "type": "string",
+      "title": "Project Documents (JSON)"
     }
   },
   "required": [

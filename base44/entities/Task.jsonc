@@ -68,6 +68,22 @@
     "actual_hours": {
       "type": "number",
       "title": "Actual Hours"
+    },
+    "milestone": {
+      "type": "string",
+      "title": "Milestone / Sprint"
+    },
+    "tags": {
+      "type": "string",
+      "title": "Tags (comma-separated)"
+    },
+    "subtasks": {
+      "type": "string",
+      "title": "Subtask Checklist (JSON)"
+    },
+    "comments": {
+      "type": "string",
+      "title": "Comments Thread (JSON)"
     }
   },
   "required": [
