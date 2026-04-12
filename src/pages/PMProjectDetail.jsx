@@ -82,6 +82,7 @@ export default function PMProjectDetail() {
   const location = useLocation();
   const backPath = location.pathname.startsWith("/admin") ? "/admin/projects" : "/pm/projects";
   const [project, setProject] = useState(null);
+  const [projectDocs, setProjectDocs] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [allTasks, setAllTasks] = useState([]);
   const [pros, setPros] = useState([]);
@@ -120,7 +121,29 @@ export default function PMProjectDetail() {
       base44.entities.Task.list(),
       base44.entities.User.filter({ role: "professional", status: "active" }),
     ]);
-    setProject(p[0] || null); setTasks(t); setAllTasks(at); setPros(u); setLoading(false);
+    const proj = p[0] || null;
+    setProject(proj); setTasks(t); setAllTasks(at); setPros(u); setLoading(false);
+
+    // Load docs after project is set
+    if (proj) {
+      const docsData = await loadDocsData(proj);
+      setProjectDocs(docsData);
+    }
+  };
+
+  const loadDocsData = async (proj) => {
+    // Try entity field (URL to JSON file)
+    if (proj?.docs) {
+      try {
+        if (proj.docs.startsWith("http")) {
+          const res = await fetch(proj.docs);
+          return await res.json();
+        }
+        return parseJson(proj.docs, []);
+      } catch { /* fall through */ }
+    }
+    // Fallback to localStorage
+    return parseJson(localStorage.getItem(`project_docs_${id}`), []);
   };
 
   const openSettings = () => {
@@ -225,7 +248,28 @@ export default function PMProjectDetail() {
     setActiveTask({ ...activeTask, comments: JSON.stringify(cmts) });
   };
 
-  // --- Docs ---
+  // --- Docs (stored as uploaded JSON file, URL saved in localStorage + entity) ---
+  const DOCS_KEY = `project_docs_${id}`;
+
+  const saveDocs = async (docsArray) => {
+    // Update state immediately
+    setProjectDocs(docsArray);
+
+    // Save to localStorage (always works, instant)
+    localStorage.setItem(DOCS_KEY, JSON.stringify(docsArray));
+
+    // Also upload as JSON file and try to store URL in entity
+    try {
+      const blob = new Blob([JSON.stringify(docsArray)], { type: "application/json" });
+      const file = new File([blob], `project_${id}_docs.json`, { type: "application/json" });
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      await base44.entities.Project.update(project.id, { docs: file_url });
+      setProject(p => ({ ...p, docs: file_url }));
+    } catch {
+      // Entity update failed — localStorage is the backup
+    }
+  };
+
   const handleDocFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -260,20 +304,14 @@ export default function PMProjectDetail() {
       setUploadingDoc(false);
     }
 
-    const docs = parseJson(project.docs, []);
-    // Store only metadata + URL (never large content in the field)
-    docs.push({ title: newDoc.title, type: newDoc.type, url: docUrl, at: new Date().toISOString() });
-    await base44.entities.Project.update(project.id, { docs: JSON.stringify(docs) });
-    setProject({ ...project, docs: JSON.stringify(docs) });
+    const updated = [...projectDocs, { title: newDoc.title, type: newDoc.type, url: docUrl, at: new Date().toISOString() }];
+    await saveDocs(updated);
     setNewDoc({ title: "", type: "html", content: "", url: "" });
   };
 
   const removeDoc = async (idx) => {
-    if (!project) return;
-    const docs = parseJson(project.docs, []);
-    docs.splice(idx, 1);
-    await base44.entities.Project.update(project.id, { docs: JSON.stringify(docs) });
-    setProject({ ...project, docs: JSON.stringify(docs) });
+    const updated = projectDocs.filter((_, i) => i !== idx);
+    await saveDocs(updated);
   };
 
   if (loading) return <div className="animate-pulse space-y-4"><div className="h-8 w-64 bg-muted rounded" /><div className="h-64 bg-muted rounded-xl" /></div>;
@@ -300,7 +338,7 @@ export default function PMProjectDetail() {
     return { name: m, total: mTasks.length, done, pct: mTasks.length ? Math.round((done / mTasks.length) * 100) : 0 };
   });
 
-  const docs = parseJson(project.docs, []);
+  const docs = projectDocs;
 
   return (
     <div className="space-y-6">
