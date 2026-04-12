@@ -442,8 +442,20 @@ export default function AdminUsers() {
                 <div className="space-y-3 border border-orange-200 bg-orange-50/50 rounded-xl p-4">
                   <p className="text-xs font-semibold text-orange-700">Professional Details</p>
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground block mb-1">Specialty</label>
-                    <Input placeholder="e.g. Frontend Developer, Designer, Marketer" value={editForm.specialty} onChange={e => setEditForm({ ...editForm, specialty: e.target.value })} />
+                    <label className="text-xs font-medium text-muted-foreground block mb-2">Specialty</label>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {["Frontend Developer", "Backend Developer", "Full-Stack Developer", "UI/UX Designer", "Social Media Manager", "Marketing Strategist", "Content Creator", "SEO Specialist"].map(s => (
+                        <button key={s} onClick={() => setEditForm({ ...editForm, specialty: s })}
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                            editForm.specialty === s
+                              ? "bg-orange-500 text-white shadow-sm"
+                              : "bg-white border border-orange-200 text-orange-700 hover:bg-orange-100"
+                          }`}>
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                    <Input placeholder="Or type a custom specialty..." value={editForm.specialty} onChange={e => setEditForm({ ...editForm, specialty: e.target.value })} className="text-xs" />
                   </div>
                   <div>
                     <label className="text-xs font-medium text-muted-foreground block mb-1">Hourly Rate (R$)</label>
