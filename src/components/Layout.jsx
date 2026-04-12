@@ -12,20 +12,38 @@ export default function Layout() {
 
   useEffect(() => {
     base44.auth.me().then(async (authUser) => {
-      // Check if user is deactivated
-      if (authUser?.id) {
-        try {
-          const users = await base44.entities.User.filter({ id: authUser.id });
-          const dbUser = users[0];
-          if (dbUser?.status === "inactive") {
+      if (!authUser) { setUser(null); return; }
+
+      // Find the matching entity user by email to get cockpit role + status
+      try {
+        const allUsers = await base44.entities.User.list();
+        const dbUser = allUsers.find(u =>
+          u.email?.toLowerCase() === authUser.email?.toLowerCase()
+        );
+
+        if (dbUser) {
+          // Block inactive users
+          if (dbUser.status === "inactive") {
             setBlocked(true);
             setUser(authUser);
             return;
           }
-        } catch {
-          // If we can't check, let them through
+          // Merge entity data onto auth user so cockpit role is available everywhere
+          setUser({
+            ...authUser,
+            role: dbUser.role,
+            specialty: dbUser.specialty,
+            hourly_rate: dbUser.hourly_rate,
+            company: dbUser.company,
+            phone: dbUser.phone,
+            status: dbUser.status,
+          });
+          return;
         }
+      } catch {
+        // If entity lookup fails, use auth user as-is
       }
+
       setUser(authUser);
     });
   }, []);
