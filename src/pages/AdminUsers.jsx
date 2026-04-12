@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { Mail, Search, Pencil, Trash2, UserCircle, AlertCircle, Clock, X } from "lucide-react";
+import { Mail, Search, Pencil, Trash2, UserCircle, AlertCircle, Clock, X, Crown, Briefcase, Palette, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -381,48 +381,99 @@ export default function AdminUsers() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit role dialog */}
+      {/* Edit role dialog — modern */}
       <Dialog open={!!editing} onOpenChange={() => setEditing(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Configure User — {editing?.full_name || editing?.email}</DialogTitle></DialogHeader>
-          <div className="space-y-3 pt-2">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground block mb-1">Cockpit Role</label>
-              <Select value={editForm.role} onValueChange={v => setEditForm({ ...editForm, role: v })}>
-                <SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="pm">Project Manager</SelectItem>
-                  <SelectItem value="professional">Professional</SelectItem>
-                  <SelectItem value="client">Client</SelectItem>
-                </SelectContent>
-              </Select>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Configure User</DialogTitle></DialogHeader>
+          {editing && (
+            <div className="space-y-5 pt-2">
+              {/* User identity */}
+              <div className="flex items-center gap-3 bg-muted/30 rounded-xl p-4">
+                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center shrink-0">
+                  <UserCircle className="w-7 h-7 text-muted-foreground" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold">{editing.full_name || "No name set"}</p>
+                  <p className="text-xs text-muted-foreground truncate">{editing.email}</p>
+                </div>
+                <Select value={editForm.status} onValueChange={v => setEditForm({ ...editForm, status: v })}>
+                  <SelectTrigger className="w-[100px] h-7 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Role selector — visual cards */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-2">Cockpit Role</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: "admin", label: "Admin", desc: "Full system access", icon: Crown, color: "purple" },
+                    { value: "pm", label: "Project Manager", desc: "Operations & team", icon: Briefcase, color: "blue" },
+                    { value: "professional", label: "Professional", desc: "Tasks & deliverables", icon: Palette, color: "orange" },
+                    { value: "client", label: "Client", desc: "Projects & approvals", icon: Building2, color: "emerald" },
+                  ].map(r => {
+                    const isActive = editForm.role === r.value;
+                    return (
+                      <button key={r.value} onClick={() => setEditForm({ ...editForm, role: r.value })}
+                        className={`relative text-left p-3 rounded-xl border-2 transition-all ${
+                          isActive
+                            ? `border-${r.color}-500 bg-${r.color}-50 shadow-sm`
+                            : "border-border hover:border-muted-foreground/30 hover:bg-muted/30"
+                        }`}>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${
+                          isActive ? `bg-${r.color}-100` : "bg-muted"
+                        }`}>
+                          <r.icon className={`w-4 h-4 ${isActive ? `text-${r.color}-600` : "text-muted-foreground"}`} />
+                        </div>
+                        <p className="text-sm font-semibold">{r.label}</p>
+                        <p className="text-[10px] text-muted-foreground">{r.desc}</p>
+                        {isActive && <div className={`absolute top-2 right-2 w-2 h-2 rounded-full bg-${r.color}-500`} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Role-specific fields */}
+              {editForm.role === "professional" && (
+                <div className="space-y-3 border border-orange-200 bg-orange-50/50 rounded-xl p-4">
+                  <p className="text-xs font-semibold text-orange-700">Professional Details</p>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground block mb-1">Specialty</label>
+                    <Input placeholder="e.g. Frontend Developer, Designer, Marketer" value={editForm.specialty} onChange={e => setEditForm({ ...editForm, specialty: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground block mb-1">Hourly Rate (R$)</label>
+                    <Input type="number" placeholder="0" value={editForm.hourly_rate} onChange={e => setEditForm({ ...editForm, hourly_rate: e.target.value })} />
+                  </div>
+                </div>
+              )}
+
+              {editForm.role === "client" && (
+                <div className="space-y-3 border border-emerald-200 bg-emerald-50/50 rounded-xl p-4">
+                  <p className="text-xs font-semibold text-emerald-700">Client Details</p>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground block mb-1">Company Name</label>
+                    <Input placeholder="e.g. Angel Fly, Restaurant ABC" value={editForm.company} onChange={e => setEditForm({ ...editForm, company: e.target.value })} />
+                  </div>
+                </div>
+              )}
+
+              {/* Phone */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">Phone</label>
+                <Input placeholder="+1 (555) 000-0000" value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} />
+              </div>
+
+              <div className="flex gap-2 justify-end pt-2">
+                <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+                <Button onClick={handleSave} disabled={!editForm.role}>Save Changes</Button>
+              </div>
             </div>
-            {editForm.role === "professional" && (
-              <>
-                <Input placeholder="Specialty (e.g. Designer, Developer)" value={editForm.specialty} onChange={e => setEditForm({ ...editForm, specialty: e.target.value })} />
-                <Input type="number" placeholder="Hourly Rate (R$)" value={editForm.hourly_rate} onChange={e => setEditForm({ ...editForm, hourly_rate: e.target.value })} />
-              </>
-            )}
-            {editForm.role === "client" && (
-              <Input placeholder="Company Name" value={editForm.company} onChange={e => setEditForm({ ...editForm, company: e.target.value })} />
-            )}
-            <Input placeholder="Phone" value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} />
-            <div>
-              <label className="text-xs font-medium text-muted-foreground block mb-1">Status</label>
-              <Select value={editForm.status} onValueChange={v => setEditForm({ ...editForm, status: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
-              <Button onClick={handleSave} disabled={!editForm.role}>Save Changes</Button>
-            </div>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
 
