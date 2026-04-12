@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { Search, Star, Plus, Sparkles } from "lucide-react";
+import { Search, Star, Plus, Sparkles, ListChecks } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,6 +21,8 @@ export default function AdminTickets() {
   const [detail, setDetail] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ client_name: "", project_id: "", category: "question", subject: "", description: "", priority: "medium" });
+  const [convertTicket, setConvertTicket] = useState(null);
+  const [convertForm, setConvertForm] = useState({ project_id: "", assigned_to: "", priority: "medium", milestone: "", deadline: "" });
 
   useEffect(() => {
     Promise.all([
@@ -109,6 +111,53 @@ export default function AdminTickets() {
     });
     setShowCreate(false);
     setForm({ client_name: "", project_id: "", category: "question", subject: "", description: "", priority: "medium" });
+    load();
+  };
+
+  const openConvert = (ticket) => {
+    setConvertTicket(ticket);
+    setConvertForm({
+      project_id: ticket.project_id || "",
+      assigned_to: ticket.assigned_to || "",
+      priority: ticket.priority || "medium",
+      milestone: "",
+      deadline: ticket.estimated_resolution || "",
+    });
+  };
+
+  const handleConvert = async () => {
+    if (!convertTicket) return;
+    const pro = pros.find(u => u.id === convertForm.assigned_to);
+    const proj = projects.find(p => p.id === convertForm.project_id);
+
+    // Create the task
+    await base44.entities.Task.create({
+      title: `[Ticket] ${convertTicket.subject}`,
+      description: `${convertTicket.description || ""}\n\n--- Ticket | ${convertTicket.category} | ${convertTicket.priority} priority | Client: ${convertTicket.client_name}`,
+      project_id: convertForm.project_id,
+      project_name: proj?.name || convertTicket.project_name || "",
+      client_name: convertTicket.client_name || proj?.client_name || "",
+      assigned_to: convertForm.assigned_to,
+      assigned_to_name: pro?.full_name || "",
+      status: convertForm.assigned_to ? "assigned" : "backlog",
+      priority: convertForm.priority,
+      deadline: convertForm.deadline,
+      milestone: convertForm.milestone,
+      subtasks: "[]",
+      comments: "[]",
+    });
+
+    // Update ticket status if it was open
+    if (convertTicket.status === "open") {
+      const updates = { status: "in_progress" };
+      if (convertForm.assigned_to) {
+        updates.assigned_to = convertForm.assigned_to;
+        updates.assigned_to_name = pro?.full_name || "";
+      }
+      await base44.entities.Ticket.update(convertTicket.id, updates);
+    }
+
+    setConvertTicket(null);
     load();
   };
 
@@ -230,6 +279,7 @@ export default function AdminTickets() {
                         </SelectContent>
                       </Select>
                     )}
+                    {!linkedTask && <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => openConvert(t)}><ListChecks className="w-3 h-3" /> To Task</Button>}
                     {t.status === "in_progress" && <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => handleStatus(t.id, "resolved")}>Resolve</Button>}
                     {t.status === "resolved" && <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => handleStatus(t.id, "closed")}>Close</Button>}
                   </div>
@@ -293,7 +343,11 @@ export default function AdminTickets() {
                       </div>
                     </div>
                   </div>
-                ) : null;
+                ) : (
+                  <Button variant="outline" size="sm" className="w-full gap-1.5" onClick={() => { setDetail(null); openConvert(detail); }}>
+                    <ListChecks className="w-4 h-4" /> Convert to Task
+                  </Button>
+                );
               })()}
 
               {detail.resolution_notes && (
@@ -359,6 +413,71 @@ export default function AdminTickets() {
               <Button onClick={handleCreate} disabled={!form.subject}>Create Ticket</Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Convert ticket to task dialog */}
+      <Dialog open={!!convertTicket} onOpenChange={() => setConvertTicket(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Convert Ticket to Task</DialogTitle></DialogHeader>
+          {convertTicket && (
+            <div className="space-y-3 pt-2">
+              <div className="bg-muted/30 rounded-lg p-3">
+                <p className="text-sm font-semibold">{convertTicket.subject}</p>
+                <p className="text-xs text-muted-foreground">{convertTicket.client_name} · {convertTicket.category} · {convertTicket.priority} priority</p>
+                {convertTicket.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-3">{convertTicket.description}</p>}
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">Project</label>
+                <Select value={convertForm.project_id} onValueChange={v => setConvertForm({ ...convertForm, project_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="Select project" /></SelectTrigger>
+                  <SelectContent>
+                    {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name} — {p.client_name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">Assign to</label>
+                <Select value={convertForm.assigned_to} onValueChange={v => setConvertForm({ ...convertForm, assigned_to: v })}>
+                  <SelectTrigger><SelectValue placeholder="Select professional (optional)" /></SelectTrigger>
+                  <SelectContent>
+                    {pros.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name} {u.specialty ? `(${u.specialty})` : ""}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1">Priority</label>
+                  <Select value={convertForm.priority} onValueChange={v => setConvertForm({ ...convertForm, priority: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="urgent">Urgent</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1">Deadline</label>
+                  <Input type="date" value={convertForm.deadline} onChange={e => setConvertForm({ ...convertForm, deadline: e.target.value })} />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">Milestone</label>
+                <Input placeholder="e.g. Week 1, Sprint 2" value={convertForm.milestone} onChange={e => setConvertForm({ ...convertForm, milestone: e.target.value })} />
+              </div>
+
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setConvertTicket(null)}>Cancel</Button>
+                <Button onClick={handleConvert} className="gap-1"><ListChecks className="w-4 h-4" /> Create Task</Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
