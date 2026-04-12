@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useOutletContext } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { Plus, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,12 +10,37 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import PageHeader from "../components/PageHeader";
 import StatusBadge from "../components/StatusBadge";
 
+function StarRating({ value, onChange, readonly }) {
+  const [hover, setHover] = useState(0);
+  return (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map(star => (
+        <button
+          key={star}
+          type="button"
+          disabled={readonly}
+          onClick={() => onChange?.(star)}
+          onMouseEnter={() => !readonly && setHover(star)}
+          onMouseLeave={() => !readonly && setHover(0)}
+          className={`transition-colors ${readonly ? "cursor-default" : "cursor-pointer"}`}
+        >
+          <Star
+            className={`w-5 h-5 ${(hover || value) >= star ? "text-amber-400 fill-amber-400" : "text-slate-200"}`}
+          />
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function ClientTickets() {
   const { user } = useOutletContext();
   const [tickets, setTickets] = useState([]);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [ratingTicket, setRatingTicket] = useState(null);
+  const [rating, setRating] = useState(0);
   const [form, setForm] = useState({ project_id: "", category: "question", subject: "", description: "", priority: "medium" });
 
   useEffect(() => {
@@ -45,11 +70,39 @@ export default function ClientTickets() {
     load();
   };
 
+  const handleRate = async () => {
+    if (!ratingTicket || !rating) return;
+    await base44.entities.Ticket.update(ratingTicket.id, { satisfaction_rating: rating });
+    setRatingTicket(null);
+    setRating(0);
+    load();
+  };
+
+  const resolved = tickets.filter(t => (t.status === "resolved" || t.status === "closed") && !t.satisfaction_rating);
+
   return (
     <div className="space-y-6">
       <PageHeader title="Support Tickets" subtitle="Submit and track your support requests">
         <Button onClick={() => setShowCreate(true)} className="gap-2"><Plus className="w-4 h-4" /> New Ticket</Button>
       </PageHeader>
+
+      {/* Rating prompt for resolved tickets without rating */}
+      {resolved.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <p className="text-sm font-semibold text-amber-800 mb-2">Rate your resolved tickets</p>
+          <div className="space-y-2">
+            {resolved.slice(0, 3).map(t => (
+              <div key={t.id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-amber-100">
+                <span className="text-sm">{t.subject}</span>
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1 border-amber-300 text-amber-700 hover:bg-amber-100"
+                  onClick={() => { setRatingTicket(t); setRating(0); }}>
+                  <Star className="w-3 h-3" /> Rate
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="space-y-3">{[...Array(4)].map((_, i) => <div key={i} className="bg-card rounded-xl border p-5 h-20 animate-pulse" />)}</div>
@@ -72,6 +125,11 @@ export default function ClientTickets() {
                   {t.estimated_resolution && (
                     <p className="text-xs text-muted-foreground mt-1">Est: {new Date(t.estimated_resolution).toLocaleDateString()}</p>
                   )}
+                  {t.satisfaction_rating && (
+                    <div className="mt-1.5">
+                      <StarRating value={t.satisfaction_rating} readonly />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -81,6 +139,7 @@ export default function ClientTickets() {
         <div className="bg-card rounded-xl border border-border p-12 text-center text-sm text-muted-foreground">No tickets yet. Need help?</div>
       )}
 
+      {/* Create ticket dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent>
           <DialogHeader><DialogTitle>Open Support Ticket</DialogTitle></DialogHeader>
@@ -113,6 +172,24 @@ export default function ClientTickets() {
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
               <Button onClick={handleCreate}>Submit Ticket</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rating dialog */}
+      <Dialog open={!!ratingTicket} onOpenChange={() => { setRatingTicket(null); setRating(0); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Rate this ticket resolution</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-2 text-center">
+            <p className="text-sm font-medium">{ratingTicket?.subject}</p>
+            <p className="text-xs text-muted-foreground">How satisfied were you with the resolution?</p>
+            <div className="flex justify-center">
+              <StarRating value={rating} onChange={setRating} />
+            </div>
+            <div className="flex gap-2 justify-center">
+              <Button variant="outline" onClick={() => { setRatingTicket(null); setRating(0); }}>Skip</Button>
+              <Button onClick={handleRate} disabled={!rating}>Submit Rating</Button>
             </div>
           </div>
         </DialogContent>

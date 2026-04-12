@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { Search } from "lucide-react";
+import { Search, Star } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -41,9 +41,44 @@ export default function PMTickets() {
       && (statusFilter === "all" || t.status === statusFilter);
   });
 
+  // Satisfaction stats
+  const rated = tickets.filter(t => t.satisfaction_rating);
+  const avgSatisfaction = rated.length > 0 ? (rated.reduce((s, t) => s + t.satisfaction_rating, 0) / rated.length).toFixed(1) : null;
+  const slaTotal = tickets.filter(t => t.status === "resolved" || t.status === "closed").length;
+  const openCount = tickets.filter(t => t.status === "open").length;
+  const inProgressCount = tickets.filter(t => t.status === "in_progress").length;
+
   return (
     <div className="space-y-6">
       <PageHeader title="Support Tickets" subtitle="Track and resolve client issues" />
+
+      {/* Stats row */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="bg-card rounded-xl border border-border p-4 text-center">
+          <p className="text-xs text-muted-foreground">Open</p>
+          <p className="text-xl font-bold text-blue-600">{openCount}</p>
+        </div>
+        <div className="bg-card rounded-xl border border-border p-4 text-center">
+          <p className="text-xs text-muted-foreground">In Progress</p>
+          <p className="text-xl font-bold text-amber-600">{inProgressCount}</p>
+        </div>
+        <div className="bg-card rounded-xl border border-border p-4 text-center">
+          <p className="text-xs text-muted-foreground">Resolved</p>
+          <p className="text-xl font-bold text-emerald-600">{slaTotal}</p>
+        </div>
+        <div className="bg-card rounded-xl border border-border p-4 text-center">
+          <p className="text-xs text-muted-foreground">Avg Satisfaction</p>
+          {avgSatisfaction ? (
+            <div className="flex items-center justify-center gap-1">
+              <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+              <span className="text-xl font-bold">{avgSatisfaction}</span>
+              <span className="text-xs text-muted-foreground">/ 5</span>
+            </div>
+          ) : (
+            <p className="text-xl font-bold text-muted-foreground">—</p>
+          )}
+        </div>
+      </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
@@ -80,6 +115,12 @@ export default function PMTickets() {
                   {t.description && <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{t.description}</p>}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  {t.satisfaction_rating && (
+                    <div className="flex items-center gap-0.5 mr-2">
+                      <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                      <span className="text-xs font-semibold">{t.satisfaction_rating}</span>
+                    </div>
+                  )}
                   {t.status === "open" && (
                     <Select onValueChange={v => handleAssign(t.id, v)}>
                       <SelectTrigger className="h-8 text-xs w-[130px]"><SelectValue placeholder="Assign..." /></SelectTrigger>
