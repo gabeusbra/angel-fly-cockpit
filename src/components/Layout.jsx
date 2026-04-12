@@ -22,55 +22,86 @@ function BlockedScreen({ icon: Icon, iconBg, iconColor, title, message }) {
   );
 }
 
+async function findUserRecord(authUser) {
+  // Try multiple approaches to find the user entity record
+  const email = authUser.email?.toLowerCase();
+  if (!email) return null;
+
+  // Approach 1: list all users (works for admins)
+  try {
+    const allUsers = await base44.entities.User.list();
+    const match = allUsers.find(u => u.email?.toLowerCase() === email);
+    if (match) return match;
+  } catch {
+    // May fail for non-admin users
+  }
+
+  // Approach 2: filter by email directly
+  try {
+    const filtered = await base44.entities.User.filter({ email: authUser.email });
+    if (filtered.length > 0) return filtered[0];
+  } catch {
+    // May also fail
+  }
+
+  return null;
+}
+
 export default function Layout() {
   const [user, setUser] = useState(null);
   const [collapsed, setCollapsed] = useState(false);
-  const [blockType, setBlockType] = useState(null); // "inactive" | "no_role" | "deleted"
+  const [blockType, setBlockType] = useState(null);
+  const [checked, setChecked] = useState(false);
 
   useEffect(() => {
     base44.auth.me().then(async (authUser) => {
-      if (!authUser) { setUser(null); return; }
+      if (!authUser) { setUser(null); setChecked(true); return; }
 
-      try {
-        const allUsers = await base44.entities.User.list();
-        const dbUser = allUsers.find(u =>
-          u.email?.toLowerCase() === authUser.email?.toLowerCase()
-        );
+      const dbUser = await findUserRecord(authUser);
 
-        if (!dbUser) {
-          // User was deleted from entity — block
-          setBlockType("deleted");
-          setUser(authUser);
-          return;
-        }
-
-        if (dbUser.status === "inactive") {
-          setBlockType("inactive");
-          setUser(authUser);
-          return;
-        }
-
-        if (!COCKPIT_ROLES.includes(dbUser.role)) {
-          setBlockType("no_role");
-          setUser(authUser);
-          return;
-        }
-
-        // Valid user — merge entity data
-        setUser({
-          ...authUser,
-          role: dbUser.role,
-          specialty: dbUser.specialty,
-          hourly_rate: dbUser.hourly_rate,
-          company: dbUser.company,
-          phone: dbUser.phone,
-          status: dbUser.status,
-        });
-      } catch {
+      if (!dbUser) {
+        setBlockType("deleted");
         setUser(authUser);
+        setChecked(true);
+        return;
       }
+
+      if (dbUser.status === "inactive") {
+        setBlockType("inactive");
+        setUser(authUser);
+        setChecked(true);
+        return;
+      }
+
+      if (!COCKPIT_ROLES.includes(dbUser.role)) {
+        setBlockType("no_role");
+        setUser(authUser);
+        setChecked(true);
+        return;
+      }
+
+      // Valid user — merge entity data
+      setUser({
+        ...authUser,
+        role: dbUser.role,
+        specialty: dbUser.specialty,
+        hourly_rate: dbUser.hourly_rate,
+        company: dbUser.company,
+        phone: dbUser.phone,
+        status: dbUser.status,
+      });
+      setChecked(true);
     });
   }, []);
+
+  // Show loading until check completes — never let anyone through unchecked
+  if (!checked) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-muted border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (blockType === "inactive") {
     return <BlockedScreen icon={ShieldX} iconBg="bg-red-100" iconColor="text-red-600"
