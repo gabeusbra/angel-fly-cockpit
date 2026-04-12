@@ -22,31 +22,6 @@ function BlockedScreen({ icon: Icon, iconBg, iconColor, title, message }) {
   );
 }
 
-async function findUserRecord(authUser) {
-  // Try multiple approaches to find the user entity record
-  const email = authUser.email?.toLowerCase();
-  if (!email) return null;
-
-  // Approach 1: list all users (works for admins)
-  try {
-    const allUsers = await base44.entities.User.list();
-    const match = allUsers.find(u => u.email?.toLowerCase() === email);
-    if (match) return match;
-  } catch {
-    // May fail for non-admin users
-  }
-
-  // Approach 2: filter by email directly
-  try {
-    const filtered = await base44.entities.User.filter({ email: authUser.email });
-    if (filtered.length > 0) return filtered[0];
-  } catch {
-    // May also fail
-  }
-
-  return null;
-}
-
 export default function Layout() {
   const [user, setUser] = useState(null);
   const [collapsed, setCollapsed] = useState(false);
@@ -57,44 +32,46 @@ export default function Layout() {
     base44.auth.me().then(async (authUser) => {
       if (!authUser) { setUser(null); setChecked(true); return; }
 
-      const dbUser = await findUserRecord(authUser);
+      // For admins: look up entity data to get the full picture
+      // For regular users: auth.me() should include entity fields
+      let finalUser = { ...authUser };
 
-      if (!dbUser) {
-        setBlockType("deleted");
-        setUser(authUser);
-        setChecked(true);
-        return;
+      // Try to enrich with entity data (works for admins, may fail for regular users)
+      try {
+        const allUsers = await base44.entities.User.list();
+        const dbUser = allUsers.find(u =>
+          u.email?.toLowerCase() === authUser.email?.toLowerCase()
+        );
+        if (dbUser) {
+          finalUser = { ...authUser, ...dbUser };
+        }
+      } catch {
+        // Regular users may not have list permission — that's OK,
+        // auth.me() should already include their entity fields
       }
 
-      if (dbUser.status === "inactive") {
+      // Check status
+      if (finalUser.status === "inactive") {
         setBlockType("inactive");
-        setUser(authUser);
+        setUser(finalUser);
         setChecked(true);
         return;
       }
 
-      if (!COCKPIT_ROLES.includes(dbUser.role)) {
-        setBlockType("no_role");
-        setUser(authUser);
+      // Check cockpit role
+      if (COCKPIT_ROLES.includes(finalUser.role)) {
+        setUser(finalUser);
         setChecked(true);
         return;
       }
 
-      // Valid user — merge entity data
-      setUser({
-        ...authUser,
-        role: dbUser.role,
-        specialty: dbUser.specialty,
-        hourly_rate: dbUser.hourly_rate,
-        company: dbUser.company,
-        phone: dbUser.phone,
-        status: dbUser.status,
-      });
+      // No valid cockpit role — show pending
+      setBlockType("no_role");
+      setUser(finalUser);
       setChecked(true);
     });
   }, []);
 
-  // Show loading until check completes — never let anyone through unchecked
   if (!checked) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -107,12 +84,6 @@ export default function Layout() {
     return <BlockedScreen icon={ShieldX} iconBg="bg-red-100" iconColor="text-red-600"
       title="Access Deactivated"
       message="Your account has been deactivated. Please contact your administrator for assistance." />;
-  }
-
-  if (blockType === "deleted") {
-    return <BlockedScreen icon={ShieldX} iconBg="bg-red-100" iconColor="text-red-600"
-      title="Access Denied"
-      message="Your account has been removed from the system. Please contact your administrator." />;
   }
 
   if (blockType === "no_role") {
