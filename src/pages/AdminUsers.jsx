@@ -341,41 +341,99 @@ export default function AdminUsers() {
         </div>
       </div>
 
-      {/* Invite dialog */}
+      {/* Invite dialog — modern */}
       <Dialog open={showInvite} onOpenChange={setShowInvite}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Invite User</DialogTitle></DialogHeader>
-          <div className="space-y-3 pt-2">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground block mb-1">Email</label>
-              <Input type="email" placeholder="user@example.com" value={inviteForm.email} onChange={e => setInviteForm({ ...inviteForm, email: e.target.value })} />
+          <div className="space-y-5 pt-2">
+            {/* Email */}
+            <div className="bg-muted/30 rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
+                  <Mail className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <Input type="email" placeholder="user@example.com" value={inviteForm.email}
+                  onChange={e => setInviteForm({ ...inviteForm, email: e.target.value })}
+                  className="border-0 bg-transparent text-sm font-medium p-0 h-auto focus-visible:ring-0 placeholder:text-muted-foreground/50" />
+              </div>
             </div>
+
+            {/* Role selector — visual cards */}
             <div>
-              <label className="text-xs font-medium text-muted-foreground block mb-1">Cockpit Role</label>
-              <Select value={inviteForm.cockpitRole} onValueChange={v => setInviteForm({ ...inviteForm, cockpitRole: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="pm">Project Manager</SelectItem>
-                  <SelectItem value="professional">Professional</SelectItem>
-                  <SelectItem value="client">Client</SelectItem>
-                </SelectContent>
-              </Select>
+              <label className="text-xs font-medium text-muted-foreground block mb-2">Cockpit Role</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { value: "admin", label: "Admin", desc: "Full system access", icon: Crown, color: "purple" },
+                  { value: "pm", label: "Project Manager", desc: "Operations & team", icon: Briefcase, color: "blue" },
+                  { value: "professional", label: "Professional", desc: "Tasks & deliverables", icon: Palette, color: "orange" },
+                  { value: "client", label: "Client", desc: "Projects & approvals", icon: Building2, color: "emerald" },
+                ].map(r => {
+                  const isActive = inviteForm.cockpitRole === r.value;
+                  return (
+                    <button key={r.value} onClick={() => setInviteForm({ ...inviteForm, cockpitRole: r.value })}
+                      className={`relative text-left p-3 rounded-xl border-2 transition-all ${
+                        isActive
+                          ? `border-${r.color}-500 bg-${r.color}-50 shadow-sm`
+                          : "border-border hover:border-muted-foreground/30 hover:bg-muted/30"
+                      }`}>
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${isActive ? `bg-${r.color}-100` : "bg-muted"}`}>
+                        <r.icon className={`w-4 h-4 ${isActive ? `text-${r.color}-600` : "text-muted-foreground"}`} />
+                      </div>
+                      <p className="text-sm font-semibold">{r.label}</p>
+                      <p className="text-[10px] text-muted-foreground">{r.desc}</p>
+                      {isActive && <div className={`absolute top-2 right-2 w-2 h-2 rounded-full bg-${r.color}-500`} />}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
+
+            {/* Role-specific fields */}
             {inviteForm.cockpitRole === "professional" && (
-              <>
-                <Input placeholder="Specialty (e.g. Designer, Developer)" value={inviteForm.specialty} onChange={e => setInviteForm({ ...inviteForm, specialty: e.target.value })} />
-                <Input type="number" placeholder="Hourly Rate (R$)" value={inviteForm.hourly_rate} onChange={e => setInviteForm({ ...inviteForm, hourly_rate: e.target.value })} />
-              </>
+              <div className="space-y-3 border border-orange-200 bg-orange-50/50 rounded-xl p-4">
+                <p className="text-xs font-semibold text-orange-700">Professional Details</p>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground block mb-2">Specialty</label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {["Frontend Developer", "Backend Developer", "Full-Stack Developer", "UI/UX Designer", "Social Media Manager", "Marketing Strategist", "Content Creator", "SEO Specialist"].map(s => (
+                      <button key={s} onClick={() => setInviteForm({ ...inviteForm, specialty: s })}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                          inviteForm.specialty === s ? "bg-orange-500 text-white shadow-sm" : "bg-white border border-orange-200 text-orange-700 hover:bg-orange-100"
+                        }`}>{s}</button>
+                    ))}
+                  </div>
+                  <Input placeholder="Or type a custom specialty..." value={inviteForm.specialty} onChange={e => setInviteForm({ ...inviteForm, specialty: e.target.value })} className="text-xs" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1">Hourly Rate (R$)</label>
+                  <Input type="number" placeholder="0" value={inviteForm.hourly_rate} onChange={e => setInviteForm({ ...inviteForm, hourly_rate: e.target.value })} />
+                </div>
+              </div>
             )}
+
             {inviteForm.cockpitRole === "client" && (
-              <Input placeholder="Company Name" value={inviteForm.company} onChange={e => setInviteForm({ ...inviteForm, company: e.target.value })} />
+              <div className="space-y-3 border border-emerald-200 bg-emerald-50/50 rounded-xl p-4">
+                <p className="text-xs font-semibold text-emerald-700">Client Details</p>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1">Company Name</label>
+                  <Input placeholder="e.g. Angel Fly, Restaurant ABC" value={inviteForm.company} onChange={e => setInviteForm({ ...inviteForm, company: e.target.value })} />
+                </div>
+              </div>
             )}
-            <Input placeholder="Phone (optional)" value={inviteForm.phone} onChange={e => setInviteForm({ ...inviteForm, phone: e.target.value })} />
+
+            {/* Phone */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">Phone (optional)</label>
+              <Input placeholder="+1 (555) 000-0000" value={inviteForm.phone} onChange={e => setInviteForm({ ...inviteForm, phone: e.target.value })} />
+            </div>
+
             {inviteError && <p className="text-xs text-red-600">{inviteError}</p>}
-            <div className="flex gap-2 justify-end">
+
+            <div className="flex gap-2 justify-end pt-2">
               <Button variant="outline" onClick={() => setShowInvite(false)}>Cancel</Button>
-              <Button onClick={handleInvite} disabled={inviting || !inviteForm.email}>{inviting ? "Sending..." : "Send Invite"}</Button>
+              <Button onClick={handleInvite} disabled={inviting || !inviteForm.email}>
+                {inviting ? "Sending..." : "Send Invite"}
+              </Button>
             </div>
           </div>
         </DialogContent>
