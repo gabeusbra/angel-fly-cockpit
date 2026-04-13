@@ -241,6 +241,20 @@ export default function PMProjectDetail() {
     reloadTasks();
   };
 
+  // --- Drag and drop ---
+  const [dragId, setDragId] = useState(null);
+  const [dragOver, setDragOver] = useState(null);
+
+  const handleDrop = async (newStatus) => {
+    if (!dragId || isPro) return;
+    const task = tasks.find(t => t.id === dragId);
+    if (!task || task.status === newStatus) { setDragId(null); setDragOver(null); return; }
+    await base44.entities.Task.update(dragId, { status: newStatus });
+    setDragId(null);
+    setDragOver(null);
+    reloadTasks();
+  };
+
   // --- Subtasks ---
   const addSubtask = async () => {
     if (!newSubtask || !activeTask) return;
@@ -414,21 +428,30 @@ export default function PMProjectDetail() {
         ))}
       </div>
 
-      {/* Kanban */}
+      {/* Kanban — drag and drop */}
       <div className="flex gap-4 overflow-x-auto pb-4">
         {COLUMNS.map(col => (
-          <div key={col} className="min-w-[250px] flex-shrink-0">
+          <div key={col} className="min-w-[250px] flex-shrink-0"
+            onDragOver={e => { if (!isPro) { e.preventDefault(); setDragOver(col); } }}
+            onDragLeave={() => setDragOver(null)}
+            onDrop={e => { e.preventDefault(); handleDrop(col); }}>
             <div className="flex items-center gap-2 mb-3">
               <StatusBadge status={col} size="xs" />
               <span className="text-xs text-muted-foreground">({byStatus[col].length})</span>
             </div>
-            <div className="space-y-2">
+            <div className={`space-y-2 min-h-[80px] rounded-xl p-1.5 transition-all duration-200 ${dragOver === col ? "bg-primary/5 ring-2 ring-primary/20" : ""}`}>
               {byStatus[col].map(t => {
                 const tags = parseTags(t.tags);
                 const subs = parseJson(t.subtasks, []);
                 const subsDone = subs.filter(s => s.done).length;
+                const isDragging = dragId === t.id;
                 return (
-                  <div key={t.id} className="bg-card rounded-lg border border-border p-3 hover:shadow-md transition-shadow group cursor-pointer" onClick={() => openTask(t)}>
+                  <div key={t.id}
+                    draggable={!isPro}
+                    onDragStart={() => setDragId(t.id)}
+                    onDragEnd={() => { setDragId(null); setDragOver(null); }}
+                    className={`bg-card rounded-xl border border-border p-3 hover:shadow-md transition-all group cursor-pointer ${isDragging ? "opacity-40 scale-95" : ""} ${!isPro ? "cursor-grab active:cursor-grabbing" : ""}`}
+                    onClick={() => openTask(t)}>
                     <div className="flex items-start justify-between">
                       <p className="text-sm font-medium mb-1 flex-1">{t.title}</p>
                       <Pencil className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5" />
@@ -452,7 +475,7 @@ export default function PMProjectDetail() {
                 );
               })}
               {byStatus[col].length === 0 && (
-                <div className="border-2 border-dashed border-border rounded-lg p-5 text-center text-xs text-muted-foreground">Empty</div>
+                <div className={`border-2 border-dashed rounded-xl p-5 text-center text-xs text-muted-foreground transition-colors ${dragOver === col ? "border-primary/40 bg-primary/5" : "border-border"}`}>Drop here</div>
               )}
             </div>
           </div>
