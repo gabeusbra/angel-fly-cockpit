@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useOutletContext } from "react-router-dom";
-import { Plus, Star } from "lucide-react";
+import { Plus, Star, Upload, Link2, X, FileText, Film, Image, ExternalLink } from "lucide-react";
 import { filterMyRecords } from "@/lib/entity-helpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +43,9 @@ export default function ClientTickets() {
   const [ratingTicket, setRatingTicket] = useState(null);
   const [rating, setRating] = useState(0);
   const [form, setForm] = useState({ project_id: "", category: "question", subject: "", description: "", priority: "medium" });
+  const [attachments, setAttachments] = useState([]);
+  const [linkInput, setLinkInput] = useState("");
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -57,6 +60,29 @@ export default function ClientTickets() {
     setTickets(t);
   };
 
+  const handleFileUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setUploading(true);
+    for (const file of files) {
+      try {
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        const type = file.type.startsWith("video") ? "video" : file.type.startsWith("image") ? "image" : "file";
+        setAttachments(prev => [...prev, { url: file_url, name: file.name, type }]);
+      } catch { /* ignore */ }
+    }
+    setUploading(false);
+    e.target.value = "";
+  };
+
+  const addLink = () => {
+    if (!linkInput.trim()) return;
+    setAttachments(prev => [...prev, { url: linkInput.trim(), name: linkInput.trim(), type: "link" }]);
+    setLinkInput("");
+  };
+
+  const removeAttachment = (idx) => setAttachments(prev => prev.filter((_, i) => i !== idx));
+
   const handleCreate = async () => {
     const proj = projects.find(p => p.id === form.project_id);
     await base44.entities.Ticket.create({
@@ -65,9 +91,11 @@ export default function ClientTickets() {
       client_name: user.full_name,
       project_name: proj?.name || "",
       status: "open",
+      attachments: attachments.map(a => a.url),
     });
     setShowCreate(false);
     setForm({ project_id: "", category: "question", subject: "", description: "", priority: "medium" });
+    setAttachments([]);
     load();
   };
 
@@ -120,6 +148,16 @@ export default function ClientTickets() {
                   </div>
                   <p className="text-xs text-muted-foreground">{t.project_name || "General"} · {new Date(t.created_date).toLocaleDateString()}</p>
                   {t.description && <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{t.description}</p>}
+                  {t.attachments?.length > 0 && (
+                    <div className="flex gap-1.5 mt-2 flex-wrap">
+                      {t.attachments.map((url, i) => (
+                        <a key={i} href={url} target="_blank" rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-full bg-muted text-muted-foreground hover:text-primary transition-colors">
+                          <ExternalLink className="w-3 h-3" /> Attachment {i + 1}
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="text-right shrink-0">
                   <StatusBadge status={t.category} size="xs" />
@@ -170,9 +208,55 @@ export default function ClientTickets() {
             </Select>
             <Input placeholder="Subject" value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} />
             <Textarea placeholder="Describe your issue in detail..." value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={4} />
+
+            {/* Attachments */}
+            <div className="space-y-3">
+              <label className="text-xs font-medium text-muted-foreground block">Attachments (optional)</label>
+
+              {/* Uploaded items */}
+              {attachments.length > 0 && (
+                <div className="space-y-2">
+                  {attachments.map((a, i) => (
+                    <div key={i} className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2">
+                      {a.type === "image" ? <Image className="w-4 h-4 text-blue-500 shrink-0" /> :
+                       a.type === "video" ? <Film className="w-4 h-4 text-purple-500 shrink-0" /> :
+                       a.type === "link" ? <Link2 className="w-4 h-4 text-emerald-500 shrink-0" /> :
+                       <FileText className="w-4 h-4 text-muted-foreground shrink-0" />}
+                      <span className="text-xs truncate flex-1">{a.name}</span>
+                      <button onClick={() => removeAttachment(i)} className="text-muted-foreground hover:text-red-500 transition-colors">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Upload buttons */}
+              <div className="flex gap-2 flex-wrap">
+                <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:bg-muted/30 cursor-pointer transition-colors">
+                  <Upload className="w-3.5 h-3.5" /> Upload File
+                  <input type="file" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.zip" multiple onChange={handleFileUpload} className="hidden" disabled={uploading} />
+                </label>
+                <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:bg-muted/30 cursor-pointer transition-colors">
+                  <Film className="w-3.5 h-3.5" /> Upload Video
+                  <input type="file" accept="video/*" onChange={handleFileUpload} className="hidden" disabled={uploading} />
+                </label>
+              </div>
+              {uploading && <p className="text-xs text-muted-foreground">Uploading...</p>}
+
+              {/* Link input */}
+              <div className="flex gap-2">
+                <Input placeholder="Paste a link (Google Drive, Figma, Loom, etc.)" value={linkInput} onChange={e => setLinkInput(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && addLink()} className="text-xs" />
+                <Button variant="outline" size="sm" className="shrink-0 gap-1 text-xs" onClick={addLink} disabled={!linkInput.trim()}>
+                  <Link2 className="w-3 h-3" /> Add
+                </Button>
+              </div>
+            </div>
+
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
-              <Button onClick={handleCreate}>Submit Ticket</Button>
+              <Button variant="outline" onClick={() => { setShowCreate(false); setAttachments([]); setLinkInput(""); }}>Cancel</Button>
+              <Button onClick={handleCreate} disabled={!form.subject}>Submit Ticket</Button>
             </div>
           </div>
         </DialogContent>
