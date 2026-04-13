@@ -246,7 +246,7 @@ export default function PMProjectDetail() {
   const [dragOver, setDragOver] = useState(null);
 
   const handleDrop = async (newStatus) => {
-    if (!dragId || isPro) return;
+    if (!dragId) return;
     const task = tasks.find(t => t.id === dragId);
     if (!task || task.status === newStatus) { setDragId(null); setDragOver(null); return; }
     await base44.entities.Task.update(dragId, { status: newStatus });
@@ -432,7 +432,7 @@ export default function PMProjectDetail() {
       <div className="flex gap-4 overflow-x-auto pb-4">
         {COLUMNS.map(col => (
           <div key={col} className="min-w-[250px] flex-shrink-0"
-            onDragOver={e => { if (!isPro) { e.preventDefault(); setDragOver(col); } }}
+            onDragOver={e => { e.preventDefault(); setDragOver(col); }}
             onDragLeave={() => setDragOver(null)}
             onDrop={e => { e.preventDefault(); handleDrop(col); }}>
             <div className="flex items-center gap-2 mb-3">
@@ -447,10 +447,10 @@ export default function PMProjectDetail() {
                 const isDragging = dragId === t.id;
                 return (
                   <div key={t.id}
-                    draggable={!isPro}
+                    draggable
                     onDragStart={() => setDragId(t.id)}
                     onDragEnd={() => { setDragId(null); setDragOver(null); }}
-                    className={`bg-card rounded-xl border border-border p-3 hover:shadow-md transition-all group cursor-pointer ${isDragging ? "opacity-40 scale-95" : ""} ${!isPro ? "cursor-grab active:cursor-grabbing" : ""}`}
+                    className={`bg-card rounded-xl border border-border p-3 hover:shadow-md transition-all group cursor-grab active:cursor-grabbing ${isDragging ? "opacity-40 scale-95" : ""}`}
                     onClick={() => openTask(t)}>
                     <div className="flex items-start justify-between">
                       <p className="text-sm font-medium mb-1 flex-1">{t.title}</p>
