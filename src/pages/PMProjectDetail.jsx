@@ -470,6 +470,7 @@ export default function PMProjectDetail() {
                       {t.deadline && <span>{new Date(t.deadline).toLocaleDateString()}</span>}
                       {subs.length > 0 && <span className="flex items-center gap-0.5"><CheckSquare className="w-3 h-3" />{subsDone}/{subs.length}</span>}
                       {parseJson(t.comments, []).length > 0 && <span className="flex items-center gap-0.5"><MessageSquare className="w-3 h-3" />{parseJson(t.comments, []).length}</span>}
+                      {t.deliverable_url && <span className="flex items-center gap-0.5"><ExternalLink className="w-3 h-3" /></span>}
                     </div>
                   </div>
                 );
@@ -513,6 +514,46 @@ export default function PMProjectDetail() {
                 <Input placeholder="Milestone" value={editForm.milestone} onChange={e => setEditForm({ ...editForm, milestone: e.target.value })} />
                 <Input placeholder="Tags (comma-sep)" value={editForm.tags} onChange={e => setEditForm({ ...editForm, tags: e.target.value })} />
               </div>
+
+              {/* Attachments & Deliverables */}
+              {(activeTask.deliverable_url || activeTask.description?.includes("--- Attachments ---")) && (
+                <div className="border border-border rounded-lg p-3">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-xs font-semibold">Attachments & Deliverables</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {activeTask.deliverable_url && (
+                      <a href={activeTask.deliverable_url} target="_blank" rel="noreferrer"
+                        className="flex items-center gap-2 text-xs text-primary hover:underline bg-primary/5 rounded-lg px-3 py-2">
+                        <ExternalLink className="w-3.5 h-3.5" /> Main Deliverable
+                      </a>
+                    )}
+                    {(activeTask.description?.match(/--- Attachments ---\n([\s\S]*?)(?:\n---|$)/)?.[1] || "")
+                      .split("\n").filter(l => l.trim()).map((line, i) => {
+                        const url = line.replace(/^\d+\.\s*/, "").trim();
+                        if (!url || url === activeTask.deliverable_url) return null;
+                        return (
+                          <a key={i} href={url} target="_blank" rel="noreferrer"
+                            className="flex items-center gap-2 text-xs text-primary hover:underline bg-muted/30 rounded-lg px-3 py-2">
+                            <ExternalLink className="w-3.5 h-3.5" /> {url.split("/").pop()?.slice(0, 40) || `Attachment ${i + 1}`}
+                          </a>
+                        );
+                      })}
+                    {(activeTask.description?.match(/--- Deliverables ---\n([\s\S]*?)(?:\n---|$)/)?.[1] || "")
+                      .split("\n").filter(l => l.trim()).map((line, i) => {
+                        const url = line.replace(/^\d+\.\s*/, "").trim();
+                        if (!url || url === activeTask.deliverable_url) return null;
+                        return (
+                          <a key={`d${i}`} href={url} target="_blank" rel="noreferrer"
+                            className="flex items-center gap-2 text-xs text-primary hover:underline bg-muted/30 rounded-lg px-3 py-2">
+                            <ExternalLink className="w-3.5 h-3.5" /> {url.split("/").pop()?.slice(0, 40) || `Deliverable ${i + 1}`}
+                          </a>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
 
               {/* Subtasks */}
               <div className="border border-border rounded-lg p-3">

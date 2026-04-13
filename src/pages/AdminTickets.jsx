@@ -56,11 +56,12 @@ export default function AdminTickets() {
     if (existing) {
       await base44.entities.Task.update(existing.id, { assigned_to: userId, assigned_to_name: pro?.full_name || "" });
     } else {
+      const attachmentText = ticket.attachments?.length ? `\n\n--- Attachments ---\n${ticket.attachments.map((u, i) => `${i + 1}. ${u}`).join("\n")}` : "";
       await base44.entities.Task.create({
-        title: `[Ticket] ${ticket.subject}`, description: `${ticket.description || ""}\n\n--- Ticket | ${ticket.category} | ${ticket.priority} priority | Client: ${ticket.client_name}`,
+        title: `[Ticket] ${ticket.subject}`, description: `${ticket.description || ""}\n\n--- Ticket | ${ticket.category} | ${ticket.priority} priority | Client: ${ticket.client_name}${attachmentText}`,
         project_id: ticket.project_id || "", project_name: ticket.project_name || "", client_name: ticket.client_name || "",
         assigned_to: userId, assigned_to_name: pro?.full_name || "", status: "assigned", priority: ticket.priority || "medium",
-        deadline: ticket.estimated_resolution || "", subtasks: "[]", comments: "[]",
+        deadline: ticket.estimated_resolution || "", deliverable_url: ticket.attachments?.[0] || "", subtasks: "[]", comments: "[]",
       });
     }
     load();
@@ -93,11 +94,12 @@ export default function AdminTickets() {
     if (!convertTicket) return;
     const pro = pros.find(u => u.id === convertForm.assigned_to);
     const proj = projects.find(p => p.id === convertForm.project_id);
+    const attachmentText = convertTicket.attachments?.length ? `\n\n--- Attachments ---\n${convertTicket.attachments.map((u, i) => `${i + 1}. ${u}`).join("\n")}` : "";
     await base44.entities.Task.create({
-      title: `[Ticket] ${convertTicket.subject}`, description: `${convertTicket.description || ""}\n\n--- Ticket | ${convertTicket.category} | ${convertTicket.priority} priority | Client: ${convertTicket.client_name}`,
+      title: `[Ticket] ${convertTicket.subject}`, description: `${convertTicket.description || ""}\n\n--- Ticket | ${convertTicket.category} | ${convertTicket.priority} priority | Client: ${convertTicket.client_name}${attachmentText}`,
       project_id: convertForm.project_id, project_name: proj?.name || convertTicket.project_name || "", client_name: convertTicket.client_name || proj?.client_name || "",
       assigned_to: convertForm.assigned_to, assigned_to_name: pro?.full_name || "", status: convertForm.assigned_to ? "assigned" : "backlog",
-      priority: convertForm.priority, deadline: convertForm.deadline, milestone: convertForm.milestone, subtasks: "[]", comments: "[]",
+      priority: convertForm.priority, deadline: convertForm.deadline, milestone: convertForm.milestone, deliverable_url: convertTicket.attachments?.[0] || "", subtasks: "[]", comments: "[]",
     });
     if (convertTicket.status === "open") await base44.entities.Ticket.update(convertTicket.id, { status: "in_progress", ...(convertForm.assigned_to ? { assigned_to: convertForm.assigned_to, assigned_to_name: pro?.full_name || "" } : {}) });
     setConvertTicket(null); load();

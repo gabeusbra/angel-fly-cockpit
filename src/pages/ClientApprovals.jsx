@@ -58,11 +58,24 @@ export default function ClientApprovals() {
                 </div>
                 <StatusBadge status="client_approval" size="xs" />
               </div>
-              {t.deliverable_url && (
-                <a href={t.deliverable_url} target="_blank" rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline mb-4">
-                  <ExternalLink className="w-3.5 h-3.5" /> View Deliverable
-                </a>
+              {/* All attachments & deliverables */}
+              {(t.deliverable_url || t.description?.includes("--- Attachments ---") || t.description?.includes("--- Deliverables ---")) && (
+                <div className="space-y-1.5 mb-4">
+                  {t.deliverable_url && (
+                    <a href={t.deliverable_url} target="_blank" rel="noreferrer"
+                      className="flex items-center gap-2 text-xs text-primary font-medium hover:underline bg-primary/5 rounded-lg px-3 py-2">
+                      <ExternalLink className="w-3.5 h-3.5" /> View Main Deliverable
+                    </a>
+                  )}
+                  {[...(t.description?.match(/--- (?:Attachments|Deliverables) ---\n([\s\S]*?)(?:\n---|$)/g) || [])].flatMap(block =>
+                    block.split("\n").slice(1).filter(l => l.trim()).map(l => l.replace(/^\d+\.\s*/, "").trim())
+                  ).filter(url => url && url !== t.deliverable_url && url.startsWith("http")).map((url, i) => (
+                    <a key={i} href={url} target="_blank" rel="noreferrer"
+                      className="flex items-center gap-2 text-xs text-primary hover:underline bg-muted/30 rounded-lg px-3 py-2">
+                      <ExternalLink className="w-3.5 h-3.5" /> {url.split("/").pop()?.slice(0, 40) || `File ${i + 1}`}
+                    </a>
+                  ))}
+                </div>
               )}
               <div className="flex gap-2">
                 <Button className="gap-1.5 bg-emerald-600 hover:bg-emerald-700" size="sm" onClick={() => handleApprove(t)}>
