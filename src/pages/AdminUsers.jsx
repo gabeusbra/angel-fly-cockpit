@@ -61,7 +61,7 @@ export default function AdminUsers() {
       const match = data.find(u => u.email === inv.email);
       if (match && !hasCockpitRole(match)) {
         const payload = { role: inv.cockpitRole, status: "active", phone: inv.phone || "" };
-        if (inv.name) payload.full_name = inv.name;
+        if (inv.name) { payload.name = inv.name; payload.full_name = inv.name; }
         if (inv.cockpitRole === "professional") {
           payload.specialty = inv.specialty || "";
           payload.hourly_rate = inv.hourly_rate ? parseFloat(inv.hourly_rate) : null;
@@ -96,7 +96,7 @@ export default function AdminUsers() {
       const newUser = updatedUsers.find(u => u.email === inviteForm.email);
       if (newUser) {
         const payload = { role: inviteForm.cockpitRole, status: "active", phone: inviteForm.phone || "" };
-        if (inviteForm.name) payload.full_name = inviteForm.name;
+        if (inviteForm.name) { payload.name = inviteForm.name; payload.full_name = inviteForm.name; }
         if (inviteForm.cockpitRole === "professional") {
           payload.specialty = inviteForm.specialty;
           payload.hourly_rate = inviteForm.hourly_rate ? parseFloat(inviteForm.hourly_rate) : null;
@@ -152,6 +152,7 @@ export default function AdminUsers() {
   const handleSave = async () => {
     if (!editing) return;
     const payload = {
+      name: editForm.name,
       full_name: editForm.name,
       role: editForm.role,
       specialty: editForm.role === "professional" ? editForm.specialty : "",
