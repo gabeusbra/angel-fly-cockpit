@@ -461,25 +461,27 @@ export default function AdminUsers() {
           {editing && (
             <div className="space-y-5 pt-2">
               {/* User identity */}
-              <div className="flex items-center gap-3 bg-muted/30 rounded-xl p-4">
-                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center shrink-0">
-                  <UserCircle className="w-7 h-7 text-muted-foreground" />
+              <div className="bg-muted/30 rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center shrink-0">
+                    <UserCircle className="w-7 h-7 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-muted-foreground truncate">{editing.email}</p>
+                  </div>
+                  <Select value={editForm.status} onValueChange={v => setEditForm({ ...editForm, status: v })}>
+                    <SelectTrigger className="w-[100px] h-7 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <Input value={editForm.name} onChange={e => {
-                      const val = e.target.value.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-                      setEditForm({ ...editForm, name: val });
-                    }}
-                    placeholder="Full Name" autoCapitalize="words" className="border-0 bg-transparent text-sm font-semibold p-0 h-auto mb-0.5 focus-visible:ring-0 placeholder:text-muted-foreground/50" />
-                  <p className="text-xs text-muted-foreground truncate">{editing.email}</p>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1">Display Name</label>
+                  <Input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                    placeholder="Full Name" />
                 </div>
-                <Select value={editForm.status} onValueChange={v => setEditForm({ ...editForm, status: v })}>
-                  <SelectTrigger className="w-[100px] h-7 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
 
               {/* Role selector — visual cards */}
