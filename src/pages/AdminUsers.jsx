@@ -42,7 +42,7 @@ export default function AdminUsers() {
 
   // Edit dialog
   const [editing, setEditing] = useState(null);
-  const [editForm, setEditForm] = useState({ role: "", specialty: "", hourly_rate: "", company: "", phone: "", status: "active" });
+  const [editForm, setEditForm] = useState({ name: "", role: "", specialty: "", hourly_rate: "", company: "", phone: "", status: "active" });
 
   // Deactivate dialog
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -139,6 +139,7 @@ export default function AdminUsers() {
   const openEdit = (user) => {
     setEditing(user);
     setEditForm({
+      name: user.full_name || "",
       role: hasCockpitRole(user) ? user.role : "",
       specialty: user.specialty || "",
       hourly_rate: user.hourly_rate ? String(user.hourly_rate) : "",
@@ -151,6 +152,7 @@ export default function AdminUsers() {
   const handleSave = async () => {
     if (!editing) return;
     const payload = {
+      full_name: editForm.name,
       role: editForm.role,
       specialty: editForm.role === "professional" ? editForm.specialty : "",
       hourly_rate: editForm.role === "professional" && editForm.hourly_rate ? parseFloat(editForm.hourly_rate) : null,
@@ -461,7 +463,8 @@ export default function AdminUsers() {
                   <UserCircle className="w-7 h-7 text-muted-foreground" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold">{editing.full_name || "No name set"}</p>
+                  <Input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                    placeholder="Full Name" className="border-0 bg-transparent text-sm font-semibold p-0 h-auto mb-0.5 focus-visible:ring-0 placeholder:text-muted-foreground/50" />
                   <p className="text-xs text-muted-foreground truncate">{editing.email}</p>
                 </div>
                 <Select value={editForm.status} onValueChange={v => setEditForm({ ...editForm, status: v })}>
