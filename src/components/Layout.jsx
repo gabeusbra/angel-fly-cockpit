@@ -72,9 +72,16 @@ export default function Layout() {
       }
 
       // If role is not a cockpit role, default to "client"
-      // This handles: role="user" (Base44 default), role=undefined, etc.
+      // and schedule a one-time auto-reload to pick up the real role
       if (!COCKPIT_ROLES.includes(finalUser.role)) {
         finalUser.role = "client";
+
+        // Auto-reload once after 5 seconds if we haven't already
+        const reloadKey = "af_role_reload_" + (finalUser.email || "");
+        if (!sessionStorage.getItem(reloadKey)) {
+          sessionStorage.setItem(reloadKey, "1");
+          setTimeout(() => window.location.reload(), 5000);
+        }
       }
 
       setUser(finalUser);
