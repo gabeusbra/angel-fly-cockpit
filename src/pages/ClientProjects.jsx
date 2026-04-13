@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useOutletContext } from "react-router-dom";
+import { FolderKanban, Clock, CheckCircle2 } from "lucide-react";
 import { filterMyRecords, safeList } from "@/lib/entity-helpers";
-import PageHeader from "../components/PageHeader";
 import StatusBadge from "../components/StatusBadge";
 
 export default function ClientProjects() {
@@ -10,7 +10,6 @@ export default function ClientProjects() {
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [expanded, setExpanded] = useState(null);
 
   useEffect(() => {
     if (!user) return;
@@ -20,75 +19,89 @@ export default function ClientProjects() {
     ]).then(([p, t]) => { setProjects(p); setTasks(t); setLoading(false); });
   }, [user]);
 
-  const getProgress = (pid) => {
-    const t = tasks.filter(t => t.project_id === pid);
-    if (!t.length) return 0;
-    return Math.round((t.filter(t => t.status === "done").length / t.length) * 100);
-  };
-
-  const getProjectTasks = (pid) => tasks.filter(t => t.project_id === pid);
-
   return (
     <div className="space-y-6">
-      <PageHeader title="My Projects" subtitle="View your project status and deliverables" />
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">My Projects</h1>
+        <p className="text-sm text-muted-foreground mt-1">{projects.length} project{projects.length !== 1 ? "s" : ""}</p>
+      </div>
 
       {loading ? (
-        <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="bg-card rounded-xl border p-5 h-28 animate-pulse" />)}</div>
+        <div className="space-y-4">{[...Array(3)].map((_, i) => <div key={i} className="bg-card rounded-xl border p-6 h-32 animate-pulse" />)}</div>
       ) : projects.length > 0 ? (
         <div className="space-y-4">
           {projects.map(p => {
-            const prog = getProgress(p.id);
-            const pTasks = getProjectTasks(p.id);
-            const isOpen = expanded === p.id;
-            return (
-              <div key={p.id} className="bg-card rounded-xl border border-border overflow-hidden hover:shadow-md transition-shadow">
-                <div className="p-5 cursor-pointer" onClick={() => setExpanded(isOpen ? null : p.id)}>
-                  <div className="flex items-start justify-between gap-4 mb-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-sm font-semibold">{p.name}</h3>
-                        <StatusBadge status={p.status} size="xs" />
-                      </div>
-                      {p.scope_description && <p className="text-xs text-muted-foreground line-clamp-2">{p.scope_description}</p>}
-                    </div>
-                    <span className="text-lg font-bold text-primary">{prog}%</span>
-                  </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all" style={{ width: `${prog}%`, background: "linear-gradient(to right, #FF4D35, #FFB74D)" }} />
-                  </div>
-                  <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
-                    {p.start_date && <span>Start: {new Date(p.start_date).toLocaleDateString()}</span>}
-                    {p.end_date && <span>End: {new Date(p.end_date).toLocaleDateString()}</span>}
-                    <span>{pTasks.length} tasks</span>
-                  </div>
-                </div>
+            const pTasks = tasks.filter(t => t.project_id === p.id);
+            const done = pTasks.filter(t => t.status === "done").length;
+            const progress = pTasks.length > 0 ? Math.round((done / pTasks.length) * 100) : 0;
+            const daysLeft = p.end_date ? Math.ceil((new Date(p.end_date) - new Date()) / 86400000) : null;
+            const inReview = pTasks.filter(t => t.status === "client_approval").length;
 
-                {isOpen && (
-                  <div className="border-t border-border p-5 bg-muted/20">
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Task Overview</h4>
-                    {pTasks.length > 0 ? (
-                      <div className="space-y-2">
-                        {pTasks.map(t => (
-                          <div key={t.id} className="flex items-center justify-between py-1.5">
-                            <span className="text-sm">{t.title}</span>
-                            <div className="flex gap-2">
-                              <StatusBadge status={t.priority} size="xs" />
-                              <StatusBadge status={t.status} size="xs" />
-                            </div>
-                          </div>
-                        ))}
+            return (
+              <div key={p.id} className="bg-card rounded-xl border border-border overflow-hidden">
+                {/* Status bar */}
+                <div className={`h-1 ${p.status === "active" ? "bg-emerald-500" : p.status === "paused" ? "bg-amber-500" : "bg-blue-500"}`} />
+
+                <div className="p-6">
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg, #FF4D35, #FFB74D)" }}>
+                        <FolderKanban className="w-5 h-5 text-white" />
                       </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">No tasks yet</p>
+                      <div>
+                        <h3 className="text-base font-bold">{p.name}</h3>
+                        {p.scope_description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{p.scope_description}</p>}
+                      </div>
+                    </div>
+                    <StatusBadge status={p.status} size="xs" />
+                  </div>
+
+                  {/* Progress */}
+                  {pTasks.length > 0 && (
+                    <div className="mb-4">
+                      <div className="flex justify-between text-xs mb-1.5">
+                        <span className="text-muted-foreground">Progress</span>
+                        <span className="font-semibold">{progress}%</span>
+                      </div>
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all" style={{ width: `${progress}%`, background: "linear-gradient(to right, #FF4D35, #FFB74D)" }} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Info row */}
+                  <div className="flex items-center gap-6 text-xs text-muted-foreground">
+                    {p.end_date && (
+                      <div className={`flex items-center gap-1 ${daysLeft !== null && daysLeft < 0 ? "text-red-600 font-medium" : daysLeft !== null && daysLeft <= 7 ? "text-amber-600" : ""}`}>
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>Delivery: {new Date(p.end_date).toLocaleDateString()}</span>
+                        {daysLeft !== null && <span>({daysLeft < 0 ? `${Math.abs(daysLeft)}d late` : daysLeft === 0 ? "today" : `${daysLeft}d`})</span>}
+                      </div>
+                    )}
+                    {pTasks.length > 0 && (
+                      <div className="flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>{done}/{pTasks.length} completed</span>
+                      </div>
+                    )}
+                    {inReview > 0 && (
+                      <a href="/client/approvals" className="text-primary font-medium hover:underline">
+                        {inReview} awaiting your approval
+                      </a>
                     )}
                   </div>
-                )}
+                </div>
               </div>
             );
           })}
         </div>
       ) : (
-        <div className="bg-card rounded-xl border border-border p-12 text-center text-sm text-muted-foreground">No projects yet</div>
+        <div className="bg-card rounded-xl border border-border p-16 text-center">
+          <FolderKanban className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+          <p className="text-sm font-medium">No projects yet</p>
+          <p className="text-xs text-muted-foreground mt-1">Your projects will appear here once your team sets them up</p>
+        </div>
       )}
     </div>
   );

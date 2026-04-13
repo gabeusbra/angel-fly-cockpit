@@ -360,8 +360,11 @@ export default function AdminUsers() {
                   </div>
                   <div className="flex-1">
                     <Input placeholder="Full Name" value={inviteForm.name}
-                      onChange={e => setInviteForm({ ...inviteForm, name: e.target.value })}
-                      className="border-0 bg-transparent text-sm font-semibold p-0 h-auto mb-1 focus-visible:ring-0 placeholder:text-muted-foreground/50" />
+                      onChange={e => {
+                        const val = e.target.value.replace(/\b\w/g, c => c.toUpperCase());
+                        setInviteForm({ ...inviteForm, name: val });
+                      }}
+                      autoCapitalize="words" className="border-0 bg-transparent text-sm font-semibold p-0 h-auto mb-1 focus-visible:ring-0 placeholder:text-muted-foreground/50" />
                     <Input type="email" placeholder="user@example.com" value={inviteForm.email}
                       onChange={e => setInviteForm({ ...inviteForm, email: e.target.value })}
                       className="border-0 bg-transparent text-xs p-0 h-auto focus-visible:ring-0 placeholder:text-muted-foreground/50 text-muted-foreground" />
@@ -463,8 +466,11 @@ export default function AdminUsers() {
                   <UserCircle className="w-7 h-7 text-muted-foreground" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <Input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                    placeholder="Full Name" className="border-0 bg-transparent text-sm font-semibold p-0 h-auto mb-0.5 focus-visible:ring-0 placeholder:text-muted-foreground/50" />
+                  <Input value={editForm.name} onChange={e => {
+                      const val = e.target.value.replace(/\b\w/g, c => c.toUpperCase());
+                      setEditForm({ ...editForm, name: val });
+                    }}
+                    placeholder="Full Name" autoCapitalize="words" className="border-0 bg-transparent text-sm font-semibold p-0 h-auto mb-0.5 focus-visible:ring-0 placeholder:text-muted-foreground/50" />
                   <p className="text-xs text-muted-foreground truncate">{editing.email}</p>
                 </div>
                 <Select value={editForm.status} onValueChange={v => setEditForm({ ...editForm, status: v })}>

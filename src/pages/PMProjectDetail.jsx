@@ -88,6 +88,7 @@ export default function PMProjectDetail() {
   const [tasks, setTasks] = useState([]);
   const [allTasks, setAllTasks] = useState([]);
   const [pros, setPros] = useState([]);
+  const [clientUsers, setClientUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Filters
@@ -106,7 +107,7 @@ export default function PMProjectDetail() {
 
   // Project settings
   const [showSettings, setShowSettings] = useState(false);
-  const [projectForm, setProjectForm] = useState({ name: "", client_name: "", scope_description: "", status: "active", start_date: "", end_date: "", total_budget: "", payment_type: "one-time", recurrence_interval: "none" });
+  const [projectForm, setProjectForm] = useState({ name: "", client_id: "", client_name: "", scope_description: "", status: "active", start_date: "", end_date: "", total_budget: "", payment_type: "one-time", recurrence_interval: "none" });
 
   // Project docs
   const [showDocs, setShowDocs] = useState(false);
@@ -138,6 +139,7 @@ export default function PMProjectDetail() {
       ? t.filter(tk => tk.assigned_to === user?.id || tk.assigned_to_name?.toLowerCase() === user?.full_name?.toLowerCase())
       : t;
     setProject(proj); setTasks(myTasks); setAllTasks(at); setPros(u); setLoading(false);
+    try { const allU = await base44.entities.User.list(); setClientUsers(allU.filter(usr => usr.role === "client" && usr.status !== "inactive")); } catch { /* ignore */ }
 
     // Load docs after project is set
     if (proj) {
@@ -164,7 +166,7 @@ export default function PMProjectDetail() {
   const openSettings = () => {
     if (!project) return;
     setProjectForm({
-      name: project.name || "", client_name: project.client_name || "",
+      name: project.name || "", client_id: project.client_id || "", client_name: project.client_name || "",
       scope_description: project.scope_description || "", status: project.status || "active",
       start_date: project.start_date || "", end_date: project.end_date || "",
       total_budget: project.total_budget ? String(project.total_budget) : "",
@@ -703,8 +705,24 @@ export default function PMProjectDetail() {
               <Input value={projectForm.name} onChange={e => setProjectForm({ ...projectForm, name: e.target.value })} />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground block mb-1">Client Name</label>
-              <Input value={projectForm.client_name} onChange={e => setProjectForm({ ...projectForm, client_name: e.target.value })} />
+              <label className="text-xs font-medium text-muted-foreground block mb-1">Client</label>
+              {clientUsers.length > 0 ? (
+                <Select value={projectForm.client_id || ""} onValueChange={v => {
+                  const c = clientUsers.find(cl => cl.id === v);
+                  setProjectForm({ ...projectForm, client_id: v, client_name: c?.full_name || c?.company || "" });
+                }}>
+                  <SelectTrigger><SelectValue placeholder={projectForm.client_name || "Select client"} /></SelectTrigger>
+                  <SelectContent>
+                    {clientUsers.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.full_name || c.email}{c.company ? ` — ${c.company}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input value={projectForm.client_name} onChange={e => setProjectForm({ ...projectForm, client_name: e.target.value })} placeholder="Client name" />
+              )}
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground block mb-1">Scope Description</label>
