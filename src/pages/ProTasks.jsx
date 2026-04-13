@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useOutletContext } from "react-router-dom";
-import { Upload, Clock, CheckCircle2, Sparkles, ExternalLink } from "lucide-react";
+import { Upload, Clock, CheckCircle2, Sparkles, ExternalLink, Link2, X, FileText, Film, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +22,8 @@ export default function ProTasks() {
   const [loading, setLoading] = useState(true);
   const [uploadTask, setUploadTask] = useState(null);
   const [deliverableUrl, setDeliverableUrl] = useState("");
+  const [deliverables, setDeliverables] = useState([]);
+  const [linkInput, setLinkInput] = useState("");
   const [uploading, setUploading] = useState(false);
   const [detail, setDetail] = useState(null);
   const [note, setNote] = useState("");
@@ -43,17 +45,38 @@ export default function ProTasks() {
   };
 
   const handleFileUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
     setUploading(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    setDeliverableUrl(file_url);
+    for (const file of files) {
+      try {
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        const type = file.type.startsWith("video") ? "video" : file.type.startsWith("image") ? "image" : "file";
+        setDeliverables(prev => [...prev, { url: file_url, name: file.name, type }]);
+      } catch { /* ignore */ }
+    }
     setUploading(false);
+    e.target.value = "";
+  };
+
+  const addDeliverableLink = () => {
+    if (!linkInput.trim()) return;
+    setDeliverables(prev => [...prev, { url: linkInput.trim(), name: linkInput.trim(), type: "link" }]);
+    setLinkInput("");
   };
 
   const handleSubmitDeliverable = async () => {
-    await base44.entities.Task.update(uploadTask.id, { deliverable_url: deliverableUrl, status: "review" });
-    setUploadTask(null); setDeliverableUrl("");
+    const allUrls = deliverables.map(d => d.url);
+    const mainUrl = allUrls[0] || deliverableUrl;
+    // Store first URL in deliverable_url, all URLs in description as links
+    const deliverableLinks = allUrls.length > 1 ? `\n\n--- Deliverables ---\n${allUrls.map((u, i) => `${i + 1}. ${u}`).join("\n")}` : "";
+    const noteText = note ? `\n\n[Note]: ${note}` : "";
+    await base44.entities.Task.update(uploadTask.id, {
+      deliverable_url: mainUrl,
+      status: "review",
+      description: (uploadTask.description || "") + deliverableLinks + noteText,
+    });
+    setUploadTask(null); setDeliverableUrl(""); setDeliverables([]); setLinkInput(""); setNote("");
     loadTasks();
   };
 
@@ -194,26 +217,59 @@ export default function ProTasks() {
       </Dialog>
 
       {/* Upload deliverable dialog */}
-      <Dialog open={!!uploadTask} onOpenChange={() => { setUploadTask(null); setDeliverableUrl(""); }}>
+      <Dialog open={!!uploadTask} onOpenChange={() => { setUploadTask(null); setDeliverableUrl(""); setDeliverables([]); setLinkInput(""); }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Upload Deliverable</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Submit Deliverable</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="bg-muted/30 rounded-lg p-3">
               <p className="text-sm font-semibold">{uploadTask?.title}</p>
               <p className="text-xs text-muted-foreground">{uploadTask?.project_name}</p>
             </div>
-            <div className="border-2 border-dashed border-border rounded-xl p-6 text-center">
-              <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-              <Input type="file" onChange={handleFileUpload} disabled={uploading} className="max-w-xs mx-auto" />
-              {uploading && <p className="text-xs text-muted-foreground mt-2">Uploading...</p>}
-              {deliverableUrl && <p className="text-xs text-emerald-600 mt-2">File uploaded successfully</p>}
+
+            {/* Uploaded items */}
+            {deliverables.length > 0 && (
+              <div className="space-y-2">
+                {deliverables.map((d, i) => (
+                  <div key={i} className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                    {d.type === "image" ? <Image className="w-4 h-4 text-blue-500 shrink-0" /> :
+                     d.type === "video" ? <Film className="w-4 h-4 text-purple-500 shrink-0" /> :
+                     d.type === "link" ? <Link2 className="w-4 h-4 text-emerald-500 shrink-0" /> :
+                     <FileText className="w-4 h-4 text-muted-foreground shrink-0" />}
+                    <span className="text-xs truncate flex-1">{d.name}</span>
+                    <button onClick={() => setDeliverables(prev => prev.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-red-500">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Upload buttons */}
+            <div className="flex gap-2 flex-wrap">
+              <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:bg-muted/30 cursor-pointer transition-colors">
+                <Upload className="w-3.5 h-3.5" /> Upload File
+                <input type="file" accept="image/*,.pdf,.doc,.docx,.zip,.psd,.ai,.fig" multiple onChange={handleFileUpload} className="hidden" disabled={uploading} />
+              </label>
+              <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:bg-muted/30 cursor-pointer transition-colors">
+                <Film className="w-3.5 h-3.5" /> Upload Video
+                <input type="file" accept="video/*" onChange={handleFileUpload} className="hidden" disabled={uploading} />
+              </label>
             </div>
-            <div className="text-center text-xs text-muted-foreground">or</div>
-            <Input placeholder="Paste a URL (Google Drive, Figma, etc.)" value={deliverableUrl} onChange={e => setDeliverableUrl(e.target.value)} />
+            {uploading && <p className="text-xs text-muted-foreground">Uploading...</p>}
+
+            {/* Link input */}
+            <div className="flex gap-2">
+              <Input placeholder="Paste link (Google Drive, Figma, Canva, etc.)" value={linkInput} onChange={e => setLinkInput(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && addDeliverableLink()} className="text-xs" />
+              <Button variant="outline" size="sm" className="shrink-0 gap-1 text-xs" onClick={addDeliverableLink} disabled={!linkInput.trim()}>
+                <Link2 className="w-3 h-3" /> Add
+              </Button>
+            </div>
+
             <Textarea placeholder="Add a note for the reviewer (optional)" value={note} onChange={e => setNote(e.target.value)} rows={2} />
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => { setUploadTask(null); setDeliverableUrl(""); setNote(""); }}>Cancel</Button>
-              <Button onClick={handleSubmitDeliverable} disabled={!deliverableUrl} className="gap-1.5">
+              <Button variant="outline" onClick={() => { setUploadTask(null); setDeliverableUrl(""); setDeliverables([]); setLinkInput(""); setNote(""); }}>Cancel</Button>
+              <Button onClick={handleSubmitDeliverable} disabled={deliverables.length === 0 && !deliverableUrl} className="gap-1.5">
                 <CheckCircle2 className="w-4 h-4" /> Submit for Review
               </Button>
             </div>
