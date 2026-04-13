@@ -10,9 +10,11 @@ import { filterMyRecords } from "@/lib/entity-helpers";
 import StatusBadge from "../components/StatusBadge";
 
 const COLS = [
+  { key: "backlog", label: "Backlog", color: "bg-slate-400", lightBg: "bg-slate-50" },
   { key: "assigned", label: "Assigned", color: "bg-blue-500", lightBg: "bg-blue-50" },
   { key: "in_progress", label: "In Progress", color: "bg-amber-500", lightBg: "bg-amber-50" },
   { key: "review", label: "Review", color: "bg-purple-500", lightBg: "bg-purple-50" },
+  { key: "client_approval", label: "Client Review", color: "bg-orange-500", lightBg: "bg-orange-50" },
   { key: "done", label: "Done", color: "bg-emerald-500", lightBg: "bg-emerald-50" },
 ];
 
@@ -148,7 +150,7 @@ export default function ProTasks() {
 
                       {/* Action buttons */}
                       <div onClick={e => e.stopPropagation()}>
-                        {key === "assigned" && (
+                        {(key === "backlog" || key === "assigned") && (
                           <Button size="sm" className="w-full h-8 text-xs gap-1.5" onClick={() => handleStatus(t.id, "in_progress")}>
                             <Sparkles className="w-3 h-3" /> Start Working
                           </Button>
@@ -157,6 +159,11 @@ export default function ProTasks() {
                           <Button size="sm" variant="outline" className="w-full h-8 text-xs gap-1.5" onClick={() => setUploadTask(t)}>
                             <Upload className="w-3 h-3" /> Upload Deliverable
                           </Button>
+                        )}
+                        {key === "client_approval" && (
+                          <div className="flex items-center gap-1.5 text-xs text-amber-600">
+                            <Clock className="w-3.5 h-3.5" /> Awaiting client
+                          </div>
                         )}
                         {key === "done" && (
                           <div className="flex items-center gap-1.5 text-xs text-emerald-600">
