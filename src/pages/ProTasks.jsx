@@ -108,11 +108,11 @@ export default function ProTasks() {
       </div>
 
       {loading ? (
-        <div className="flex gap-4">{[...Array(4)].map((_, i) => <div key={i} className="flex-1 h-40 bg-muted rounded-xl animate-pulse" />)}</div>
+        <div className="flex gap-4">{[...Array(6)].map((_, i) => <div key={i} className="flex-1 h-40 bg-muted rounded-xl animate-pulse" />)}</div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {COLS.map(({ key, label, color, lightBg }) => (
-            <div key={key} className="space-y-3">
+        <div className="flex gap-4 overflow-x-auto pb-4">
+          {COLS.map(({ key, label, color }) => (
+            <div key={key} className="min-w-[200px] flex-1 space-y-3">
               {/* Column header */}
               <div className="flex items-center gap-2">
                 <div className={`w-2.5 h-2.5 rounded-full ${color}`} />
