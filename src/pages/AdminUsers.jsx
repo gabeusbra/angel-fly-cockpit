@@ -42,7 +42,8 @@ export default function AdminUsers() {
 
   // Edit dialog
   const [editing, setEditing] = useState(null);
-  const [editForm, setEditForm] = useState({ name: "", role: "", specialty: "", hourly_rate: "", company: "", phone: "", status: "active" });
+  const [editForm, setEditForm] = useState({ name: "", role: "", specialty: "", hourly_rate: "", company: "", phone: "", status: "active", avatar_url: "" });
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   // Deactivate dialog
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -146,6 +147,7 @@ export default function AdminUsers() {
       company: user.company || "",
       phone: user.phone || "",
       status: user.status || "active",
+      avatar_url: user.avatar_url || "",
     });
   };
 
@@ -160,6 +162,7 @@ export default function AdminUsers() {
       company: editForm.role === "client" ? editForm.company : "",
       phone: editForm.phone,
       status: editForm.status,
+      avatar_url: editForm.avatar_url || "",
     };
     await base44.entities.User.update(editing.id, payload);
     setEditing(null);
@@ -550,6 +553,30 @@ export default function AdminUsers() {
                   <div>
                     <label className="text-xs font-medium text-muted-foreground block mb-1">Company Name</label>
                     <Input placeholder="e.g. Angel Fly, Restaurant ABC" value={editForm.company} onChange={e => setEditForm({ ...editForm, company: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground block mb-1">Company Logo</label>
+                    <div className="flex items-center gap-3">
+                      {editForm.avatar_url ? (
+                        <img src={editForm.avatar_url} alt="Logo" className="w-12 h-12 rounded-xl object-contain border border-border bg-white" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-muted-foreground text-xs">No logo</div>
+                      )}
+                      <div className="flex-1">
+                        <Input type="file" accept="image/*" disabled={uploadingLogo} onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setUploadingLogo(true);
+                          try {
+                            const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                            setEditForm(f => ({ ...f, avatar_url: file_url }));
+                          } catch { /* ignore */ }
+                          setUploadingLogo(false);
+                        }} className="text-xs" />
+                        {uploadingLogo && <p className="text-[10px] text-muted-foreground mt-1">Uploading...</p>}
+                      </div>
+                    </div>
+                    <Input placeholder="Or paste logo URL" value={editForm.avatar_url} onChange={e => setEditForm({ ...editForm, avatar_url: e.target.value })} className="mt-2 text-xs" />
                   </div>
                 </div>
               )}
