@@ -361,7 +361,7 @@ export default function AdminUsers() {
                   <div className="flex-1">
                     <Input placeholder="Full Name" value={inviteForm.name}
                       onChange={e => {
-                        const val = e.target.value.replace(/\b\w/g, c => c.toUpperCase());
+                        const val = e.target.value.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
                         setInviteForm({ ...inviteForm, name: val });
                       }}
                       autoCapitalize="words" className="border-0 bg-transparent text-sm font-semibold p-0 h-auto mb-1 focus-visible:ring-0 placeholder:text-muted-foreground/50" />
@@ -467,7 +467,7 @@ export default function AdminUsers() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <Input value={editForm.name} onChange={e => {
-                      const val = e.target.value.replace(/\b\w/g, c => c.toUpperCase());
+                      const val = e.target.value.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
                       setEditForm({ ...editForm, name: val });
                     }}
                     placeholder="Full Name" autoCapitalize="words" className="border-0 bg-transparent text-sm font-semibold p-0 h-auto mb-0.5 focus-visible:ring-0 placeholder:text-muted-foreground/50" />
