@@ -21,16 +21,17 @@ export default function PMProjects() {
   const [form, setForm] = useState({ name: "", client_id: "", client_name: "", scope_description: "", status: "active", start_date: "", end_date: "", total_budget: "", payment_type: "one-time" });
 
   useEffect(() => {
-    Promise.all([
-      base44.entities.Project.list("-created_date"),
-      base44.entities.Task.list(),
-      base44.entities.User.list(),
-    ]).then(([p, t, u]) => {
+    const loadData = async () => {
+      let p = [], t = [], u = [];
+      try { p = await base44.entities.Project.list("-created_date"); } catch { try { p = await base44.entities.Project.list(); } catch { /* ignore */ } }
+      try { t = await base44.entities.Task.list(); } catch { /* ignore */ }
+      try { u = await base44.entities.User.list(); } catch { /* ignore */ }
       setProjects(p);
       setTasks(t);
       setClients(u.filter(usr => usr.role === "client" && usr.status !== "inactive"));
       setLoading(false);
-    });
+    };
+    loadData();
   }, []);
 
   const handleCreate = async () => {

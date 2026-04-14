@@ -20,11 +20,14 @@ export default function PMPaymentRequests() {
   const [form, setForm] = useState({ professional_id: "", task_id: "", amount: "", notes: "" });
 
   useEffect(() => {
-    Promise.all([
-      base44.entities.PaymentOutgoing.list("-created_date"),
-      base44.entities.Task.list(),
-      base44.entities.User.filter({ role: "professional", status: "active" }),
-    ]).then(([p, t, u]) => { setPayments(p); setTasks(t); setPros(u); setLoading(false); });
+    const init = async () => {
+      let p = [], t = [], u = [];
+      try { p = await base44.entities.PaymentOutgoing.list("-created_date"); } catch { try { p = await base44.entities.PaymentOutgoing.list(); } catch { /* ignore */ } }
+      try { t = await base44.entities.Task.list(); } catch { /* ignore */ }
+      try { u = await base44.entities.User.filter({ role: "professional", status: "active" }); } catch { try { const all = await base44.entities.User.list(); u = all.filter(usr => usr.role === "professional"); } catch { /* ignore */ } }
+      setPayments(p); setTasks(t); setPros(u); setLoading(false);
+    };
+    init();
   }, []);
 
   const handleCreate = async () => {

@@ -15,8 +15,13 @@ export default function PMTickets() {
   const [statusFilter, setStatusFilter] = useState("all");
 
   useEffect(() => {
-    Promise.all([base44.entities.Ticket.list("-created_date"), base44.entities.User.filter({ role: "professional", status: "active" })])
-      .then(([t, u]) => { setTickets(t); setPros(u); setLoading(false); });
+    const init = async () => {
+      let t = [], u = [];
+      try { t = await base44.entities.Ticket.list("-created_date"); } catch { try { t = await base44.entities.Ticket.list(); } catch { /* ignore */ } }
+      try { u = await base44.entities.User.filter({ role: "professional", status: "active" }); } catch { try { const all = await base44.entities.User.list(); u = all.filter(usr => usr.role === "professional"); } catch { /* ignore */ } }
+      setTickets(t); setPros(u); setLoading(false);
+    };
+    init();
   }, []);
 
   const load = async () => {

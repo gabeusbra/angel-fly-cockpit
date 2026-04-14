@@ -13,13 +13,14 @@ export default function PMDashboard({ user }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
-      base44.entities.Project.list(),
-      base44.entities.Task.list(),
-      base44.entities.Ticket.list(),
-    ]).then(([p, t, tk]) => {
+    const load = async () => {
+      let p = [], t = [], tk = [];
+      try { p = await base44.entities.Project.list(); } catch { /* ignore */ }
+      try { t = await base44.entities.Task.list(); } catch { /* ignore */ }
+      try { tk = await base44.entities.Ticket.list(); } catch { /* ignore */ }
       setProjects(p); setTasks(t); setTickets(tk); setLoading(false);
-    });
+    };
+    load();
   }, []);
 
   const activeProjects = projects.filter(p => p.status === "active").length;

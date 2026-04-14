@@ -18,10 +18,13 @@ export default function PMTeam() {
   const [inviteError, setInviteError] = useState("");
 
   useEffect(() => {
-    Promise.all([
-      base44.entities.User.list(),
-      base44.entities.Task.list(),
-    ]).then(([u, t]) => { setUsers(u); setTasks(t); setLoading(false); });
+    const init = async () => {
+      let u = [], t = [];
+      try { u = await base44.entities.User.list(); } catch { /* ignore */ }
+      try { t = await base44.entities.Task.list(); } catch { /* ignore */ }
+      setUsers(u); setTasks(t); setLoading(false);
+    };
+    init();
   }, []);
 
   const load = async () => {
