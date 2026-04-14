@@ -268,41 +268,102 @@ export default function QuoteBuilder() {
 
   const handleImportHtml = async () => {
     if (!htmlContent) return;
-    const token = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
     const client = clients.find(c => c.id === importClient);
 
-    // Upload HTML as file
-    let dataUrl = "";
-    try {
-      const blob = new Blob([htmlContent], { type: "text/html" });
-      const file = new File([blob], `quote_html_${token}.html`, { type: "text/html" });
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      dataUrl = file_url;
-    } catch { /* ignore */ }
-
-    const quote = {
-      id: token,
-      title: "Imported Quote",
-      client_name: client?.contact_name || client?.name || "",
-      client_company: client?.name || "",
-      client_email: client?.email || "",
-      client_logo: client?.logo_url || "",
-      items: [],
-      notes: "",
-      html_url: dataUrl,
-      is_html: true,
-      created_at: new Date().toISOString(),
-      created_by: user?.full_name || user?.email || "Admin",
-      status: "pending",
+    // Extract text from HTML — strip tags, decode entities
+    const extractText = (html) => {
+      const div = document.createElement("div");
+      div.innerHTML = html;
+      // Remove script/style
+      div.querySelectorAll("script, style, link, meta").forEach(el => el.remove());
+      return div.innerText || div.textContent || "";
     };
 
-    const all = getQuotes();
-    all.unshift(quote);
-    saveQuotes(all);
-    setQuotes(all);
+    const rawText = extractText(htmlContent);
+
+    // Feed through the same smart parser
+    setPasteText(rawText);
+
+    // Pre-fill client from selection
+    setForm(f => ({
+      ...f,
+      client_name: client?.contact_name || client?.name || f.client_name,
+      client_company: client?.name || f.client_company,
+      client_email: client?.email || f.client_email,
+      client_logo: client?.logo_url || f.client_logo,
+    }));
+
     setShowImportHtml(false);
     setHtmlContent("");
     setImportClient("");
+
+    // Trigger the parser after a tick so state is set
+    setTimeout(() => {
+      // Parse the extracted text
+      const lines = rawText.split("\n").map(l => l.trim()).filter(Boolean);
+      const norm = (s) => s.replace(/[—–]/g, "-").replace(/\s+/g, " ");
+      const isPricingLine = (line) => {
+        const n = norm(line);
+        return /[\d,]+\s*\w*.*?[\$][\d,.]+|[\$][\d,.]+.*?[\d,]+\s*\w*/i.test(n) || /[\d,]+\s*\w*\s*[-]\s*[\$R]?\$?[\d,.]+/i.test(n);
+      };
+      const parsePriceLine = (line) => {
+        const n = norm(line).replace(/[*•·🌟⭐✨]/g, "").trim();
+        let match = n.match(/([\d,]+)\s*([\w\s]*?)\s*[-:]\s*[\$R]?\$?([\d,.]+)/i);
+        if (match) return { qty: match[1].trim(), label: match[2]?.trim().replace(/[-:]/g, "").trim() || "units", price: match[3].replace(/,/g, "").trim(), best_value: /best\s*value|recommended|popular|🌟|⭐/i.test(line) };
+        const priceMatch = n.match(/[\$R]?\$?([\d,.]+)/);
+        if (priceMatch) return { qty: "1", label: "", price: priceMatch[1].replace(/,/g, ""), best_value: false };
+        return null;
+      };
+      const isSpecLine = (line) => /^[•·\-\*]?\s*.+?[:：]\s*.+/.test(line) && !isPricingLine(line);
+      const parseSpecLine = (line) => { const m = line.match(/^[•·\-\*]?\s*(.+?)[:：]\s*(.+)/); return m ? { label: m[1].trim(), value: m[2].trim() } : null; };
+
+      const items = [];
+      let currentItem = null;
+      let itemNameFound = false;
+
+      for (const line of lines) {
+        const cleaned = line.replace(/^[*•·\-]\s*/, "").trim();
+        if (!cleaned || cleaned.length < 2) continue;
+        if (isPricingLine(line)) {
+          if (!currentItem) { currentItem = { name: "Item", description: "", image_url: "", specs: [], pricing: [] }; items.push(currentItem); }
+          const parsed = parsePriceLine(line); if (parsed) currentItem.pricing.push(parsed);
+          continue;
+        }
+        if (isSpecLine(line)) {
+          if (!currentItem) { currentItem = { name: "Item", description: "", image_url: "", specs: [], pricing: [] }; items.push(currentItem); }
+          const spec = parseSpecLine(line); if (spec) currentItem.specs.push(spec);
+          continue;
+        }
+        if (!itemNameFound && cleaned.length < 80) {
+          const hasProduct = /\d+["'"]|x\s*\d|sticker|label|card|banner|flyer|menu|logo|design|print|package|roll|custom/i.test(cleaned);
+          if (hasProduct || cleaned.length > 20) {
+            const parts = cleaned.split(/\s*[-—–]\s*/);
+            currentItem = { name: parts[0].trim(), description: parts.length > 1 ? parts.slice(1).join(" ") : "", image_url: "", specs: [], pricing: [] };
+            items.push(currentItem); itemNameFound = true; continue;
+          }
+        }
+        if (currentItem) {
+          if (currentItem.pricing.length > 0 && cleaned.length < 60) {
+            currentItem = { name: cleaned, description: "", image_url: "", specs: [], pricing: [] }; items.push(currentItem);
+          } else if (currentItem.name === "Item") { currentItem.name = cleaned; }
+          else { currentItem.description += (currentItem.description ? "\n" : "") + cleaned; }
+        }
+      }
+
+      if (items.length === 0) items.push({ name: lines[0] || "Imported Item", description: "", image_url: "", specs: [], pricing: [{ qty: "", price: "", label: "", best_value: false }] });
+      items.forEach(item => { if (item.pricing.length === 0) item.pricing.push({ qty: "", price: "", label: "", best_value: false }); });
+
+      setForm(f => ({
+        ...f,
+        client_name: client?.contact_name || client?.name || f.client_name,
+        client_company: client?.name || f.client_company,
+        client_email: client?.email || f.client_email,
+        client_logo: client?.logo_url || f.client_logo,
+        items,
+      }));
+      setPasteText("");
+      setShowCreate(true);
+    }, 100);
   };
 
   return (
