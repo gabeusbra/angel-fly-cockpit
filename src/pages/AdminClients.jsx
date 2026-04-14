@@ -194,18 +194,21 @@ export default function AdminClients() {
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground block mb-1">Link to User Account (optional)</label>
-              {users.length > 0 ? (
-                <Select value={form.user_email} onValueChange={v => setForm({ ...form, user_email: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select user account..." /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">None</SelectItem>
-                    {users.filter(u => u.role === "client" || !u.role || u.role === "user").map(u => (
-                      <SelectItem key={u.email} value={u.email}>{u.full_name || u.email}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Input placeholder="User email" value={form.user_email} onChange={e => setForm({ ...form, user_email: e.target.value })} />
+              <div className="flex gap-2">
+                <Input placeholder="User email address" value={form.user_email} onChange={e => setForm({ ...form, user_email: e.target.value })} className="flex-1" />
+                {form.user_email && (
+                  <Button variant="ghost" size="sm" className="shrink-0 text-xs text-red-500" onClick={() => setForm({ ...form, user_email: "" })}>Clear</Button>
+                )}
+              </div>
+              {users.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {users.filter(u => u.role === "client" || !u.role || u.role === "user").map(u => (
+                    <button key={u.email || u.id} onClick={() => setForm({ ...form, user_email: u.email })}
+                      className={`text-[10px] px-2 py-1 rounded-full transition-all ${form.user_email === u.email ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
+                      {u.full_name || u.email}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
             <div>
