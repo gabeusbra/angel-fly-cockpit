@@ -14,6 +14,8 @@ import AdminProjects from './pages/AdminProjects';
 import AdminReports from './pages/AdminReports';
 import AdminUsers from './pages/AdminUsers';
 import AdminTickets from './pages/AdminTickets';
+import QuoteBuilder from './pages/QuoteBuilder';
+import QuoteView from './pages/QuoteView';
 import PMProjects from './pages/PMProjects';
 import PMProjectDetail from './pages/PMProjectDetail';
 import PMTickets from './pages/PMTickets';
@@ -53,6 +55,9 @@ const AuthenticatedApp = () => {
   // Render the main app
   return (
     <Routes>
+      {/* Public quote viewer — no auth, no sidebar */}
+      <Route path="/quote/:token" element={<QuoteView />} />
+
       <Route element={<Layout />}>
         <Route path="/" element={<RoleRouter />} />
         <Route path="/admin/approvals" element={<AdminPaymentApprovals />} />
@@ -62,9 +67,11 @@ const AuthenticatedApp = () => {
         <Route path="/admin/reports" element={<AdminReports />} />
         <Route path="/admin/users" element={<AdminUsers />} />
         <Route path="/admin/tickets" element={<AdminTickets />} />
+        <Route path="/admin/quotes" element={<QuoteBuilder />} />
         <Route path="/pm/projects" element={<PMProjects />} />
         <Route path="/pm/projects/:id" element={<PMProjectDetail />} />
         <Route path="/pm/tickets" element={<PMTickets />} />
+        <Route path="/pm/quotes" element={<QuoteBuilder />} />
         <Route path="/pm/payments" element={<PMPaymentRequests />} />
         <Route path="/pm/team" element={<PMTeam />} />
         <Route path="/pro/tasks" element={<ProTasks />} />
