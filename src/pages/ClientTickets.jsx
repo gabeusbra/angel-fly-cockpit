@@ -217,13 +217,13 @@ export default function ClientTickets() {
               {attachments.length > 0 && (
                 <div className="space-y-2">
                   {attachments.map((a, i) => (
-                    <div key={i} className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2">
+                    <div key={i} className="flex items-center gap-2 bg-muted/30 rounded-lg px-3 py-2 min-w-0 overflow-hidden">
                       {a.type === "image" ? <Image className="w-4 h-4 text-blue-500 shrink-0" /> :
                        a.type === "video" ? <Film className="w-4 h-4 text-purple-500 shrink-0" /> :
                        a.type === "link" ? <Link2 className="w-4 h-4 text-emerald-500 shrink-0" /> :
                        <FileText className="w-4 h-4 text-muted-foreground shrink-0" />}
-                      <span className="text-xs truncate flex-1">{a.name}</span>
-                      <button onClick={() => removeAttachment(i)} className="text-muted-foreground hover:text-red-500 transition-colors">
+                      <span className="text-xs truncate flex-1 min-w-0">{a.name}</span>
+                      <button onClick={() => removeAttachment(i)} className="text-muted-foreground hover:text-red-500 transition-colors shrink-0">
                         <X className="w-3.5 h-3.5" />
                       </button>
                     </div>
