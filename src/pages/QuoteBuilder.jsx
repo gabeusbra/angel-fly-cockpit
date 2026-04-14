@@ -20,6 +20,7 @@ export default function QuoteBuilder() {
   const [showPaste, setShowPaste] = useState(false);
   const [pasteText, setPasteText] = useState("");
   const [copiedId, setCopiedId] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(null);
 
   // Form state
   const [form, setForm] = useState({
@@ -342,7 +343,44 @@ export default function QuoteBuilder() {
                   </div>
                   <Input placeholder="Item Name (e.g. Custom Roll Labels)" value={item.name} onChange={e => updateItem(iIdx, "name", e.target.value)} />
                   <Textarea placeholder="Description" value={item.description} onChange={e => updateItem(iIdx, "description", e.target.value)} rows={2} />
-                  <Input placeholder="Image URL (optional)" value={item.image_url} onChange={e => updateItem(iIdx, "image_url", e.target.value)} />
+
+                  {/* Image upload + preview */}
+                  <div>
+                    <label className="text-[10px] font-semibold text-muted-foreground uppercase block mb-2">Item Image</label>
+                    <div className="flex items-start gap-3">
+                      {item.image_url ? (
+                        <div className="relative group">
+                          <img src={item.image_url} alt="" className="w-20 h-20 rounded-xl object-cover border border-border" />
+                          <button onClick={() => updateItem(iIdx, "image_url", "")}
+                            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="w-20 h-20 rounded-xl border-2 border-dashed border-border flex items-center justify-center text-muted-foreground text-[10px]">
+                          No image
+                        </div>
+                      )}
+                      <div className="flex-1 space-y-2">
+                        <label className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:bg-muted/30 cursor-pointer transition-colors w-fit">
+                          <Plus className="w-3.5 h-3.5" /> Upload Image
+                          <input type="file" accept="image/*" className="hidden" disabled={uploadingImage === iIdx} onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            setUploadingImage(iIdx);
+                            try {
+                              const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                              updateItem(iIdx, "image_url", file_url);
+                            } catch { /* ignore */ }
+                            setUploadingImage(null);
+                            e.target.value = "";
+                          }} />
+                        </label>
+                        {uploadingImage === iIdx && <p className="text-[10px] text-muted-foreground">Uploading...</p>}
+                        <Input placeholder="Or paste image URL" value={item.image_url} onChange={e => updateItem(iIdx, "image_url", e.target.value)} className="text-xs h-8" />
+                      </div>
+                    </div>
+                  </div>
 
                   {/* Specs */}
                   <div>
