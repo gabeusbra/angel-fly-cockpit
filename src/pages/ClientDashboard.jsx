@@ -30,8 +30,16 @@ export default function ClientDashboard({ user }) {
 
   const openTickets = tickets.filter(t => t.status === "open" || t.status === "in_progress").length;
   const nextPayment = payments.filter(p => p.status === "pending").sort((a, b) => new Date(a.due_date || "2099") - new Date(b.due_date || "2099"))[0];
-  const companyName = user?.company || "Your Company";
-  const logo = user?.avatar_url;
+  // Get client branding from Client store
+  const [clientData, setClientData] = useState(null);
+  useEffect(() => {
+    import("@/lib/clients-store").then(({ getClientByEmail }) => {
+      const c = getClientByEmail(user?.email);
+      if (c) setClientData(c);
+    });
+  }, [user]);
+  const companyName = clientData?.name || user?.company || "Your Company";
+  const logo = clientData?.logo_url || user?.avatar_url;
 
   const stats = [
     { label: "Active Projects", value: projects.filter(p => p.status === "active").length, icon: FolderKanban, color: "text-blue-600", bg: "bg-blue-50" },

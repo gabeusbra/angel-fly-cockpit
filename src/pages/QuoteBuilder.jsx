@@ -31,7 +31,10 @@ export default function QuoteBuilder() {
 
   useEffect(() => {
     setQuotes(getQuotes());
-    try { base44.entities.User.list().then(u => setClients(u.filter(usr => usr.role === "client"))); } catch { /* ignore */ }
+    // Load clients from Client store (not User entity)
+    import("@/lib/clients-store").then(({ getClients }) => {
+      setClients(getClients().filter(c => c.status === "active"));
+    });
   }, []);
 
   // Smart parser: paste raw text → structured quote
@@ -322,11 +325,11 @@ export default function QuoteBuilder() {
               {clients.length > 0 && (
                 <Select onValueChange={v => {
                   const c = clients.find(cl => cl.id === v);
-                  if (c) setForm(f => ({ ...f, client_name: c.full_name || "", client_company: c.company || "", client_email: c.email || "", client_logo: c.avatar_url || "" }));
+                  if (c) setForm(f => ({ ...f, client_name: c.contact_name || c.name || "", client_company: c.name || "", client_email: c.email || "", client_logo: c.logo_url || "" }));
                 }}>
-                  <SelectTrigger><SelectValue placeholder="Select from users..." /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Select client..." /></SelectTrigger>
                   <SelectContent>
-                    {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.full_name || c.email}{c.company ? ` — ${c.company}` : ""}</SelectItem>)}
+                    {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}{c.contact_name ? ` — ${c.contact_name}` : ""}</SelectItem>)}
                   </SelectContent>
                 </Select>
               )}

@@ -28,7 +28,8 @@ export default function PMProjects() {
       try { u = await base44.entities.User.list(); } catch { /* ignore */ }
       setProjects(p);
       setTasks(t);
-      setClients(u.filter(usr => usr.role === "client" && usr.status !== "inactive"));
+      // Load from Client store instead of User entity
+      try { const { getClients } = await import("@/lib/clients-store"); setClients(getClients().filter(c => c.status === "active")); } catch { setClients(u.filter(usr => usr.role === "client")); }
       setLoading(false);
     };
     loadData();
@@ -38,7 +39,7 @@ export default function PMProjects() {
     const client = clients.find(c => c.id === form.client_id);
     await base44.entities.Project.create({
       ...form,
-      client_name: client?.full_name || client?.company || form.client_name || "",
+      client_name: client?.name || client?.contact_name || client?.full_name || form.client_name || "",
       total_budget: form.total_budget ? parseFloat(form.total_budget) : 0,
     });
     setShowCreate(false);
@@ -130,13 +131,13 @@ export default function PMProjects() {
               {clients.length > 0 ? (
                 <Select value={form.client_id} onValueChange={v => {
                   const c = clients.find(cl => cl.id === v);
-                  setForm({ ...form, client_id: v, client_name: c?.full_name || c?.company || "" });
+                  setForm({ ...form, client_id: v, client_name: c?.name || c?.contact_name || "" });
                 }}>
                   <SelectTrigger><SelectValue placeholder="Select a client" /></SelectTrigger>
                   <SelectContent>
                     {clients.map(c => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.full_name || c.email}{c.company ? ` — ${c.company}` : ""}
+                        {c.name || c.contact_name || c.email}{c.contact_name && c.name ? ` — ${c.contact_name}` : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
   LayoutDashboard, FolderKanban, ListChecks, TicketCheck,
-  DollarSign, Users, CheckSquare, CreditCard, FileText,
+  DollarSign, Users, CheckSquare, CreditCard, FileText, Building2,
   ChevronLeft, ChevronRight, LogOut, BarChart3,
   Moon, Sun
 } from "lucide-react";
@@ -15,6 +15,7 @@ const navByRole = {
     { label: "Client Payments", path: "/admin/payments", icon: CreditCard, badgeKey: "overduePayments" },
     { label: "All Projects", path: "/admin/projects", icon: FolderKanban },
     { label: "Tickets", path: "/admin/tickets", icon: TicketCheck, badgeKey: "openTickets" },
+    { label: "Clients", path: "/admin/clients", icon: Building2 },
     { label: "Quotes", path: "/admin/quotes", icon: FileText },
     { label: "Reports", path: "/admin/reports", icon: BarChart3 },
     { label: "Users", path: "/admin/users", icon: Users },

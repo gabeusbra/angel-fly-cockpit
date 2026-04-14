@@ -1,0 +1,48 @@
+{
+  "name": "Client",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Company / Business Name"
+    },
+    "contact_name": {
+      "type": "string",
+      "title": "Contact Person"
+    },
+    "email": {
+      "type": "string",
+      "title": "Email"
+    },
+    "phone": {
+      "type": "string",
+      "title": "Phone"
+    },
+    "logo_url": {
+      "type": "string",
+      "title": "Logo URL"
+    },
+    "address": {
+      "type": "string",
+      "title": "Address"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    },
+    "user_id": {
+      "type": "string",
+      "title": "Linked User Account ID"
+    },
+    "user_email": {
+      "type": "string",
+      "title": "Linked User Email"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "inactive"],
+      "title": "Status"
+    }
+  },
+  "required": ["name", "status"]
+}
