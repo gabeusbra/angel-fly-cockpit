@@ -460,7 +460,18 @@ export default function PMTeam() {
                 </SelectContent>
               </Select>
             </div>
-            <Input placeholder="Specialty (e.g. Frontend Developer)" value={form.specialty} onChange={e => setForm({ ...form, specialty: e.target.value })} />
+            <div>
+              <label className="text-[10px] text-muted-foreground block mb-1.5">Specialty</label>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {["Frontend Developer", "Backend Developer", "Full-Stack Developer", "UI/UX Designer", "Social Media Manager", "Marketing Strategist", "Content Creator", "SEO Specialist", "Video Editor", "Copywriter"].map(s => (
+                  <button key={s} onClick={() => setForm({ ...form, specialty: s })}
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-medium transition-all ${form.specialty === s ? "bg-primary text-white shadow-sm" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+              <Input placeholder="Or type custom specialty..." value={form.specialty} onChange={e => setForm({ ...form, specialty: e.target.value })} className="text-xs" />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <Input placeholder="Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
               <Input placeholder="Phone" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />

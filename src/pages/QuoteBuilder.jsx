@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useOutletContext } from "react-router-dom";
-import { Plus, Trash2, Copy, ExternalLink, CheckCircle2, X, FileText, Sparkles } from "lucide-react";
+import { Plus, Trash2, Copy, ExternalLink, CheckCircle2, X, FileText, Sparkles, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,6 +21,9 @@ export default function QuoteBuilder() {
   const [pasteText, setPasteText] = useState("");
   const [copiedId, setCopiedId] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(null);
+  const [showImportHtml, setShowImportHtml] = useState(false);
+  const [htmlContent, setHtmlContent] = useState("");
+  const [importClient, setImportClient] = useState("");
 
   // Form state
   const [form, setForm] = useState({
@@ -239,7 +242,7 @@ export default function QuoteBuilder() {
     });
   };
 
-  const getQuoteUrl = (q) => `${window.location.origin}/quote/${q.id}`;
+  const getQuoteUrl = (q) => q.is_html && q.html_url ? q.html_url : `${window.location.origin}/quote/${q.id}`;
 
   const copyLink = (q) => {
     navigator.clipboard.writeText(getQuoteUrl(q));
@@ -253,6 +256,55 @@ export default function QuoteBuilder() {
     setQuotes(updated);
   };
 
+  // Import HTML as a quote
+  const handleHtmlFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setHtmlContent(ev.target?.result || "");
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
+  const handleImportHtml = async () => {
+    if (!htmlContent) return;
+    const token = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    const client = clients.find(c => c.id === importClient);
+
+    // Upload HTML as file
+    let dataUrl = "";
+    try {
+      const blob = new Blob([htmlContent], { type: "text/html" });
+      const file = new File([blob], `quote_html_${token}.html`, { type: "text/html" });
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      dataUrl = file_url;
+    } catch { /* ignore */ }
+
+    const quote = {
+      id: token,
+      title: "Imported Quote",
+      client_name: client?.contact_name || client?.name || "",
+      client_company: client?.name || "",
+      client_email: client?.email || "",
+      client_logo: client?.logo_url || "",
+      items: [],
+      notes: "",
+      html_url: dataUrl,
+      is_html: true,
+      created_at: new Date().toISOString(),
+      created_by: user?.full_name || user?.email || "Admin",
+      status: "pending",
+    };
+
+    const all = getQuotes();
+    all.unshift(quote);
+    saveQuotes(all);
+    setQuotes(all);
+    setShowImportHtml(false);
+    setHtmlContent("");
+    setImportClient("");
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -261,6 +313,7 @@ export default function QuoteBuilder() {
           <p className="text-sm text-muted-foreground mt-1">{quotes.length} quote{quotes.length !== 1 ? "s" : ""} created</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowImportHtml(true)} className="gap-2"><Upload className="w-4 h-4" /> Import HTML</Button>
           <Button variant="outline" onClick={() => setShowPaste(true)} className="gap-2"><Sparkles className="w-4 h-4" /> Paste & Generate</Button>
           <Button onClick={() => setShowCreate(true)} className="gap-2"><Plus className="w-4 h-4" /> New Quote</Button>
         </div>
@@ -494,6 +547,55 @@ export default function QuoteBuilder() {
               <Button onClick={parseQuoteText} disabled={!pasteText.trim()} className="gap-2">
                 <Sparkles className="w-4 h-4" /> Generate Quote
               </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import HTML dialog */}
+      <Dialog open={showImportHtml} onOpenChange={setShowImportHtml}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Import HTML Quote</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-2">
+            <p className="text-xs text-muted-foreground">Upload an HTML file or paste HTML code. Select a client to connect it to.</p>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">Client</label>
+              {clients.length > 0 ? (
+                <Select value={importClient} onValueChange={setImportClient}>
+                  <SelectTrigger><SelectValue placeholder="Select client..." /></SelectTrigger>
+                  <SelectContent>
+                    {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}{c.contact_name ? ` — ${c.contact_name}` : ""}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-xs text-muted-foreground">No clients in database. Add clients first.</p>
+              )}
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-2">HTML File</label>
+              <label className="flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed border-border text-sm text-muted-foreground hover:bg-muted/30 cursor-pointer transition-colors">
+                <Upload className="w-5 h-5" />
+                {htmlContent ? "File loaded — click to replace" : "Click to upload .html file"}
+                <input type="file" accept=".html,.htm" className="hidden" onChange={handleHtmlFileUpload} />
+              </label>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">Or paste HTML code</label>
+              <Textarea placeholder="<html>..." value={htmlContent} onChange={e => setHtmlContent(e.target.value)} rows={6} className="font-mono text-xs" />
+            </div>
+
+            {htmlContent && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-xs text-emerald-700">
+                HTML loaded ({Math.round(htmlContent.length / 1024)}KB)
+              </div>
+            )}
+
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => { setShowImportHtml(false); setHtmlContent(""); setImportClient(""); }}>Cancel</Button>
+              <Button onClick={handleImportHtml} disabled={!htmlContent || !importClient}>Import Quote</Button>
             </div>
           </div>
         </DialogContent>
