@@ -37,103 +37,127 @@ export default function QuoteBuilder() {
   // Smart parser: paste raw text → structured quote
   const parseQuoteText = () => {
     if (!pasteText.trim()) return;
-    const lines = pasteText.split("\n").map(l => l.trim()).filter(Boolean);
+    const raw = pasteText.replace(/\r\n/g, "\n");
+    const lines = raw.split("\n").map(l => l.trim()).filter(Boolean);
+
     const items = [];
     let currentItem = null;
-    let clientName = "", clientCompany = "", title = "Quote";
+    let clientCompany = "";
 
-    // Patterns
-    const pricePattern = /^[\d,.]+ ?\w*.*?[\$R]\$?[\d,.]+|[\$R]\$?[\d,.]+.*?[\d,.]+ ?\w*/i;
-    const specPattern = /^[•·\-\*]?\s*(.+?)[:：]\s*(.+)/;
-    const qtyPricePattern = /([\d,]+)\s*([\w\s]*?)\s*[-–—:]\s*[\$R]\$?([\d,.]+)/i;
-    const priceLabelPattern = /[\$R]\$?([\d,.]+)\s*(?:per|\/)\s*(\w+)/i;
-    const bestValuePattern = /best\s*value|recommended|popular|melhor/i;
+    // Normalize dashes
+    const norm = (s) => s.replace(/[—–]/g, "-").replace(/\s+/g, " ");
 
-    // First pass: detect client/title from first lines
-    for (let i = 0; i < Math.min(lines.length, 3); i++) {
-      const line = lines[i];
-      if (!pricePattern.test(line) && !specPattern.test(line) && line.length < 60) {
-        if (i === 0 && !clientCompany) { clientCompany = line; continue; }
-        if (i === 1 && !title) { title = line; continue; }
+    // Detect a pricing line: must contain a number AND a price ($xxx or R$xxx)
+    const isPricingLine = (line) => {
+      const n = norm(line);
+      return /[\d,]+\s*\w*.*?[\$][\d,.]+|[\$][\d,.]+.*?[\d,]+\s*\w*/i.test(n) ||
+             /[\d,]+\s*\w*\s*[-]\s*[\$R]?\$?[\d,.]+/i.test(n);
+    };
+
+    // Extract qty, label, price from a pricing line
+    const parsePriceLine = (line) => {
+      const n = norm(line).replace(/[*•·🌟⭐✨]/g, "").trim();
+      // Pattern: 1,000 stickers - $350 or $350 for 1,000 stickers
+      let match = n.match(/([\d,]+)\s*([\w\s]*?)\s*[-:]\s*[\$R]?\$?([\d,.]+)/i);
+      if (!match) match = n.match(/[\$R]?\$?([\d,.]+)\s*[-:for]*\s*([\d,]+)\s*([\w]*)/i);
+
+      if (match) {
+        const qty = match[1].trim();
+        const label = match[2]?.trim().replace(/[-:]/g, "").trim() || "units";
+        const price = match[3].replace(/,/g, "").trim();
+        const bestValue = /best\s*value|recommended|popular|melhor|🌟|⭐/i.test(line);
+        return { qty, label, price, best_value: bestValue };
       }
-      break;
-    }
 
-    // Main parse
+      // Fallback: just find a price
+      const priceMatch = n.match(/[\$R]?\$?([\d,.]+)/);
+      if (priceMatch) {
+        return { qty: "1", label: "", price: priceMatch[1].replace(/,/g, ""), best_value: false };
+      }
+      return null;
+    };
+
+    // Detect spec line: "key: value" or "• key: value"
+    const isSpecLine = (line) => /^[•·\-\*]?\s*.+?[:：]\s*.+/.test(line) && !isPricingLine(line);
+    const parseSpecLine = (line) => {
+      const m = line.match(/^[•·\-\*]?\s*(.+?)[:：]\s*(.+)/);
+      return m ? { label: m[1].trim(), value: m[2].trim() } : null;
+    };
+
+    // First pass: find the item name (first line that's not a spec or price)
+    let itemNameFound = false;
+
     for (const line of lines) {
-      if (line === clientCompany || line === title) continue;
+      const cleaned = line.replace(/^[*•·\-]\s*/, "").trim();
 
-      // Check for pricing line
-      const qtyMatch = line.match(qtyPricePattern);
-      if (qtyMatch) {
+      // Skip empty or emoji-only
+      if (!cleaned || /^[🌟⭐✨💰🏷️]+$/.test(cleaned)) continue;
+
+      // Pricing line
+      if (isPricingLine(line)) {
         if (!currentItem) {
           currentItem = { name: "Item", description: "", image_url: "", specs: [], pricing: [] };
           items.push(currentItem);
         }
-        currentItem.pricing.push({
-          qty: qtyMatch[1].trim(),
-          label: qtyMatch[2].trim() || "units",
-          price: qtyMatch[3].replace(/,/g, ""),
-          best_value: bestValuePattern.test(line),
-        });
+        const parsed = parsePriceLine(line);
+        if (parsed) currentItem.pricing.push(parsed);
         continue;
       }
 
-      // Check for standalone price
-      const standalonePrice = line.match(/[\$R]\$?([\d,.]+)/);
-      if (standalonePrice && line.length < 30) {
-        if (currentItem) {
-          currentItem.pricing.push({ qty: "1", label: "", price: standalonePrice[1].replace(/,/g, ""), best_value: false });
-        }
-        continue;
-      }
-
-      // Check for spec (key: value)
-      const specMatch = line.match(specPattern);
-      if (specMatch) {
+      // Spec line
+      if (isSpecLine(line)) {
         if (!currentItem) {
           currentItem = { name: "Item", description: "", image_url: "", specs: [], pricing: [] };
           items.push(currentItem);
         }
-        currentItem.specs.push({ label: specMatch[1].replace(/^[•·\-\*]\s*/, ""), value: specMatch[2] });
+        const spec = parseSpecLine(line);
+        if (spec) currentItem.specs.push(spec);
         continue;
       }
 
-      // If it's a short line and no current item or current item has pricing, start a new item
-      if (line.length < 80 && !specPattern.test(line) && !pricePattern.test(line)) {
-        if (!currentItem || currentItem.pricing.length > 0) {
-          currentItem = { name: line, description: "", image_url: "", specs: [], pricing: [] };
+      // First non-spec, non-price line = item name (or company if very short)
+      if (!itemNameFound) {
+        // If it contains product-like words or specs inline (dashes with dimensions)
+        const hasProductInfo = /\d+["'"]|x\s*\d|sticker|label|card|banner|flyer|menu|logo|design|print|package/i.test(cleaned);
+
+        if (hasProductInfo || cleaned.length > 20) {
+          // This is the item name — might include inline specs
+          const dashParts = cleaned.split(/\s*[-—–]\s*/);
+          currentItem = { name: dashParts[0].trim(), description: dashParts.length > 1 ? dashParts.slice(1).join(" ") : "", image_url: "", specs: [], pricing: [] };
           items.push(currentItem);
-        } else if (!currentItem.name || currentItem.name === "Item") {
-          currentItem.name = line;
+          itemNameFound = true;
         } else {
-          currentItem.description += (currentItem.description ? "\n" : "") + line;
+          // Short text first = company name
+          clientCompany = cleaned;
         }
         continue;
       }
 
-      // Long text = description
+      // Subsequent non-spec, non-price lines
       if (currentItem) {
-        currentItem.description += (currentItem.description ? "\n" : "") + line;
+        // If current item has pricing already, this might be a new item
+        if (currentItem.pricing.length > 0 && cleaned.length < 60 && !isPricingLine(line)) {
+          currentItem = { name: cleaned, description: "", image_url: "", specs: [], pricing: [] };
+          items.push(currentItem);
+        } else if (currentItem.name === "Item") {
+          currentItem.name = cleaned;
+        } else {
+          currentItem.description += (currentItem.description ? "\n" : "") + cleaned;
+        }
       }
     }
 
-    // Ensure at least one item
+    // Ensure at least one item with pricing
     if (items.length === 0) {
-      items.push({ name: lines[0] || "Item", description: lines.slice(1).join("\n"), image_url: "", specs: [], pricing: [{ qty: "", price: "", label: "", best_value: false }] });
+      items.push({ name: lines[0] || "Item", description: "", image_url: "", specs: [], pricing: [{ qty: "", price: "", label: "", best_value: false }] });
     }
-
-    // Ensure each item has at least one pricing
     items.forEach(item => {
-      if (item.pricing.length === 0) {
-        item.pricing.push({ qty: "", price: "", label: "", best_value: false });
-      }
+      if (item.pricing.length === 0) item.pricing.push({ qty: "", price: "", label: "", best_value: false });
     });
 
     setForm(f => ({
       ...f,
       client_company: clientCompany || f.client_company,
-      title: title !== "Quote" ? title : f.title,
       items,
     }));
     setShowPaste(false);
