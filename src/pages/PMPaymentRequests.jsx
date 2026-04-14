@@ -24,7 +24,14 @@ export default function PMPaymentRequests() {
       let p = [], t = [], u = [];
       try { p = await base44.entities.PaymentOutgoing.list("-created_date"); } catch { try { p = await base44.entities.PaymentOutgoing.list(); } catch { /* ignore */ } }
       try { t = await base44.entities.Task.list(); } catch { /* ignore */ }
-      try { u = await base44.entities.User.filter({ role: "professional", status: "active" }); } catch { try { const all = await base44.entities.User.list(); u = all.filter(usr => usr.role === "professional"); } catch { /* ignore */ } }
+      try { u = await base44.entities.User.filter({ role: "professional", status: "active" }); } catch {
+        try { const all = await base44.entities.User.list(); u = all.filter(usr => usr.role === "professional"); } catch { /* ignore */ }
+      }
+      if (u.length === 0 && t.length > 0) {
+        const proMap = {};
+        t.forEach(task => { if (task.assigned_to && task.assigned_to_name) proMap[task.assigned_to] = { id: task.assigned_to, full_name: task.assigned_to_name }; });
+        u = Object.values(proMap);
+      }
       setPayments(p); setTasks(t); setPros(u); setLoading(false);
     };
     init();

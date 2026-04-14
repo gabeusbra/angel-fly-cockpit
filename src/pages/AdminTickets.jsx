@@ -36,9 +36,27 @@ export default function AdminTickets() {
     const init = async () => {
       let t = [], u = [], p = [], tk = [];
       try { t = await base44.entities.Ticket.list("-created_date"); } catch { try { t = await base44.entities.Ticket.list(); } catch { /* ignore */ } }
-      try { u = await base44.entities.User.filter({ role: "professional", status: "active" }); } catch { try { const all = await base44.entities.User.list(); u = all.filter(usr => usr.role === "professional"); } catch { /* ignore */ } }
+      try { u = await base44.entities.User.list(); u = u.filter(usr => ["professional", "pm", "admin"].includes(usr.role) && usr.status !== "inactive"); } catch {
+        try { u = await base44.entities.User.filter({ status: "active" }); u = u.filter(usr => ["professional", "pm", "admin"].includes(usr.role)); } catch { /* ignore */ }
+      }
       try { p = await base44.entities.Project.list(); } catch { /* ignore */ }
       try { tk = await base44.entities.Task.list(); } catch { /* ignore */ }
+      // If no pros found from User entity, extract from task assignments
+      if (u.length === 0 && tk.length > 0) {
+        const proMap = {};
+        tk.forEach(task => {
+          if (task.assigned_to && task.assigned_to_name) {
+            proMap[task.assigned_to] = { id: task.assigned_to, full_name: task.assigned_to_name, role: "professional" };
+          }
+        });
+        // Also extract from ticket assignments
+        t.forEach(ticket => {
+          if (ticket.assigned_to && ticket.assigned_to_name) {
+            proMap[ticket.assigned_to] = { id: ticket.assigned_to, full_name: ticket.assigned_to_name, role: "professional" };
+          }
+        });
+        u = Object.values(proMap);
+      }
       setTickets(t); setPros(u); setProjects(p); setTasks(tk); setLoading(false);
     };
     init();
