@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { Search, Star, Plus, Sparkles, ListChecks, Clock, AlertTriangle, CheckCircle2, MessageSquare, User, ExternalLink, Paperclip } from "lucide-react";
+import { Search, Star, Plus, Sparkles, ListChecks, Clock, AlertTriangle, CheckCircle2, MessageSquare, User, ExternalLink, Paperclip, Copy } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -33,16 +33,21 @@ export default function AdminTickets() {
   const [convertForm, setConvertForm] = useState({ project_id: "", assigned_to: "", priority: "medium", milestone: "", deadline: "" });
 
   useEffect(() => {
-    Promise.all([
-      base44.entities.Ticket.list("-created_date"),
-      base44.entities.User.filter({ role: "professional", status: "active" }),
-      base44.entities.Project.list(),
-      base44.entities.Task.list(),
-    ]).then(([t, u, p, tk]) => { setTickets(t); setPros(u); setProjects(p); setTasks(tk); setLoading(false); });
+    const init = async () => {
+      let t = [], u = [], p = [], tk = [];
+      try { t = await base44.entities.Ticket.list("-created_date"); } catch { try { t = await base44.entities.Ticket.list(); } catch { /* ignore */ } }
+      try { u = await base44.entities.User.filter({ role: "professional", status: "active" }); } catch { try { const all = await base44.entities.User.list(); u = all.filter(usr => usr.role === "professional"); } catch { /* ignore */ } }
+      try { p = await base44.entities.Project.list(); } catch { /* ignore */ }
+      try { tk = await base44.entities.Task.list(); } catch { /* ignore */ }
+      setTickets(t); setPros(u); setProjects(p); setTasks(tk); setLoading(false);
+    };
+    init();
   }, []);
 
   const load = async () => {
-    const [t, tk] = await Promise.all([base44.entities.Ticket.list("-created_date"), base44.entities.Task.list()]);
+    let t = [], tk = [];
+    try { t = await base44.entities.Ticket.list("-created_date"); } catch { try { t = await base44.entities.Ticket.list(); } catch { /* ignore */ } }
+    try { tk = await base44.entities.Task.list(); } catch { /* ignore */ }
     setTickets(t); setTasks(tk);
   };
 
@@ -82,6 +87,22 @@ export default function AdminTickets() {
     await base44.entities.Ticket.create({ ...form, project_name: proj?.name || "", client_name: form.client_name || proj?.client_name || "", status: "open" });
     setShowCreate(false);
     setForm({ client_name: "", project_id: "", category: "question", subject: "", description: "", priority: "medium" });
+    load();
+  };
+
+  const handleDuplicate = async (ticket) => {
+    await base44.entities.Ticket.create({
+      subject: `${ticket.subject} (copy)`,
+      description: ticket.description || "",
+      category: ticket.category || "question",
+      priority: ticket.priority || "medium",
+      client_id: ticket.client_id || "",
+      client_name: ticket.client_name || "",
+      project_id: ticket.project_id || "",
+      project_name: ticket.project_name || "",
+      status: "open",
+      attachments: ticket.attachments || [],
+    });
     load();
   };
 
@@ -324,6 +345,7 @@ export default function AdminTickets() {
                     )}
                     {detail.status === "in_progress" && <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => { handleStatus(detail.id, "resolved"); setDetail(null); }}>Resolve</Button>}
                     {detail.status === "resolved" && <Button size="sm" onClick={() => { handleStatus(detail.id, "closed"); setDetail(null); }}>Close</Button>}
+                    <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={() => { handleDuplicate(detail); setDetail(null); }}><Copy className="w-3 h-3" /> Duplicate</Button>
                     <Button variant="outline" size="sm" onClick={() => setDetail(null)}>Done</Button>
                   </div>
                 </div>
