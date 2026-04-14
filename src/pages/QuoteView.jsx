@@ -37,6 +37,18 @@ export default function QuoteView() {
     tryFetch();
   }, [token]);
 
+  // Auto-select best value or last tier for each item
+  useEffect(() => {
+    if (!quote?.items) return;
+    const defaults = {};
+    quote.items.forEach((item, iIdx) => {
+      if (!item.pricing?.length) return;
+      const bestIdx = item.pricing.findIndex(p => p.best_value);
+      defaults[iIdx] = bestIdx >= 0 ? bestIdx : item.pricing.length - 1;
+    });
+    setSelections(defaults);
+  }, [quote]);
+
   const handleApprove = () => {
     setApproved("approved");
     setSubmitted(true);
