@@ -72,7 +72,7 @@ const AuthenticatedApp = () => {
         <Route path="/admin/clients" element={<AdminClients />} />
         <Route path="/pm/projects" element={<PMProjects />} />
         <Route path="/pm/projects/:id" element={<PMProjectDetail />} />
-        <Route path="/pm/tickets" element={<PMTickets />} />
+        <Route path="/pm/tickets" element={<AdminTickets />} />
         <Route path="/pm/quotes" element={<QuoteBuilder />} />
         <Route path="/pm/clients" element={<AdminClients />} />
         <Route path="/pm/payments" element={<PMPaymentRequests />} />
