@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { getClients, createClient, updateClient, deleteClient } from "@/lib/clients-store";
+import { getClients, createClient, updateClient, deleteClient, syncLocalClients } from "@/lib/clients-store";
 
 export default function AdminClients() {
   const [clients, setClients] = useState([]);
@@ -19,7 +19,7 @@ export default function AdminClients() {
   const [form, setForm] = useState({ name: "", contact_name: "", email: "", phone: "", logo_url: "", address: "", notes: "", user_email: "", status: "active" });
 
   useEffect(() => {
-    getClients().then(setClients);
+    syncLocalClients().then(() => getClients().then(setClients));
     try { base44.entities.User.list().then(u => setUsers(u)); } catch { /* ignore */ }
   }, []);
 

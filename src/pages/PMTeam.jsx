@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { getTeamMembers, createTeamMember, updateTeamMember, deleteTeamMember } from "@/lib/team-store";
+import { getTeamMembers, createTeamMember, updateTeamMember, deleteTeamMember, syncLocalTeamMembers } from "@/lib/team-store";
 import StatCard from "../components/StatCard";
 import StatusBadge from "../components/StatusBadge";
 
@@ -36,7 +36,7 @@ export default function PMTeam() {
   const [confirmDelete, setConfirmDelete] = useState(null);
 
   useEffect(() => {
-    getTeamMembers().then(setMembers);
+    syncLocalTeamMembers().then(() => getTeamMembers().then(setMembers));
     const loadData = async () => {
       let t = [], tk = [], u = [];
       try { t = await base44.entities.Task.list(); } catch { /* ignore */ }

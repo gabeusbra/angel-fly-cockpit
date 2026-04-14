@@ -62,7 +62,8 @@ export default function AdminTickets() {
         const team = (await getTeamMembers()).filter(m => m.status === "active");
         if (team.length > 0) setPros(team.map(m => ({ id: m.id, full_name: m.name, specialty: m.specialty })));
       });
-      setTickets(t); if (u.length > 0) setPros(prev => prev.length > 0 ? prev : u); setProjects(p); setTasks(tk); setLoading(false);
+      const realTickets = t.filter(x => x.category !== "client_record" && x.category !== "team_record");
+      setTickets(realTickets); if (u.length > 0) setPros(prev => prev.length > 0 ? prev : u); setProjects(p); setTasks(tk); setLoading(false);
     };
     init();
   }, []);
@@ -71,7 +72,7 @@ export default function AdminTickets() {
     let t = [], tk = [];
     try { t = await base44.entities.Ticket.list("-created_date"); } catch { try { t = await base44.entities.Ticket.list(); } catch { /* ignore */ } }
     try { tk = await base44.entities.Task.list(); } catch { /* ignore */ }
-    setTickets(t); setTasks(tk);
+    setTickets(t.filter(x => x.category !== "client_record" && x.category !== "team_record")); setTasks(tk);
   };
 
   const handleAssign = async (ticket, userId) => {

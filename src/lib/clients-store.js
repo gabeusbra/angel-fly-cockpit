@@ -1,45 +1,39 @@
 import { base44 } from "@/api/base44Client";
 
 const CLIENTS_KEY = "angel_fly_clients";
+const CATEGORY = "client_record";
 
 function getLocalClients() {
   try { return JSON.parse(localStorage.getItem(CLIENTS_KEY) || "[]"); } catch { return []; }
 }
-
 function saveLocal(clients) {
   localStorage.setItem(CLIENTS_KEY, JSON.stringify(clients));
 }
 
-// Sync localStorage clients to Base44 entity (one-time migration)
-async function syncLocalToEntity() {
-  const local = getLocalClients();
-  if (local.length === 0) return;
-  try {
-    const remote = await base44.entities.Client.list();
-    const remoteEmails = new Set(remote.map(r => r.email?.toLowerCase()).filter(Boolean));
-    const remoteNames = new Set(remote.map(r => r.name?.toLowerCase()).filter(Boolean));
-    for (const c of local) {
-      const emailMatch = c.email && remoteEmails.has(c.email.toLowerCase());
-      const nameMatch = c.name && remoteNames.has(c.name.toLowerCase());
-      if (!emailMatch && !nameMatch) {
-        const { id, created_at, ...payload } = c;
-        try { await base44.entities.Client.create(payload); } catch { /* ignore */ }
-      }
-    }
-    localStorage.removeItem(CLIENTS_KEY + "_synced");
-  } catch { /* ignore */ }
+function ticketToClient(t) {
+  let extra = {};
+  try { extra = JSON.parse(t.description || "{}"); } catch { /* ignore */ }
+  return { id: t.id, name: t.subject, ...extra, status: t.status || "active" };
+}
+
+function clientToTicket(data) {
+  const { name, id, status, ...rest } = data;
+  return {
+    subject: name || "",
+    description: JSON.stringify(rest),
+    category: CATEGORY,
+    status: status || "active",
+    priority: "low",
+    client_name: rest.contact_name || name || "",
+  };
 }
 
 export async function getClients() {
   try {
-    // One-time sync of localStorage data to entity
-    if (!localStorage.getItem(CLIENTS_KEY + "_synced") && getLocalClients().length > 0) {
-      localStorage.setItem(CLIENTS_KEY + "_synced", "1");
-      await syncLocalToEntity();
-    }
-    const data = await base44.entities.Client.list();
-    saveLocal(data);
-    return data;
+    const all = await base44.entities.Ticket.list();
+    const clients = all.filter(t => t.category === CATEGORY).map(ticketToClient);
+    saveLocal(clients);
+    return clients;
   } catch {
     return getLocalClients();
   }
@@ -57,19 +51,20 @@ export async function getClientById(id) {
 export async function getClientByEmail(email) {
   if (!email) return null;
   const clients = await getClients();
-  return clients.find(c => c.email?.toLowerCase() === email.toLowerCase() || c.user_email?.toLowerCase() === email.toLowerCase()) || null;
+  return clients.find(c =>
+    c.email?.toLowerCase() === email.toLowerCase() ||
+    c.user_email?.toLowerCase() === email.toLowerCase()
+  ) || null;
 }
 
 export async function createClient(data) {
-  const payload = { ...data, status: data.status || "active" };
   try {
-    const result = await base44.entities.Client.create(payload);
-    const all = await getClients();
-    return result;
+    const ticket = clientToTicket(data);
+    await base44.entities.Ticket.create(ticket);
+    return await getClients();
   } catch {
-    // Fallback to localStorage
     const clients = getLocalClients();
-    const client = { ...payload, id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), created_at: new Date().toISOString() };
+    const client = { ...data, id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), status: data.status || "active" };
     clients.push(client);
     saveLocal(clients);
     return client;
@@ -78,8 +73,14 @@ export async function createClient(data) {
 
 export async function updateClient(id, data) {
   try {
-    await base44.entities.Client.update(id, data);
-    await getClients(); // refresh cache
+    const { name, status, ...rest } = data;
+    const update = {};
+    if (name !== undefined) update.subject = name;
+    if (status !== undefined) update.status = status;
+    update.description = JSON.stringify(rest);
+    update.client_name = rest.contact_name || name || "";
+    await base44.entities.Ticket.update(id, update);
+    await getClients();
   } catch {
     const clients = getLocalClients();
     const idx = clients.findIndex(c => c.id === id);
@@ -89,10 +90,26 @@ export async function updateClient(id, data) {
 
 export async function deleteClient(id) {
   try {
-    await base44.entities.Client.delete(id);
+    await base44.entities.Ticket.delete(id);
     await getClients();
   } catch {
     const clients = getLocalClients().filter(c => c.id !== id);
     saveLocal(clients);
   }
+}
+
+// One-time sync: push localStorage clients to Ticket entity
+export async function syncLocalClients() {
+  const local = getLocalClients();
+  if (local.length === 0) return;
+  try {
+    const all = await base44.entities.Ticket.list();
+    const existing = all.filter(t => t.category === CATEGORY);
+    const existingNames = new Set(existing.map(t => t.subject?.toLowerCase()));
+    for (const c of local) {
+      if (c.name && !existingNames.has(c.name.toLowerCase())) {
+        try { await base44.entities.Ticket.create(clientToTicket(c)); } catch { /* ignore */ }
+      }
+    }
+  } catch { /* ignore */ }
 }
