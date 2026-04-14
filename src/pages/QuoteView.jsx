@@ -13,6 +13,7 @@ export default function QuoteView() {
   const [approved, setApproved] = useState(null);
   const [feedback, setFeedback] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [selections, setSelections] = useState({});
 
   useEffect(() => {
     // Try localStorage first
@@ -39,10 +40,19 @@ export default function QuoteView() {
   const handleApprove = () => {
     setApproved("approved");
     setSubmitted(true);
-    // Update in localStorage
     const all = JSON.parse(localStorage.getItem(QUOTES_KEY) || "[]");
     const idx = all.findIndex(q => q.id === token);
-    if (idx >= 0) { all[idx].status = "approved"; all[idx].approved_at = new Date().toISOString(); localStorage.setItem(QUOTES_KEY, JSON.stringify(all)); }
+    if (idx >= 0) {
+      all[idx].status = "approved";
+      all[idx].approved_at = new Date().toISOString();
+      all[idx].selected_options = Object.entries(selections).map(([iIdx, pIdx]) => ({
+        item: quote.items?.[iIdx]?.name,
+        qty: quote.items?.[iIdx]?.pricing?.[pIdx]?.qty,
+        label: quote.items?.[iIdx]?.pricing?.[pIdx]?.label,
+        price: quote.items?.[iIdx]?.pricing?.[pIdx]?.price,
+      }));
+      localStorage.setItem(QUOTES_KEY, JSON.stringify(all));
+    }
   };
 
   const handleReject = () => {
@@ -136,18 +146,28 @@ export default function QuoteView() {
               </div>
             </div>
 
-            {/* Pricing options */}
+            {/* Pricing options — clickable */}
             {item.pricing?.length > 0 && (
               <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-3">Pricing Options</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1">Pricing Options</p>
+                <p className="text-[10px] text-slate-400 mb-3">Click to select your preferred option</p>
                 <div className="space-y-3">
                   {item.pricing.map((p, pIdx) => {
                     const perUnit = p.qty && p.price ? (parseFloat(p.price) / parseFloat(p.qty.replace(/,/g, ""))).toFixed(2) : null;
+                    const isSelected = selections[iIdx] === pIdx;
                     return (
-                      <div key={pIdx} className={`rounded-xl border-2 p-4 flex items-center justify-between transition-all ${
-                        p.best_value ? "border-emerald-300 bg-emerald-50/50" : "border-slate-200 bg-white"
-                      }`}>
+                      <button key={pIdx} onClick={() => setSelections(s => ({ ...s, [iIdx]: pIdx }))}
+                        className={`w-full rounded-xl border-2 p-4 flex items-center justify-between transition-all text-left ${
+                          isSelected ? "border-emerald-500 bg-emerald-50 shadow-md shadow-emerald-100 scale-[1.02]"
+                          : p.best_value ? "border-emerald-300 bg-emerald-50/30 hover:border-emerald-400"
+                          : "border-slate-200 bg-white hover:border-slate-300"
+                        }`}>
                         <div className="flex items-center gap-3">
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                            isSelected ? "border-emerald-500 bg-emerald-500" : "border-slate-300"
+                          }`}>
+                            {isSelected && <CheckCircle2 className="w-3 h-3 text-white" />}
+                          </div>
                           <span className="text-base font-semibold text-slate-800">{p.qty}</span>
                           <span className="text-sm text-slate-500">{p.label}</span>
                           {p.best_value && (
@@ -155,12 +175,12 @@ export default function QuoteView() {
                           )}
                         </div>
                         <div className="text-right">
-                          <p className={`text-lg font-bold ${p.best_value ? "text-emerald-700" : "text-slate-800"}`}>
+                          <p className={`text-lg font-bold ${isSelected ? "text-emerald-700" : p.best_value ? "text-emerald-700" : "text-slate-800"}`}>
                             R${parseFloat(p.price || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                           </p>
                           {perUnit && <p className="text-xs text-slate-400">R${perUnit} per {p.label?.replace(/s$/, "") || "unit"}</p>}
                         </div>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
@@ -183,6 +203,32 @@ export default function QuoteView() {
         {quote.notes && (
           <div className="border-t border-slate-200 pt-6 mb-8">
             <p className="text-sm text-slate-500 text-center">{quote.notes}</p>
+          </div>
+        )}
+
+        {/* Selected total */}
+        {Object.keys(selections).length > 0 && (
+          <div className="bg-white rounded-xl border-2 border-emerald-300 p-5 mb-8">
+            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-[0.2em] mb-3">Your Selection</p>
+            {quote.items?.map((item, iIdx) => {
+              if (selections[iIdx] === undefined) return null;
+              const selected = item.pricing[selections[iIdx]];
+              return (
+                <div key={iIdx} className="flex items-center justify-between py-1.5">
+                  <span className="text-sm text-slate-700">{item.name} — {selected.qty} {selected.label}</span>
+                  <span className="text-sm font-bold text-slate-800">R${parseFloat(selected.price || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                </div>
+              );
+            })}
+            <div className="border-t border-emerald-200 mt-3 pt-3 flex items-center justify-between">
+              <span className="text-sm font-bold text-slate-800">Total</span>
+              <span className="text-xl font-bold text-emerald-700">
+                R${Object.entries(selections).reduce((total, [iIdx, pIdx]) => {
+                  const price = parseFloat(quote.items?.[iIdx]?.pricing?.[pIdx]?.price || 0);
+                  return total + price;
+                }, 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              </span>
+            </div>
           </div>
         )}
 
