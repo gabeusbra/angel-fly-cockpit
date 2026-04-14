@@ -486,7 +486,7 @@ export default function PMTeam() {
               <Input placeholder="User email" value={form.user_email} onChange={e => setForm({ ...form, user_email: e.target.value })} />
               {users.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-2">
-                  {users.filter(u => u.email).slice(0, 8).map(u => (
+                  {users.filter(u => u.email && u.role !== "client").slice(0, 8).map(u => (
                     <button key={u.email} onClick={() => setForm({ ...form, user_email: u.email })}
                       className={`text-[10px] px-2 py-1 rounded-full transition-all ${form.user_email === u.email ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
                       {u.full_name || u.email}
