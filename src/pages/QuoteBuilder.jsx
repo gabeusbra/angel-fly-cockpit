@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useOutletContext } from "react-router-dom";
-import { Plus, Trash2, Copy, ExternalLink, CheckCircle2, X, FileText } from "lucide-react";
+import { Plus, Trash2, Copy, ExternalLink, CheckCircle2, X, FileText, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +17,8 @@ export default function QuoteBuilder() {
   const [quotes, setQuotes] = useState([]);
   const [clients, setClients] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
+  const [showPaste, setShowPaste] = useState(false);
+  const [pasteText, setPasteText] = useState("");
   const [copiedId, setCopiedId] = useState(null);
 
   // Form state
@@ -30,6 +32,113 @@ export default function QuoteBuilder() {
     setQuotes(getQuotes());
     try { base44.entities.User.list().then(u => setClients(u.filter(usr => usr.role === "client"))); } catch { /* ignore */ }
   }, []);
+
+  // Smart parser: paste raw text → structured quote
+  const parseQuoteText = () => {
+    if (!pasteText.trim()) return;
+    const lines = pasteText.split("\n").map(l => l.trim()).filter(Boolean);
+    const items = [];
+    let currentItem = null;
+    let clientName = "", clientCompany = "", title = "Quote";
+
+    // Patterns
+    const pricePattern = /^[\d,.]+ ?\w*.*?[\$R]\$?[\d,.]+|[\$R]\$?[\d,.]+.*?[\d,.]+ ?\w*/i;
+    const specPattern = /^[•·\-\*]?\s*(.+?)[:：]\s*(.+)/;
+    const qtyPricePattern = /([\d,]+)\s*([\w\s]*?)\s*[-–—:]\s*[\$R]\$?([\d,.]+)/i;
+    const priceLabelPattern = /[\$R]\$?([\d,.]+)\s*(?:per|\/)\s*(\w+)/i;
+    const bestValuePattern = /best\s*value|recommended|popular|melhor/i;
+
+    // First pass: detect client/title from first lines
+    for (let i = 0; i < Math.min(lines.length, 3); i++) {
+      const line = lines[i];
+      if (!pricePattern.test(line) && !specPattern.test(line) && line.length < 60) {
+        if (i === 0 && !clientCompany) { clientCompany = line; continue; }
+        if (i === 1 && !title) { title = line; continue; }
+      }
+      break;
+    }
+
+    // Main parse
+    for (const line of lines) {
+      if (line === clientCompany || line === title) continue;
+
+      // Check for pricing line
+      const qtyMatch = line.match(qtyPricePattern);
+      if (qtyMatch) {
+        if (!currentItem) {
+          currentItem = { name: "Item", description: "", image_url: "", specs: [], pricing: [] };
+          items.push(currentItem);
+        }
+        currentItem.pricing.push({
+          qty: qtyMatch[1].trim(),
+          label: qtyMatch[2].trim() || "units",
+          price: qtyMatch[3].replace(/,/g, ""),
+          best_value: bestValuePattern.test(line),
+        });
+        continue;
+      }
+
+      // Check for standalone price
+      const standalonePrice = line.match(/[\$R]\$?([\d,.]+)/);
+      if (standalonePrice && line.length < 30) {
+        if (currentItem) {
+          currentItem.pricing.push({ qty: "1", label: "", price: standalonePrice[1].replace(/,/g, ""), best_value: false });
+        }
+        continue;
+      }
+
+      // Check for spec (key: value)
+      const specMatch = line.match(specPattern);
+      if (specMatch) {
+        if (!currentItem) {
+          currentItem = { name: "Item", description: "", image_url: "", specs: [], pricing: [] };
+          items.push(currentItem);
+        }
+        currentItem.specs.push({ label: specMatch[1].replace(/^[•·\-\*]\s*/, ""), value: specMatch[2] });
+        continue;
+      }
+
+      // If it's a short line and no current item or current item has pricing, start a new item
+      if (line.length < 80 && !specPattern.test(line) && !pricePattern.test(line)) {
+        if (!currentItem || currentItem.pricing.length > 0) {
+          currentItem = { name: line, description: "", image_url: "", specs: [], pricing: [] };
+          items.push(currentItem);
+        } else if (!currentItem.name || currentItem.name === "Item") {
+          currentItem.name = line;
+        } else {
+          currentItem.description += (currentItem.description ? "\n" : "") + line;
+        }
+        continue;
+      }
+
+      // Long text = description
+      if (currentItem) {
+        currentItem.description += (currentItem.description ? "\n" : "") + line;
+      }
+    }
+
+    // Ensure at least one item
+    if (items.length === 0) {
+      items.push({ name: lines[0] || "Item", description: lines.slice(1).join("\n"), image_url: "", specs: [], pricing: [{ qty: "", price: "", label: "", best_value: false }] });
+    }
+
+    // Ensure each item has at least one pricing
+    items.forEach(item => {
+      if (item.pricing.length === 0) {
+        item.pricing.push({ qty: "", price: "", label: "", best_value: false });
+      }
+    });
+
+    setForm(f => ({
+      ...f,
+      client_company: clientCompany || f.client_company,
+      title: title !== "Quote" ? title : f.title,
+      items,
+    }));
+    setShowPaste(false);
+    setPasteText("");
+    setShowCreate(true);
+  };
 
   const addItem = () => {
     setForm(f => ({ ...f, items: [...f.items, { name: "", description: "", image_url: "", specs: [], pricing: [{ qty: "", price: "", label: "", best_value: false }] }] }));
@@ -123,7 +232,10 @@ export default function QuoteBuilder() {
           <h1 className="text-2xl font-bold tracking-tight">Quotes</h1>
           <p className="text-sm text-muted-foreground mt-1">{quotes.length} quote{quotes.length !== 1 ? "s" : ""} created</p>
         </div>
-        <Button onClick={() => setShowCreate(true)} className="gap-2"><Plus className="w-4 h-4" /> New Quote</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowPaste(true)} className="gap-2"><Sparkles className="w-4 h-4" /> Paste & Generate</Button>
+          <Button onClick={() => setShowCreate(true)} className="gap-2"><Plus className="w-4 h-4" /> New Quote</Button>
+        </div>
       </div>
 
       {/* Quote list */}
@@ -282,6 +394,41 @@ export default function QuoteBuilder() {
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
               <Button onClick={handleGenerate} disabled={!form.items.some(i => i.name)}>Generate Quote</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Paste & Generate dialog */}
+      <Dialog open={showPaste} onOpenChange={setShowPaste}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Sparkles className="w-5 h-5 text-primary" /> Paste & Generate</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-2">
+            <p className="text-xs text-muted-foreground">
+              Paste your quote info in any format — item names, specs, pricing, client details. The parser will extract and structure it automatically.
+            </p>
+            <div className="bg-muted/30 rounded-lg p-3 text-xs text-muted-foreground space-y-1">
+              <p className="font-semibold text-foreground">Example:</p>
+              <p>Garlic & Lemon</p>
+              <p>Custom Roll Labels</p>
+              <p>Size: 1" x 1"</p>
+              <p>Format: Roll labels</p>
+              <p>1,000 stickers - $350.00</p>
+              <p>1,500 stickers - $375.00</p>
+              <p>2,000 stickers - $440.00 BEST VALUE</p>
+            </div>
+            <Textarea
+              placeholder="Paste your quote info here..."
+              value={pasteText}
+              onChange={e => setPasteText(e.target.value)}
+              rows={10}
+              className="font-mono text-xs"
+            />
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => { setShowPaste(false); setPasteText(""); }}>Cancel</Button>
+              <Button onClick={parseQuoteText} disabled={!pasteText.trim()} className="gap-2">
+                <Sparkles className="w-4 h-4" /> Generate Quote
+              </Button>
             </div>
           </div>
         </DialogContent>
