@@ -42,6 +42,13 @@ export default function PMTeam() {
       try { t = await base44.entities.Task.list(); } catch { /* ignore */ }
       try { tk = await base44.entities.Ticket.list(); } catch { /* ignore */ }
       try { u = await base44.entities.User.list(); } catch { /* ignore */ }
+      // If User.list() failed, extract names from tasks/tickets as fallback
+      if (u.length === 0) {
+        const nameMap = {};
+        t.forEach(task => { if (task.assigned_to_name) nameMap[task.assigned_to_name] = { full_name: task.assigned_to_name, email: "", role: "professional" }; });
+        tk.forEach(ticket => { if (ticket.assigned_to_name) nameMap[ticket.assigned_to_name] = { full_name: ticket.assigned_to_name, email: "", role: "professional" }; });
+        u = Object.values(nameMap);
+      }
       setTasks(t); setTickets(tk); setUsers(u); setLoading(false);
     };
     loadData();
