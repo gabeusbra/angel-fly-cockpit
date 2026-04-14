@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
-import { Users, Search, AlertTriangle, Clock, TrendingUp, ListChecks, Sparkles, Plus, Pencil, Trash2, Upload, UserCircle, ChevronRight, CheckCircle2, Flame } from "lucide-react";
+import { Users, Search, AlertTriangle, Clock, TrendingUp, ListChecks, Sparkles, Plus, Pencil, Trash2, Upload, UserCircle, ChevronRight, CheckCircle2, Flame, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -442,6 +442,29 @@ export default function PMTeam() {
               </div>
             </div>
 
+            {/* Link user first — auto-populates name + email */}
+            <div className="bg-muted/30 rounded-xl p-3">
+              <label className="text-xs font-semibold text-muted-foreground block mb-2">Quick Start — Link User Account</label>
+              {users.filter(u => u.email && u.role !== "client").length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {users.filter(u => u.email && u.role !== "client").slice(0, 10).map(u => (
+                    <button key={u.email} onClick={() => setForm(f => ({
+                      ...f,
+                      user_email: u.email,
+                      name: f.name || u.full_name || "",
+                      email: f.email || u.email || "",
+                      role: u.role === "admin" ? "admin" : u.role === "pm" ? "pm" : "professional",
+                    }))}
+                      className={`text-xs px-3 py-1.5 rounded-lg transition-all ${form.user_email === u.email ? "bg-primary text-white shadow-sm" : "bg-card border border-border text-foreground hover:border-primary/50"}`}>
+                      {u.full_name || u.email}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">No users available. Fill manually below.</p>
+              )}
+            </div>
+
             <Input placeholder="Full Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
             <div className="grid grid-cols-2 gap-3">
               <Select value={form.role} onValueChange={v => setForm({ ...form, role: v })}>
@@ -481,20 +504,13 @@ export default function PMTeam() {
               <div><label className="text-[10px] text-muted-foreground block mb-1">Delivery (days)</label><Input type="number" value={form.default_delivery_days} onChange={e => setForm({ ...form, default_delivery_days: e.target.value })} /></div>
               <div><label className="text-[10px] text-muted-foreground block mb-1">Max Tasks</label><Input type="number" value={form.max_tasks_capacity} onChange={e => setForm({ ...form, max_tasks_capacity: e.target.value })} /></div>
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground block mb-1">Link User Account (optional)</label>
-              <Input placeholder="User email" value={form.user_email} onChange={e => setForm({ ...form, user_email: e.target.value })} />
-              {users.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {users.filter(u => u.email && u.role !== "client").slice(0, 8).map(u => (
-                    <button key={u.email} onClick={() => setForm({ ...form, user_email: u.email })}
-                      className={`text-[10px] px-2 py-1 rounded-full transition-all ${form.user_email === u.email ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
-                      {u.full_name || u.email}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            {form.user_email && (
+              <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 rounded-lg px-3 py-2">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Linked to: {form.user_email}</span>
+                <button onClick={() => setForm({ ...form, user_email: "" })} className="ml-auto text-muted-foreground hover:text-red-500"><X className="w-3 h-3" /></button>
+              </div>
+            )}
             <Textarea placeholder="Notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} />
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setShowAdd(false)}>Cancel</Button>
