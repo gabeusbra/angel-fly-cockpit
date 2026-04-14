@@ -57,7 +57,12 @@ export default function AdminTickets() {
         });
         u = Object.values(proMap);
       }
-      setTickets(t); setPros(u); setProjects(p); setTasks(tk); setLoading(false);
+      // Use team store for assign dropdown (works for PM too)
+      import("@/lib/team-store").then(({ getTeamMembers }) => {
+        const team = getTeamMembers().filter(m => m.status === "active");
+        if (team.length > 0) setPros(team.map(m => ({ id: m.id, full_name: m.name, specialty: m.specialty })));
+      });
+      setTickets(t); if (u.length > 0) setPros(prev => prev.length > 0 ? prev : u); setProjects(p); setTasks(tk); setLoading(false);
     };
     init();
   }, []);
