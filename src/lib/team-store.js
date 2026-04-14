@@ -10,8 +10,30 @@ function saveLocal(members) {
   localStorage.setItem(TEAM_KEY, JSON.stringify(members));
 }
 
+async function syncLocalToEntity() {
+  const local = getLocalMembers();
+  if (local.length === 0) return;
+  try {
+    const remote = await base44.entities.TeamMember.list();
+    const remoteNames = new Set(remote.map(r => r.name?.toLowerCase()).filter(Boolean));
+    const remoteEmails = new Set(remote.map(r => r.email?.toLowerCase()).filter(Boolean));
+    for (const m of local) {
+      const nameMatch = m.name && remoteNames.has(m.name.toLowerCase());
+      const emailMatch = m.email && remoteEmails.has(m.email.toLowerCase());
+      if (!nameMatch && !emailMatch) {
+        const { id, created_at, ...payload } = m;
+        try { await base44.entities.TeamMember.create(payload); } catch { /* ignore */ }
+      }
+    }
+  } catch { /* ignore */ }
+}
+
 export async function getTeamMembers() {
   try {
+    if (!localStorage.getItem(TEAM_KEY + "_synced") && getLocalMembers().length > 0) {
+      localStorage.setItem(TEAM_KEY + "_synced", "1");
+      await syncLocalToEntity();
+    }
     const data = await base44.entities.TeamMember.list();
     saveLocal(data);
     return data;
