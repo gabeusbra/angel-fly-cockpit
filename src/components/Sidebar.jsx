@@ -24,6 +24,7 @@ const navByRole = {
     { label: "Dashboard", path: "/", icon: LayoutDashboard },
     { label: "Projects", path: "/pm/projects", icon: FolderKanban },
     { label: "Tickets", path: "/pm/tickets", icon: TicketCheck, badgeKey: "openTickets" },
+    { label: "Clients", path: "/pm/clients", icon: Building2 },
     { label: "Quotes", path: "/pm/quotes", icon: FileText },
     { label: "Payment Requests", path: "/pm/payments", icon: DollarSign },
     { label: "Team", path: "/pm/team", icon: Users },
