@@ -36,7 +36,7 @@ export default function PMTeam() {
   const [confirmDelete, setConfirmDelete] = useState(null);
 
   useEffect(() => {
-    setMembers(getTeamMembers());
+    getTeamMembers().then(setMembers);
     const loadData = async () => {
       let t = [], tk = [], u = [];
       try { t = await base44.entities.Task.list(); } catch { /* ignore */ }
@@ -54,7 +54,7 @@ export default function PMTeam() {
     loadData();
   }, []);
 
-  const reload = () => setMembers(getTeamMembers());
+  const reload = () => getTeamMembers().then(setMembers);
 
   // --- Stats per member ---
   const getStats = (member) => {
@@ -124,12 +124,12 @@ export default function PMTeam() {
     setForm({ name: m.name || "", role: m.role || "professional", specialty: m.specialty || "", email: m.email || "", phone: m.phone || "", avatar_url: m.avatar_url || "", hourly_rate: m.hourly_rate ? String(m.hourly_rate) : "", default_delivery_days: m.default_delivery_days ? String(m.default_delivery_days) : "", max_tasks_capacity: m.max_tasks_capacity ? String(m.max_tasks_capacity) : "8", user_email: m.user_email || "", status: m.status || "active", notes: m.notes || "" });
     setShowAdd(true);
   };
-  const handleSave = () => {
+  const handleSave = async () => {
     const data = { ...form, hourly_rate: form.hourly_rate ? parseFloat(form.hourly_rate) : null, default_delivery_days: form.default_delivery_days ? parseInt(form.default_delivery_days) : null, max_tasks_capacity: form.max_tasks_capacity ? parseInt(form.max_tasks_capacity) : MAX_CAPACITY };
-    if (editing) updateTeamMember(editing.id, data); else createTeamMember(data);
+    if (editing) await updateTeamMember(editing.id, data); else await createTeamMember(data);
     setShowAdd(false); reload();
   };
-  const handleDelete = () => { if (confirmDelete) { deleteTeamMember(confirmDelete.id); setConfirmDelete(null); setSelectedMember(null); reload(); } };
+  const handleDelete = async () => { if (confirmDelete) { await deleteTeamMember(confirmDelete.id); setConfirmDelete(null); setSelectedMember(null); reload(); } };
   const handleAvatarUpload = async (e) => {
     const file = e.target.files?.[0]; if (!file) return;
     setUploadingAvatar(true);

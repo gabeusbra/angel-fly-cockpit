@@ -35,8 +35,9 @@ export default function QuoteBuilder() {
   useEffect(() => {
     setQuotes(getQuotes());
     // Load clients from Client store (not User entity)
-    import("@/lib/clients-store").then(({ getClients }) => {
-      setClients(getClients().filter(c => c.status === "active"));
+    import("@/lib/clients-store").then(async ({ getClients }) => {
+      const all = await getClients();
+      setClients(all.filter(c => c.status === "active"));
     });
   }, []);
 

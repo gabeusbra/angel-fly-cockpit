@@ -29,7 +29,7 @@ export default function PMProjects() {
       setProjects(p);
       setTasks(t);
       // Load from Client store instead of User entity
-      try { const { getClients } = await import("@/lib/clients-store"); setClients(getClients().filter(c => c.status === "active")); } catch { setClients(u.filter(usr => usr.role === "client")); }
+      try { const { getClients } = await import("@/lib/clients-store"); const cl = await getClients(); setClients(cl.filter(c => c.status === "active")); } catch { setClients(u.filter(usr => usr.role === "client")); }
       setLoading(false);
     };
     loadData();

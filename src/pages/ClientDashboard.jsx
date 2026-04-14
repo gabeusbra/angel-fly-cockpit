@@ -33,8 +33,8 @@ export default function ClientDashboard({ user }) {
   // Get client branding from Client store
   const [clientData, setClientData] = useState(null);
   useEffect(() => {
-    import("@/lib/clients-store").then(({ getClientByEmail }) => {
-      const c = getClientByEmail(user?.email);
+    import("@/lib/clients-store").then(async ({ getClientByEmail }) => {
+      const c = await getClientByEmail(user?.email);
       if (c) setClientData(c);
     });
   }, [user]);

@@ -19,11 +19,11 @@ export default function AdminClients() {
   const [form, setForm] = useState({ name: "", contact_name: "", email: "", phone: "", logo_url: "", address: "", notes: "", user_email: "", status: "active" });
 
   useEffect(() => {
-    setClients(getClients());
+    getClients().then(setClients);
     try { base44.entities.User.list().then(u => setUsers(u)); } catch { /* ignore */ }
   }, []);
 
-  const reload = () => setClients(getClients());
+  const reload = () => getClients().then(setClients);
 
   const openCreate = () => {
     setEditing(null);
@@ -43,19 +43,19 @@ export default function AdminClients() {
     setShowForm(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (editing) {
-      updateClient(editing.id, form);
+      await updateClient(editing.id, form);
     } else {
-      createClient(form);
+      await createClient(form);
     }
     setShowForm(false);
     reload();
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (confirmDelete) {
-      deleteClient(confirmDelete.id);
+      await deleteClient(confirmDelete.id);
       setConfirmDelete(null);
       reload();
     }
