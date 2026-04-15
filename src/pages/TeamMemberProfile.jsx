@@ -22,6 +22,7 @@ export default function TeamMemberProfile() {
   const [member, setMember] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [tickets, setTickets] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [projectFilter, setProjectFilter] = useState("all");
   const [showSettings, setShowSettings] = useState(false);
@@ -37,6 +38,9 @@ export default function TeamMemberProfile() {
       try { tk = await base44.entities.Ticket.list(); } catch { /* ignore */ }
       setTasks(t);
       setTickets(tk.filter(x => x.category !== "client_record" && x.category !== "team_record"));
+      let u = [];
+      try { u = await base44.entities.User.list(); } catch { /* ignore */ }
+      setUsers(u.filter(usr => usr.role !== "client" && usr.email));
       setLoading(false);
     };
     load();
@@ -404,6 +408,24 @@ export default function TeamMemberProfile() {
                 }} />
               </label>
             </div>
+            {/* Quick Start — Link User Account */}
+            {users.length > 0 && (
+              <div className="bg-muted/30 rounded-xl p-3">
+                <label className="text-xs font-semibold text-muted-foreground block mb-2">Quick Start — Link User Account</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {users.slice(0, 10).map((u, i) => (
+                    <button key={u.email || i} onClick={() => setSettingsForm(f => ({ ...f, user_email: u.email, name: u.full_name || f.name, email: u.email || f.email }))}
+                      className={`text-xs px-3 py-1.5 rounded-lg transition-all ${settingsForm.user_email === u.email ? "bg-primary text-white shadow-sm" : "bg-card border border-border text-foreground hover:border-primary/50"}`}>
+                      {u.full_name || u.email}
+                    </button>
+                  ))}
+                </div>
+                {settingsForm.user_email && (
+                  <p className="text-[10px] text-emerald-600 mt-2">Linked to: {settingsForm.user_email}</p>
+                )}
+              </div>
+            )}
+
             <Input placeholder="Full Name" value={settingsForm.name || ""} onChange={e => setSettingsForm({ ...settingsForm, name: e.target.value })} />
             <div className="grid grid-cols-2 gap-3">
               <Select value={settingsForm.role || "professional"} onValueChange={v => setSettingsForm({ ...settingsForm, role: v })}>
