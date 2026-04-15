@@ -1,0 +1,367 @@
+import { useState, useEffect, useMemo } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { base44 } from "@/api/base44Client";
+import { ArrowLeft, CheckCircle2, AlertTriangle, Flame, TrendingUp, ListChecks, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { getTeamMemberById } from "@/lib/team-store";
+import StatusBadge from "../components/StatusBadge";
+
+const STATUS_COLORS = { backlog: "#94a3b8", assigned: "#60a5fa", in_progress: "#fbbf24", review: "#a78bfa", client_approval: "#fb923c", done: "#34d399" };
+
+export default function TeamMemberProfile() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const backPath = location.pathname.startsWith("/admin") ? "/admin/team" : "/pm/team";
+
+  const [member, setMember] = useState(null);
+  const [tasks, setTasks] = useState([]);
+  const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [projectFilter, setProjectFilter] = useState("all");
+
+  useEffect(() => {
+    const load = async () => {
+      const m = await getTeamMemberById(id);
+      setMember(m);
+      let t = [], tk = [];
+      try { t = await base44.entities.Task.list(); } catch { /* ignore */ }
+      try { tk = await base44.entities.Ticket.list(); } catch { /* ignore */ }
+      setTasks(t);
+      setTickets(tk.filter(x => x.category !== "client_record" && x.category !== "team_record"));
+      setLoading(false);
+    };
+    load();
+  }, [id]);
+
+  // Match tasks to this member
+  const myTasks = useMemo(() => {
+    if (!member) return [];
+    return tasks.filter(t =>
+      t.assigned_to_name?.toLowerCase() === member.name?.toLowerCase()
+    );
+  }, [member, tasks]);
+
+  const myTickets = useMemo(() => {
+    if (!member) return [];
+    return tickets.filter(t =>
+      t.assigned_to_name?.toLowerCase() === member.name?.toLowerCase() &&
+      t.status !== "closed"
+    );
+  }, [member, tickets]);
+
+  // Stats
+  const active = myTasks.filter(t => t.status !== "done");
+  const done = myTasks.filter(t => t.status === "done");
+  const overdue = active.filter(t => t.deadline && new Date(t.deadline) < new Date());
+  const inProgress = active.filter(t => t.status === "in_progress");
+  const review = active.filter(t => t.status === "review" || t.status === "client_approval");
+  const assigned = active.filter(t => t.status === "assigned" || t.status === "backlog");
+  const dueSoon = active.filter(t => { if (!t.deadline) return false; const d = (new Date(t.deadline) - new Date()) / 86400000; return d >= 0 && d <= 7; });
+  const completionRate = myTasks.length > 0 ? Math.round((done.length / myTasks.length) * 100) : 0;
+  const onTimeRate = done.length > 0 ? Math.round(((done.length - overdue.length) / done.length) * 100) : 100;
+  const capacity = parseInt(member?.max_tasks_capacity) || 8;
+
+  // Projects
+  const projects = [...new Set(myTasks.map(t => t.project_name).filter(Boolean))];
+  const filteredTasks = projectFilter === "all" ? active : active.filter(t => t.project_name === projectFilter);
+
+  // Milestones
+  const milestones = [...new Set(myTasks.map(t => t.milestone).filter(Boolean))];
+
+  // Chart data
+  const statusChart = useMemo(() => {
+    const counts = {};
+    myTasks.forEach(t => { counts[t.status] = (counts[t.status] || 0) + 1; });
+    return Object.entries(counts).map(([status, count]) => ({ status: status.replace(/_/g, " "), count, fill: STATUS_COLORS[status] || "#94a3b8" }));
+  }, [myTasks]);
+
+  if (loading) return (
+    <div className="space-y-6">
+      <div className="h-8 w-48 bg-muted rounded animate-pulse" />
+      <div className="h-40 bg-muted rounded-xl animate-pulse" />
+      <div className="grid grid-cols-2 gap-4"><div className="h-64 bg-muted rounded-xl animate-pulse" /><div className="h-64 bg-muted rounded-xl animate-pulse" /></div>
+    </div>
+  );
+
+  if (!member) return (
+    <div className="text-center py-20">
+      <p className="text-muted-foreground">Team member not found</p>
+      <Button variant="outline" onClick={() => navigate(backPath)} className="mt-4">Back to Team</Button>
+    </div>
+  );
+
+  const initials = (member.name || "?").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+
+  return (
+    <div className="space-y-6">
+      {/* Back */}
+      <button onClick={() => navigate(backPath)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+        <ArrowLeft className="w-3.5 h-3.5" /> Back to Team
+      </button>
+
+      {/* Profile header */}
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="h-2" style={{ background: "linear-gradient(to right, #FF4D35, #FFB74D)" }} />
+        <div className="p-6">
+          <div className="flex items-start gap-5">
+            {member.avatar_url ? (
+              <img src={member.avatar_url} alt="" className="w-16 h-16 rounded-2xl object-cover" />
+            ) : (
+              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-white font-bold text-xl ${member.role === "admin" ? "bg-purple-500" : member.role === "pm" ? "bg-blue-500" : "bg-gradient-to-br from-[#FF4D35] to-[#FFB74D]"}`}>
+                {initials}
+              </div>
+            )}
+            <div className="flex-1">
+              <div className="flex items-center gap-3">
+                <h1 className="text-xl font-bold tracking-tight">{member.name}</h1>
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${member.role === "admin" ? "bg-purple-100 text-purple-700" : member.role === "pm" ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"}`}>
+                  {member.role === "pm" ? "PM" : member.role?.charAt(0).toUpperCase() + member.role?.slice(1)}
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground mt-0.5">{member.specialty || "No specialty"} · {myTasks.length} tasks · {projects.length} project{projects.length !== 1 ? "s" : ""}</p>
+              {member.email && <p className="text-xs text-muted-foreground mt-0.5">{member.email}</p>}
+            </div>
+            <div className="flex items-center gap-4 text-center">
+              <div>
+                <p className={`text-2xl font-bold ${active.length >= capacity ? "text-red-600" : "text-foreground"}`}>{active.length}</p>
+                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Active</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-emerald-600">{done.length}</p>
+                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Done</p>
+              </div>
+              <div>
+                <p className={`text-2xl font-bold ${overdue.length > 0 ? "text-red-600" : "text-muted-foreground"}`}>{overdue.length}</p>
+                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Overdue</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Performance bar */}
+          <div className="grid grid-cols-4 gap-3 mt-5">
+            <div className="bg-muted/30 rounded-xl p-3 text-center">
+              <p className={`text-lg font-bold ${completionRate >= 70 ? "text-emerald-600" : "text-amber-600"}`}>{completionRate}%</p>
+              <p className="text-[9px] text-muted-foreground">Completion</p>
+            </div>
+            <div className="bg-muted/30 rounded-xl p-3 text-center">
+              <p className={`text-lg font-bold ${onTimeRate >= 80 ? "text-emerald-600" : "text-amber-600"}`}>{onTimeRate}%</p>
+              <p className="text-[9px] text-muted-foreground">On-time</p>
+            </div>
+            <div className="bg-muted/30 rounded-xl p-3 text-center">
+              <p className="text-lg font-bold">{member.hourly_rate ? `R$${member.hourly_rate}` : "—"}</p>
+              <p className="text-[9px] text-muted-foreground">Rate/hr</p>
+            </div>
+            <div className="bg-muted/30 rounded-xl p-3 text-center">
+              <p className="text-lg font-bold">{member.default_delivery_days || "—"}</p>
+              <p className="text-[9px] text-muted-foreground">Avg Days</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Two-column layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {/* Left: In Progress + Overdue */}
+        <div className="space-y-4">
+          {/* Overdue */}
+          {overdue.length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle className="w-4 h-4 text-red-600" />
+                <span className="text-sm font-bold text-red-700">Overdue ({overdue.length})</span>
+              </div>
+              {overdue.map(t => (
+                <div key={t.id} className="flex items-center justify-between py-2 border-b border-red-100 last:border-0">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-red-800 truncate">{t.title}</p>
+                    <p className="text-[10px] text-red-600">{t.project_name} · {Math.abs(Math.ceil((new Date(t.deadline) - new Date()) / 86400000))}d late</p>
+                  </div>
+                  <StatusBadge status={t.priority} size="xs" />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* In Progress */}
+          <div className="bg-card rounded-xl border border-border p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Flame className="w-4 h-4 text-amber-500" />
+              <span className="text-sm font-bold">In Progress ({inProgress.length})</span>
+            </div>
+            {inProgress.length > 0 ? inProgress.map(t => {
+              const daysLeft = t.deadline ? Math.ceil((new Date(t.deadline) - new Date()) / 86400000) : null;
+              return (
+                <div key={t.id} className="flex items-center gap-3 py-2.5 border-b border-border last:border-0">
+                  <div className="w-1.5 h-8 rounded-full bg-amber-400" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{t.title}</p>
+                    <p className="text-[10px] text-muted-foreground">{t.project_name}{t.milestone ? ` · ${t.milestone}` : ""}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <StatusBadge status={t.priority} size="xs" />
+                    {daysLeft !== null && <p className={`text-[10px] mt-0.5 ${daysLeft < 0 ? "text-red-600" : daysLeft <= 3 ? "text-amber-600" : "text-muted-foreground"}`}>{daysLeft < 0 ? `${Math.abs(daysLeft)}d late` : daysLeft === 0 ? "today" : `${daysLeft}d`}</p>}
+                  </div>
+                </div>
+              );
+            }) : <p className="text-sm text-muted-foreground text-center py-4">No tasks in progress</p>}
+          </div>
+
+          {/* In Review */}
+          {review.length > 0 && (
+            <div className="bg-card rounded-xl border border-border p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <CheckCircle2 className="w-4 h-4 text-purple-500" />
+                <span className="text-sm font-bold">In Review ({review.length})</span>
+              </div>
+              {review.map(t => (
+                <div key={t.id} className="flex items-center gap-3 py-2 border-b border-border last:border-0">
+                  <div className="w-1.5 h-8 rounded-full bg-purple-400" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm truncate">{t.title}</p>
+                    <p className="text-[10px] text-muted-foreground">{t.project_name}</p>
+                  </div>
+                  <StatusBadge status={t.status} size="xs" />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Right: Pending + Stats */}
+        <div className="space-y-4">
+          {/* Due this week */}
+          <div className="bg-card rounded-xl border border-border p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Calendar className="w-4 h-4 text-primary" />
+              <span className="text-sm font-bold">Due This Week ({dueSoon.length})</span>
+            </div>
+            {dueSoon.length > 0 ? dueSoon.sort((a, b) => new Date(a.deadline) - new Date(b.deadline)).map(t => (
+              <div key={t.id} className="flex items-center justify-between py-2.5 border-b border-border last:border-0">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{t.title}</p>
+                  <p className="text-[10px] text-muted-foreground">{t.project_name}{t.milestone ? ` · ${t.milestone}` : ""}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {t.milestone && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{t.milestone}</span>}
+                  <span className="text-xs text-muted-foreground">{new Date(t.deadline).toLocaleDateString()}</span>
+                </div>
+              </div>
+            )) : <p className="text-sm text-muted-foreground text-center py-4">No deadlines this week</p>}
+          </div>
+
+          {/* Backlog */}
+          <div className="bg-card rounded-xl border border-border p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <ListChecks className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-bold">Backlog ({assigned.length})</span>
+            </div>
+            {assigned.length > 0 ? assigned.slice(0, 8).map(t => (
+              <div key={t.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm truncate">{t.title}</p>
+                  <p className="text-[10px] text-muted-foreground">{t.project_name}</p>
+                </div>
+                <StatusBadge status={t.priority} size="xs" />
+              </div>
+            )) : <p className="text-sm text-muted-foreground text-center py-4">No backlog tasks</p>}
+            {assigned.length > 8 && <p className="text-[10px] text-muted-foreground text-center mt-2">+{assigned.length - 8} more</p>}
+          </div>
+
+          {/* Task breakdown chart */}
+          {statusChart.length > 0 && (
+            <div className="bg-card rounded-xl border border-border p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <TrendingUp className="w-4 h-4 text-emerald-500" />
+                <span className="text-sm font-bold">Task Breakdown</span>
+              </div>
+              <ResponsiveContainer width="100%" height={140}>
+                <BarChart data={statusChart}>
+                  <XAxis dataKey="status" tick={{ fontSize: 9 }} />
+                  <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                    {statusChart.map((entry, i) => (
+                      <rect key={i} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Project filter */}
+      {projects.length > 1 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-muted-foreground">Filter by project:</span>
+          <button onClick={() => setProjectFilter("all")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${projectFilter === "all" ? "bg-primary text-white" : "bg-card border border-border text-muted-foreground"}`}>
+            All Projects
+          </button>
+          {projects.map(p => (
+            <button key={p} onClick={() => setProjectFilter(p)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${projectFilter === p ? "bg-primary text-white" : "bg-card border border-border text-muted-foreground"}`}>
+              {p}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Milestones */}
+      {milestones.length > 0 && (
+        <div className="space-y-3">
+          {milestones.map(m => {
+            const mTasks = myTasks.filter(t => t.milestone === m);
+            const mDone = mTasks.filter(t => t.status === "done").length;
+            const pct = mTasks.length > 0 ? Math.round((mDone / mTasks.length) * 100) : 0;
+            return (
+              <div key={m} className="bg-card rounded-xl border border-border p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-bold">{m}</span>
+                  <span className="text-xs text-muted-foreground">{mDone}/{mTasks.length} · {pct}%</span>
+                </div>
+                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "linear-gradient(to right, #FF4D35, #FFB74D)" }} />
+                </div>
+                <div className="mt-2 space-y-1">
+                  {mTasks.filter(t => t.status !== "done").slice(0, 5).map(t => (
+                    <div key={t.id} className="flex items-center justify-between py-1">
+                      <span className="text-xs truncate flex-1">{t.title}</span>
+                      <div className="flex gap-1.5 shrink-0">
+                        <StatusBadge status={t.status} size="xs" />
+                        <StatusBadge status={t.priority} size="xs" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Recent completions */}
+      {done.length > 0 && (
+        <div className="bg-card rounded-xl border border-border p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            <span className="text-sm font-bold">Recent Completions</span>
+          </div>
+          <div className="space-y-2">
+            {done.slice(0, 5).map(t => (
+              <div key={t.id} className="flex items-center gap-2 py-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="text-sm text-muted-foreground truncate">{t.title}</span>
+                <span className="text-[10px] text-muted-foreground shrink-0">{t.project_name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -17,6 +17,7 @@ import AdminTickets from './pages/AdminTickets';
 import QuoteBuilder from './pages/QuoteBuilder';
 import QuoteView from './pages/QuoteView';
 import AdminClients from './pages/AdminClients';
+import TeamMemberProfile from './pages/TeamMemberProfile';
 import PMProjects from './pages/PMProjects';
 import PMProjectDetail from './pages/PMProjectDetail';
 import PMTickets from './pages/PMTickets';
@@ -69,6 +70,7 @@ const AuthenticatedApp = () => {
         <Route path="/admin/users" element={<AdminUsers />} />
         <Route path="/admin/tickets" element={<AdminTickets />} />
         <Route path="/admin/team" element={<PMTeam />} />
+        <Route path="/admin/team/:id" element={<TeamMemberProfile />} />
         <Route path="/admin/quotes" element={<QuoteBuilder />} />
         <Route path="/admin/clients" element={<AdminClients />} />
         <Route path="/pm/projects" element={<PMProjects />} />
@@ -78,6 +80,7 @@ const AuthenticatedApp = () => {
         <Route path="/pm/clients" element={<AdminClients />} />
         <Route path="/pm/payments" element={<PMPaymentRequests />} />
         <Route path="/pm/team" element={<PMTeam />} />
+        <Route path="/pm/team/:id" element={<TeamMemberProfile />} />
         <Route path="/pro/tasks" element={<ProTasks />} />
         <Route path="/pro/projects" element={<ProProjects />} />
         <Route path="/pro/projects/:id" element={<PMProjectDetail />} />

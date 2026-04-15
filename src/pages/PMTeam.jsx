@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
+import { useLocation, Link } from "react-router-dom";
 import { Users, Search, AlertTriangle, Clock, TrendingUp, ListChecks, Sparkles, Plus, Pencil, Trash2, Upload, UserCircle, ChevronRight, CheckCircle2, Flame, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,8 @@ const MAX_CAPACITY = 8;
 const emptyForm = { name: "", role: "professional", specialty: "", email: "", phone: "", avatar_url: "", hourly_rate: "", default_delivery_days: "", max_tasks_capacity: "8", user_email: "", status: "active", notes: "" };
 
 export default function PMTeam() {
+  const loc = useLocation();
+  const basePath = loc.pathname.startsWith("/admin") ? "/admin/team" : "/pm/team";
   const [members, setMembers] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [tickets, setTickets] = useState([]);
@@ -226,8 +229,8 @@ export default function PMTeam() {
             const s = getStats(m);
             const initials = (m.name || "?").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
             return (
-              <div key={m.id} onClick={() => setSelectedMember(m)}
-                className="bg-card rounded-xl border border-border p-5 hover:shadow-lg hover:shadow-black/5 transition-all cursor-pointer group">
+              <Link key={m.id} to={`${basePath}/${m.id}`}
+                className="bg-card rounded-xl border border-border p-5 hover:shadow-lg hover:shadow-black/5 transition-all cursor-pointer group block">
                 {/* Header */}
                 <div className="flex items-start gap-3 mb-4">
                   {m.avatar_url ? (
@@ -311,7 +314,7 @@ export default function PMTeam() {
                     {s.workloadPct >= 80 && <span className="text-amber-600 flex items-center gap-1"><Flame className="w-3 h-3" />High load</span>}
                   </div>
                 )}
-              </div>
+              </Link>
             );
           })}
         </div>
