@@ -461,10 +461,10 @@ export default function AdminUsers() {
       </Dialog>
 
       {/* Edit role dialog — modern */}
+      {editing && (
       <Dialog open={!!editing} onOpenChange={() => setEditing(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Configure User</DialogTitle></DialogHeader>
-          {editing && (
             <div className="space-y-5 pt-2">
               {/* User identity */}
               <div className="bg-muted/30 rounded-xl p-4 space-y-3">
@@ -594,9 +594,9 @@ export default function AdminUsers() {
                 <Button onClick={handleSave} disabled={!editForm.role}>Save Changes</Button>
               </div>
             </div>
-          )}
         </DialogContent>
       </Dialog>
+      )}
 
       {/* Delete / Deactivate confirmation */}
       <Dialog open={!!confirmDelete} onOpenChange={() => setConfirmDelete(null)}>
