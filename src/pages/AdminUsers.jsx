@@ -186,13 +186,14 @@ export default function AdminUsers() {
   };
 
   const filtered = users.filter(u => {
+    if (!u) return false;
     const q = search.toLowerCase();
     const matchesSearch = (u.full_name || "").toLowerCase().includes(q) || (u.email || "").toLowerCase().includes(q) || (u.company || "").toLowerCase().includes(q);
     const matchesRole = roleFilter === "all" || u.role === roleFilter;
     return matchesSearch && matchesRole;
   });
 
-  const activeUsers = users.filter(u => u.status !== "inactive");
+  const activeUsers = users.filter(u => u && u.status !== "inactive");
   const roleCounts = { admin: 0, pm: 0, professional: 0, client: 0 };
   activeUsers.forEach(u => { if (u.role && roleCounts[u.role] !== undefined) roleCounts[u.role]++; });
   const unconfigured = activeUsers.filter(u => !hasCockpitRole(u));
