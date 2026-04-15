@@ -43,6 +43,7 @@ export default function AdminUsers() {
   // Edit dialog
   const [editing, setEditing] = useState(null);
   const [editForm, setEditForm] = useState({ name: "", role: "", specialty: "", hourly_rate: "", company: "", phone: "", status: "active", avatar_url: "" });
+  const editStatus = editForm.status || "active";
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
   // Deactivate dialog
@@ -146,7 +147,7 @@ export default function AdminUsers() {
       hourly_rate: user.hourly_rate ? String(user.hourly_rate) : "",
       company: user.company || "",
       phone: user.phone || "",
-      status: user.status || "active",
+      status: user.status && user.status !== "" ? user.status : "active",
       avatar_url: user.avatar_url || "",
     });
   };
@@ -474,7 +475,7 @@ export default function AdminUsers() {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-muted-foreground truncate">{editing.email}</p>
                   </div>
-                  <Select value={editForm.status} onValueChange={v => setEditForm({ ...editForm, status: v })}>
+                  <Select value={editStatus} onValueChange={v => setEditForm({ ...editForm, status: v })}>
                     <SelectTrigger className="w-[100px] h-7 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="active">Active</SelectItem>
