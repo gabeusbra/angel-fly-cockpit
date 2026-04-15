@@ -27,6 +27,13 @@ const roleBadgeClass = (r) =>
   r === "professional" ? "bg-orange-100 text-orange-700" :
   "bg-emerald-100 text-emerald-700";
 
+const ROLE_CARD_STYLES = {
+  admin:        { active: "border-purple-500 bg-purple-50 shadow-sm", iconBg: "bg-purple-100", iconText: "text-purple-600", dot: "bg-purple-500" },
+  pm:           { active: "border-blue-500 bg-blue-50 shadow-sm",   iconBg: "bg-blue-100",   iconText: "text-blue-600",   dot: "bg-blue-500" },
+  professional: { active: "border-orange-500 bg-orange-50 shadow-sm", iconBg: "bg-orange-100", iconText: "text-orange-600", dot: "bg-orange-500" },
+  client:       { active: "border-emerald-500 bg-emerald-50 shadow-sm", iconBg: "bg-emerald-100", iconText: "text-emerald-600", dot: "bg-emerald-500" },
+};
+
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -382,25 +389,22 @@ export default function AdminUsers() {
               <label className="text-xs font-medium text-muted-foreground block mb-2">Cockpit Role</label>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { value: "admin", label: "Admin", desc: "Full system access", icon: Crown, color: "purple" },
-                  { value: "pm", label: "Project Manager", desc: "Operations & team", icon: Briefcase, color: "blue" },
-                  { value: "professional", label: "Professional", desc: "Tasks & deliverables", icon: Palette, color: "orange" },
-                  { value: "client", label: "Client", desc: "Projects & approvals", icon: Building2, color: "emerald" },
+                  { value: "admin", label: "Admin", desc: "Full system access", icon: Crown },
+                  { value: "pm", label: "Project Manager", desc: "Operations & team", icon: Briefcase },
+                  { value: "professional", label: "Professional", desc: "Tasks & deliverables", icon: Palette },
+                  { value: "client", label: "Client", desc: "Projects & approvals", icon: Building2 },
                 ].map(r => {
                   const isActive = inviteForm.cockpitRole === r.value;
+                  const s = ROLE_CARD_STYLES[r.value];
                   return (
                     <button key={r.value} onClick={() => setInviteForm({ ...inviteForm, cockpitRole: r.value })}
-                      className={`relative text-left p-3 rounded-xl border-2 transition-all ${
-                        isActive
-                          ? `border-${r.color}-500 bg-${r.color}-50 shadow-sm`
-                          : "border-border hover:border-muted-foreground/30 hover:bg-muted/30"
-                      }`}>
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${isActive ? `bg-${r.color}-100` : "bg-muted"}`}>
-                        <r.icon className={`w-4 h-4 ${isActive ? `text-${r.color}-600` : "text-muted-foreground"}`} />
+                      className={`relative text-left p-3 rounded-xl border-2 transition-all ${isActive ? s.active : "border-border hover:border-muted-foreground/30 hover:bg-muted/30"}`}>
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${isActive ? s.iconBg : "bg-muted"}`}>
+                        <r.icon className={`w-4 h-4 ${isActive ? s.iconText : "text-muted-foreground"}`} />
                       </div>
                       <p className="text-sm font-semibold">{r.label}</p>
                       <p className="text-[10px] text-muted-foreground">{r.desc}</p>
-                      {isActive && <div className={`absolute top-2 right-2 w-2 h-2 rounded-full bg-${r.color}-500`} />}
+                      {isActive && <div className={`absolute top-2 right-2 w-2 h-2 rounded-full ${s.dot}`} />}
                     </button>
                   );
                 })}
@@ -491,27 +495,22 @@ export default function AdminUsers() {
                 <label className="text-xs font-medium text-muted-foreground block mb-2">Cockpit Role</label>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { value: "admin", label: "Admin", desc: "Full system access", icon: Crown, color: "purple" },
-                    { value: "pm", label: "Project Manager", desc: "Operations & team", icon: Briefcase, color: "blue" },
-                    { value: "professional", label: "Professional", desc: "Tasks & deliverables", icon: Palette, color: "orange" },
-                    { value: "client", label: "Client", desc: "Projects & approvals", icon: Building2, color: "emerald" },
+                    { value: "admin", label: "Admin", desc: "Full system access", icon: Crown },
+                    { value: "pm", label: "Project Manager", desc: "Operations & team", icon: Briefcase },
+                    { value: "professional", label: "Professional", desc: "Tasks & deliverables", icon: Palette },
+                    { value: "client", label: "Client", desc: "Projects & approvals", icon: Building2 },
                   ].map(r => {
                     const isActive = editForm.role === r.value;
+                    const s = ROLE_CARD_STYLES[r.value];
                     return (
                       <button key={r.value} onClick={() => setEditForm({ ...editForm, role: r.value })}
-                        className={`relative text-left p-3 rounded-xl border-2 transition-all ${
-                          isActive
-                            ? `border-${r.color}-500 bg-${r.color}-50 shadow-sm`
-                            : "border-border hover:border-muted-foreground/30 hover:bg-muted/30"
-                        }`}>
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${
-                          isActive ? `bg-${r.color}-100` : "bg-muted"
-                        }`}>
-                          <r.icon className={`w-4 h-4 ${isActive ? `text-${r.color}-600` : "text-muted-foreground"}`} />
+                        className={`relative text-left p-3 rounded-xl border-2 transition-all ${isActive ? s.active : "border-border hover:border-muted-foreground/30 hover:bg-muted/30"}`}>
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-2 ${isActive ? s.iconBg : "bg-muted"}`}>
+                          <r.icon className={`w-4 h-4 ${isActive ? s.iconText : "text-muted-foreground"}`} />
                         </div>
                         <p className="text-sm font-semibold">{r.label}</p>
                         <p className="text-[10px] text-muted-foreground">{r.desc}</p>
-                        {isActive && <div className={`absolute top-2 right-2 w-2 h-2 rounded-full bg-${r.color}-500`} />}
+                        {isActive && <div className={`absolute top-2 right-2 w-2 h-2 rounded-full ${s.dot}`} />}
                       </button>
                     );
                   })}
