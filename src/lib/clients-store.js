@@ -98,10 +98,11 @@ export async function deleteClient(id) {
   }
 }
 
-// One-time sync: push localStorage clients to Ticket entity
+// One-time sync: push localStorage clients to Ticket entity, then clear local
 export async function syncLocalClients() {
+  if (localStorage.getItem(CLIENTS_KEY + "_v2_synced")) return;
   const local = getLocalClients();
-  if (local.length === 0) return;
+  if (local.length === 0) { localStorage.setItem(CLIENTS_KEY + "_v2_synced", "1"); return; }
   try {
     const all = await base44.entities.Ticket.list();
     const existing = all.filter(t => t.category === CATEGORY);
@@ -111,5 +112,8 @@ export async function syncLocalClients() {
         try { await base44.entities.Ticket.create(clientToTicket(c)); } catch { /* ignore */ }
       }
     }
-  } catch { /* ignore */ }
+    // Clear localStorage after successful sync — entity is now source of truth
+    localStorage.removeItem(CLIENTS_KEY);
+    localStorage.setItem(CLIENTS_KEY + "_v2_synced", "1");
+  } catch { /* ignore — will retry next time */ }
 }

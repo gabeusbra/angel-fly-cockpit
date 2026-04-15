@@ -109,10 +109,11 @@ export async function getAssignableMembers() {
   return members.filter(m => m.status === "active");
 }
 
-// One-time sync: push localStorage members to Ticket entity
+// One-time sync: push localStorage members to Ticket entity, then clear local
 export async function syncLocalTeamMembers() {
+  if (localStorage.getItem(TEAM_KEY + "_v2_synced")) return;
   const local = getLocalMembers();
-  if (local.length === 0) return;
+  if (local.length === 0) { localStorage.setItem(TEAM_KEY + "_v2_synced", "1"); return; }
   try {
     const all = await base44.entities.Ticket.list();
     const existing = all.filter(t => t.category === CATEGORY);
@@ -122,5 +123,7 @@ export async function syncLocalTeamMembers() {
         try { await base44.entities.Ticket.create(memberToTicket(m)); } catch { /* ignore */ }
       }
     }
+    localStorage.removeItem(TEAM_KEY);
+    localStorage.setItem(TEAM_KEY + "_v2_synced", "1");
   } catch { /* ignore */ }
 }
