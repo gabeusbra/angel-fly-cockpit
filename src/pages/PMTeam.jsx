@@ -470,7 +470,7 @@ export default function PMTeam() {
               <label className="text-xs font-semibold text-muted-foreground block mb-2">Quick Start — Link User Account</label>
               {(() => {
                 // Only show Base44 users (not team members from store)
-                const options = users.filter(u => u.role !== "client" && (u.email || u.full_name));
+                const options = users.filter(u => u.role !== "client" && u.email);
                 return options.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
                   {options.slice(0, 10).map((u, i) => (

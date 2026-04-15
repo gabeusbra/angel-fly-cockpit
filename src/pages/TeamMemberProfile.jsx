@@ -410,7 +410,17 @@ export default function TeamMemberProfile() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent><SelectItem value="admin">Admin</SelectItem><SelectItem value="pm">PM</SelectItem><SelectItem value="professional">Professional</SelectItem></SelectContent>
               </Select>
-              <Input placeholder="Specialty" value={settingsForm.specialty || ""} onChange={e => setSettingsForm({ ...settingsForm, specialty: e.target.value })} />
+              <div>
+                <div className="flex flex-wrap gap-1 mb-1.5">
+                  {["Frontend Developer", "Backend Developer", "Full-Stack Developer", "UI/UX Designer", "Social Media Manager", "Marketing Strategist", "Content Creator", "SEO Specialist", "Video Editor", "Copywriter"].map(s => (
+                    <button key={s} onClick={() => setSettingsForm({ ...settingsForm, specialty: s })}
+                      className={`px-2 py-0.5 rounded-full text-[9px] font-medium transition-all ${settingsForm.specialty === s ? "bg-primary text-white shadow-sm" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+                <Input placeholder="Or custom specialty..." value={settingsForm.specialty || ""} onChange={e => setSettingsForm({ ...settingsForm, specialty: e.target.value })} className="text-xs" />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Input placeholder="Email" value={settingsForm.email || ""} onChange={e => setSettingsForm({ ...settingsForm, email: e.target.value })} />
