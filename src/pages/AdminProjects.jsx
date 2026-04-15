@@ -105,7 +105,7 @@ export default function AdminProjects() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{[...Array(4)].map((_, i) => <div key={i} className="bg-card rounded-xl border p-5 h-52 animate-pulse" />)}</div>
       ) : filtered.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filtered.map(p => {
+          {filtered.filter(p => p && p.id).map(p => {
             const stats = getStats(p.id);
             const budget = getBudget(p.id);
             const budgetPct = budget.budget > 0 ? Math.round((budget.used / budget.budget) * 100) : 0;
