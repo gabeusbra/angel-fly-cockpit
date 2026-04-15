@@ -24,7 +24,7 @@ export default function AdminTickets() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("open");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [detail, setDetail] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
