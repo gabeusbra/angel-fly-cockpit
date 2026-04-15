@@ -3,7 +3,6 @@ import { base44 } from "@/api/base44Client";
 import { Search, Star, Plus, Sparkles, ListChecks, Clock, AlertTriangle, CheckCircle2, MessageSquare, User, ExternalLink, Paperclip, Copy } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import StatusBadge from "../components/StatusBadge";
@@ -276,12 +275,11 @@ export default function AdminTickets() {
                     {/* Actions */}
                     <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
                       {(t.status === "open" || t.status === "in_progress") && (
-                        <Select value={t.assigned_to || ""} onValueChange={v => handleAssign(t, v)}>
-                          <SelectTrigger className="h-9 text-xs w-[130px] rounded-lg">
-                            <SelectValue placeholder="Assign..." />
-                          </SelectTrigger>
-                          <SelectContent>{pros.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>)}</SelectContent>
-                        </Select>
+                        <select value={t.assigned_to || ""} onChange={e => handleAssign(t, e.target.value)}
+                          className="h-9 w-[130px] rounded-lg border border-input bg-transparent px-2 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
+                          <option value="">Assign...</option>
+                          {pros.map(u => <option key={u.id} value={u.id}>{u.full_name}</option>)}
+                        </select>
                       )}
                       {!linkedTask && t.status !== "closed" && (
                         <Button size="sm" variant="outline" className="h-9 text-xs gap-1 rounded-lg" onClick={() => openConvert(t)}>
@@ -311,7 +309,7 @@ export default function AdminTickets() {
       )}
 
       {/* Detail dialog */}
-      <Dialog open={!!detail} onOpenChange={() => setDetail(null)}>
+      {detail && <Dialog open={!!detail} onOpenChange={() => setDetail(null)}>
         <DialogContent className="max-w-lg">
           {detail && (() => {
             const cat = CATEGORY_CONFIG[detail.category] || CATEGORY_CONFIG.question;
@@ -366,10 +364,11 @@ export default function AdminTickets() {
                   )}
                   <div className="flex gap-2 justify-end" onClick={e => e.stopPropagation()}>
                     {(detail.status === "open" || detail.status === "in_progress") && (
-                      <Select value={detail.assigned_to || ""} onValueChange={v => { handleAssign(detail, v); setDetail(null); }}>
-                        <SelectTrigger className="h-9 text-xs w-[140px]"><SelectValue placeholder={detail.assigned_to_name || "Assign..."} /></SelectTrigger>
-                        <SelectContent>{pros.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>)}</SelectContent>
-                      </Select>
+                      <select value={detail.assigned_to || ""} onChange={e => { handleAssign(detail, e.target.value); setDetail(null); }}
+                        className="h-9 w-[140px] rounded-md border border-input bg-transparent px-2 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
+                        <option value="">{detail.assigned_to_name || "Assign..."}</option>
+                        {pros.map(u => <option key={u.id} value={u.id}>{u.full_name}</option>)}
+                      </select>
                     )}
                     {detail.status === "in_progress" && <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => { handleStatus(detail.id, "resolved"); setDetail(null); }}>Resolve</Button>}
                     {detail.status === "resolved" && <Button size="sm" onClick={() => { handleStatus(detail.id, "closed"); setDetail(null); }}>Close</Button>}
@@ -381,19 +380,20 @@ export default function AdminTickets() {
             );
           })()}
         </DialogContent>
-      </Dialog>
+      </Dialog>}
 
       {/* Create ticket */}
-      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+      {showCreate && <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent>
           <DialogHeader><DialogTitle>New Ticket</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-2">
             <Input placeholder="Subject" value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} className="text-base font-medium" />
             <Input placeholder="Client Name" value={form.client_name} onChange={e => setForm({ ...form, client_name: e.target.value })} />
-            <Select value={form.project_id} onValueChange={v => setForm({ ...form, project_id: v })}>
-              <SelectTrigger><SelectValue placeholder="Project (optional)" /></SelectTrigger>
-              <SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-            </Select>
+            <select value={form.project_id} onChange={e => setForm({ ...form, project_id: e.target.value })}
+              className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
+              <option value="">Project (optional)</option>
+              {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
             <div>
               <label className="text-xs font-medium text-muted-foreground block mb-2">Category</label>
               <div className="grid grid-cols-2 gap-2">
@@ -423,10 +423,10 @@ export default function AdminTickets() {
             </div>
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
 
       {/* Convert to task */}
-      <Dialog open={!!convertTicket} onOpenChange={() => setConvertTicket(null)}>
+      {convertTicket && <Dialog open={!!convertTicket} onOpenChange={() => setConvertTicket(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Convert to Task</DialogTitle></DialogHeader>
           {convertTicket && (
@@ -435,14 +435,16 @@ export default function AdminTickets() {
                 <p className="text-sm font-semibold">{convertTicket.subject}</p>
                 <p className="text-xs text-muted-foreground">{convertTicket.client_name} · {convertTicket.priority}</p>
               </div>
-              <Select value={convertForm.project_id} onValueChange={v => setConvertForm({ ...convertForm, project_id: v })}>
-                <SelectTrigger><SelectValue placeholder="Project" /></SelectTrigger>
-                <SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-              </Select>
-              <Select value={convertForm.assigned_to} onValueChange={v => setConvertForm({ ...convertForm, assigned_to: v })}>
-                <SelectTrigger><SelectValue placeholder="Assign to (optional)" /></SelectTrigger>
-                <SelectContent>{pros.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>)}</SelectContent>
-              </Select>
+              <select value={convertForm.project_id} onChange={e => setConvertForm({ ...convertForm, project_id: e.target.value })}
+                className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
+                <option value="">Project</option>
+                {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+              <select value={convertForm.assigned_to} onChange={e => setConvertForm({ ...convertForm, assigned_to: e.target.value })}
+                className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
+                <option value="">Assign to (optional)</option>
+                {pros.map(u => <option key={u.id} value={u.id}>{u.full_name}</option>)}
+              </select>
               <div className="grid grid-cols-2 gap-3">
                 <Input type="date" value={convertForm.deadline} onChange={e => setConvertForm({ ...convertForm, deadline: e.target.value })} />
                 <Input placeholder="Milestone" value={convertForm.milestone} onChange={e => setConvertForm({ ...convertForm, milestone: e.target.value })} />
@@ -454,7 +456,7 @@ export default function AdminTickets() {
             </div>
           )}
         </DialogContent>
-      </Dialog>
+      </Dialog>}
     </div>
   );
 }
