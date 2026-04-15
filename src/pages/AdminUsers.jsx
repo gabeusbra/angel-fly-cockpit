@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Mail, Search, Pencil, Trash2, UserCircle, AlertCircle, Clock, X, Crown, Briefcase, Palette, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import PageHeader from "../components/PageHeader";
 import StatusBadge from "../components/StatusBadge";
@@ -276,16 +276,14 @@ export default function AdminUsers() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Search by name, email, or company..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
-        <Select value={roleFilter} onValueChange={setRoleFilter}>
-          <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Roles</SelectItem>
-            <SelectItem value="admin">Admin</SelectItem>
-            <SelectItem value="pm">Project Manager</SelectItem>
-            <SelectItem value="professional">Professional</SelectItem>
-            <SelectItem value="client">Client</SelectItem>
-          </SelectContent>
-        </Select>
+        <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}
+          className="h-9 w-[160px] rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
+          <option value="all">All Roles</option>
+          <option value="admin">Admin</option>
+          <option value="pm">Project Manager</option>
+          <option value="professional">Professional</option>
+          <option value="client">Client</option>
+        </select>
       </div>
 
       {/* User table */}
@@ -475,13 +473,11 @@ export default function AdminUsers() {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-muted-foreground truncate">{editing.email}</p>
                   </div>
-                  <Select value={editStatus} onValueChange={v => setEditForm({ ...editForm, status: v })}>
-                    <SelectTrigger className="w-[100px] h-7 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <select value={editStatus} onChange={e => setEditForm({ ...editForm, status: e.target.value })}
+                    className="h-7 w-[100px] rounded-md border border-input bg-transparent px-2 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground block mb-1">Display Name</label>
