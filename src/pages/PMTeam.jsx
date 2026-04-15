@@ -465,24 +465,37 @@ export default function PMTeam() {
             {/* Link user first — auto-populates name + email */}
             <div className="bg-muted/30 rounded-xl p-3">
               <label className="text-xs font-semibold text-muted-foreground block mb-2">Quick Start — Link User Account</label>
-              {users.filter(u => u.email && u.role !== "client").length > 0 ? (
+              {(() => {
+                // Combine users + existing team members for quick start
+                const options = [];
+                const seen = new Set();
+                users.filter(u => u.role !== "client").forEach(u => {
+                  const key = u.email || u.full_name;
+                  if (key && !seen.has(key)) { seen.add(key); options.push(u); }
+                });
+                members.forEach(m => {
+                  const key = m.email || m.name;
+                  if (key && !seen.has(key)) { seen.add(key); options.push({ full_name: m.name, email: m.email || "", role: m.role || "professional" }); }
+                });
+                return options.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
-                  {users.filter(u => u.email && u.role !== "client").slice(0, 10).map(u => (
-                    <button key={u.email} onClick={() => setForm(f => ({
+                  {options.slice(0, 10).map((u, i) => (
+                    <button key={u.email || u.full_name || i} onClick={() => setForm(f => ({
                       ...f,
-                      user_email: u.email,
+                      user_email: u.email || "",
                       name: f.name || u.full_name || "",
                       email: f.email || u.email || "",
                       role: u.role === "admin" ? "admin" : u.role === "pm" ? "pm" : "professional",
                     }))}
-                      className={`text-xs px-3 py-1.5 rounded-lg transition-all ${form.user_email === u.email ? "bg-primary text-white shadow-sm" : "bg-card border border-border text-foreground hover:border-primary/50"}`}>
+                      className={`text-xs px-3 py-1.5 rounded-lg transition-all ${form.user_email === (u.email || u.full_name) ? "bg-primary text-white shadow-sm" : "bg-card border border-border text-foreground hover:border-primary/50"}`}>
                       {u.full_name || u.email}
                     </button>
                   ))}
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground">No users available. Fill manually below.</p>
-              )}
+              );
+              })()}
             </div>
 
             <Input placeholder="Full Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
