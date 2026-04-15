@@ -235,7 +235,11 @@ export default function AdminTickets() {
                         <div className={`w-2 h-2 rounded-full ${PRIORITY_DOT[t.priority] || PRIORITY_DOT.medium}`} title={t.priority} />
                         {linkedTask && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 font-medium">Task linked</span>}
                       </div>
-                      <p className="text-xs text-muted-foreground">{t.client_name}{t.project_name ? ` · ${t.project_name}` : ""}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {t.client_name && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium">{t.client_name}</span>}
+                        {t.project_name && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-medium">{t.project_name}</span>}
+                        {!t.client_name && !t.project_name && <span className="text-xs text-muted-foreground">No client/project</span>}
+                      </div>
                       {t.description && <p className="text-xs text-muted-foreground mt-1.5 line-clamp-1">{t.description}</p>}
                       {t.attachments?.length > 0 && (
                         <div className="flex items-center gap-1.5 mt-1.5">

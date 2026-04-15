@@ -1,10 +1,14 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { ArrowLeft, CheckCircle2, AlertTriangle, Flame, TrendingUp, ListChecks, Calendar } from "lucide-react";
+import { ArrowLeft, CheckCircle2, AlertTriangle, Flame, TrendingUp, ListChecks, Calendar, Settings, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { getTeamMemberById } from "@/lib/team-store";
+import { getTeamMemberById, updateTeamMember } from "@/lib/team-store";
 import StatusBadge from "../components/StatusBadge";
 
 const STATUS_COLORS = { backlog: "#94a3b8", assigned: "#60a5fa", in_progress: "#fbbf24", review: "#a78bfa", client_approval: "#fb923c", done: "#34d399" };
@@ -20,6 +24,9 @@ export default function TeamMemberProfile() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [projectFilter, setProjectFilter] = useState("all");
+  const [showSettings, setShowSettings] = useState(false);
+  const [settingsForm, setSettingsForm] = useState({});
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -34,6 +41,18 @@ export default function TeamMemberProfile() {
     };
     load();
   }, [id]);
+
+  const openSettings = () => {
+    if (!member) return;
+    setSettingsForm({ name: member.name || "", role: member.role || "professional", specialty: member.specialty || "", email: member.email || "", phone: member.phone || "", avatar_url: member.avatar_url || "", hourly_rate: member.hourly_rate ? String(member.hourly_rate) : "", default_delivery_days: member.default_delivery_days ? String(member.default_delivery_days) : "", max_tasks_capacity: member.max_tasks_capacity ? String(member.max_tasks_capacity) : "8", user_email: member.user_email || "", notes: member.notes || "" });
+    setShowSettings(true);
+  };
+  const handleSaveSettings = async () => {
+    await updateTeamMember(id, { ...settingsForm, hourly_rate: settingsForm.hourly_rate ? parseFloat(settingsForm.hourly_rate) : null, default_delivery_days: settingsForm.default_delivery_days ? parseInt(settingsForm.default_delivery_days) : null, max_tasks_capacity: settingsForm.max_tasks_capacity ? parseInt(settingsForm.max_tasks_capacity) : 8 });
+    const updated = await getTeamMemberById(id);
+    setMember(updated);
+    setShowSettings(false);
+  };
 
   // Match tasks to this member
   const myTasks = useMemo(() => {
@@ -123,6 +142,7 @@ export default function TeamMemberProfile() {
               <p className="text-sm text-muted-foreground mt-0.5">{member.specialty || "No specialty"} · {myTasks.length} tasks · {projects.length} project{projects.length !== 1 ? "s" : ""}</p>
               {member.email && <p className="text-xs text-muted-foreground mt-0.5">{member.email}</p>}
             </div>
+            <Button variant="ghost" size="sm" onClick={openSettings} className="shrink-0 gap-1.5"><Settings className="w-4 h-4" /> Settings</Button>
             <div className="flex items-center gap-4 text-center">
               <div>
                 <p className={`text-2xl font-bold ${active.length >= capacity ? "text-red-600" : "text-foreground"}`}>{active.length}</p>
@@ -362,6 +382,53 @@ export default function TeamMemberProfile() {
           </div>
         </div>
       )}
+
+      {/* Settings dialog */}
+      <Dialog open={showSettings} onOpenChange={setShowSettings}>
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Settings — {member?.name}</DialogTitle></DialogHeader>
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center gap-3">
+              {settingsForm.avatar_url ? (
+                <img src={settingsForm.avatar_url} alt="" className="w-12 h-12 rounded-xl object-cover" />
+              ) : (
+                <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center"><Settings className="w-6 h-6 text-muted-foreground" /></div>
+              )}
+              <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:bg-muted/30 cursor-pointer">
+                <Upload className="w-3.5 h-3.5" /> Upload
+                <input type="file" accept="image/*" className="hidden" disabled={uploadingAvatar} onChange={async (e) => {
+                  const file = e.target.files?.[0]; if (!file) return;
+                  setUploadingAvatar(true);
+                  try { const { file_url } = await base44.integrations.Core.UploadFile({ file }); setSettingsForm(f => ({ ...f, avatar_url: file_url })); } catch {}
+                  setUploadingAvatar(false);
+                }} />
+              </label>
+            </div>
+            <Input placeholder="Full Name" value={settingsForm.name || ""} onChange={e => setSettingsForm({ ...settingsForm, name: e.target.value })} />
+            <div className="grid grid-cols-2 gap-3">
+              <Select value={settingsForm.role || "professional"} onValueChange={v => setSettingsForm({ ...settingsForm, role: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="admin">Admin</SelectItem><SelectItem value="pm">PM</SelectItem><SelectItem value="professional">Professional</SelectItem></SelectContent>
+              </Select>
+              <Input placeholder="Specialty" value={settingsForm.specialty || ""} onChange={e => setSettingsForm({ ...settingsForm, specialty: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Input placeholder="Email" value={settingsForm.email || ""} onChange={e => setSettingsForm({ ...settingsForm, email: e.target.value })} />
+              <Input placeholder="Phone" value={settingsForm.phone || ""} onChange={e => setSettingsForm({ ...settingsForm, phone: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div><label className="text-[10px] text-muted-foreground">Rate (R$/hr)</label><Input type="number" value={settingsForm.hourly_rate || ""} onChange={e => setSettingsForm({ ...settingsForm, hourly_rate: e.target.value })} /></div>
+              <div><label className="text-[10px] text-muted-foreground">Delivery (days)</label><Input type="number" value={settingsForm.default_delivery_days || ""} onChange={e => setSettingsForm({ ...settingsForm, default_delivery_days: e.target.value })} /></div>
+              <div><label className="text-[10px] text-muted-foreground">Max Tasks</label><Input type="number" value={settingsForm.max_tasks_capacity || ""} onChange={e => setSettingsForm({ ...settingsForm, max_tasks_capacity: e.target.value })} /></div>
+            </div>
+            <Textarea placeholder="Notes" value={settingsForm.notes || ""} onChange={e => setSettingsForm({ ...settingsForm, notes: e.target.value })} rows={2} />
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setShowSettings(false)}>Cancel</Button>
+              <Button onClick={handleSaveSettings}>Save</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
