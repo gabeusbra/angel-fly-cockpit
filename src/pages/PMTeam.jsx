@@ -44,11 +44,20 @@ export default function PMTeam() {
       try { u = await base44.entities.User.list(); } catch { /* ignore */ }
       // Filter out storage records from tickets
       const realTickets = tk.filter(x => x.category !== "client_record" && x.category !== "team_record");
-      // If User.list() failed, extract names from tasks/tickets as fallback
+      // If User.list() failed, build user list from multiple sources
       if (u.length === 0) {
         const nameMap = {};
+        // From task assignments
         t.forEach(task => { if (task.assigned_to_name) nameMap[task.assigned_to_name] = { full_name: task.assigned_to_name, email: "", role: "professional" }; });
+        // From ticket assignments
         realTickets.forEach(ticket => { if (ticket.assigned_to_name) nameMap[ticket.assigned_to_name] = { full_name: ticket.assigned_to_name, email: "", role: "professional" }; });
+        // From team_record tickets (existing team members in entity)
+        tk.filter(x => x.category === "team_record").forEach(rec => {
+          try {
+            const data = JSON.parse(rec.description || "{}");
+            if (rec.subject) nameMap[rec.subject] = { full_name: rec.subject, email: data.email || "", role: data.role || "professional" };
+          } catch { /* ignore */ }
+        });
         u = Object.values(nameMap);
       } else {
         u = u.filter(usr => usr.role !== "client");
