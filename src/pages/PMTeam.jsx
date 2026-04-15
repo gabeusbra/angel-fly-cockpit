@@ -469,17 +469,8 @@ export default function PMTeam() {
             <div className="bg-muted/30 rounded-xl p-3">
               <label className="text-xs font-semibold text-muted-foreground block mb-2">Quick Start — Link User Account</label>
               {(() => {
-                // Combine users + existing team members for quick start
-                const options = [];
-                const seen = new Set();
-                users.filter(u => u.role !== "client").forEach(u => {
-                  const key = u.email || u.full_name;
-                  if (key && !seen.has(key)) { seen.add(key); options.push(u); }
-                });
-                members.forEach(m => {
-                  const key = m.email || m.name;
-                  if (key && !seen.has(key)) { seen.add(key); options.push({ full_name: m.name, email: m.email || "", role: m.role || "professional" }); }
-                });
+                // Only show Base44 users (not team members from store)
+                const options = users.filter(u => u.role !== "client" && (u.email || u.full_name));
                 return options.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
                   {options.slice(0, 10).map((u, i) => (
