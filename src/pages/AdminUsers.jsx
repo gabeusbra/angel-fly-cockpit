@@ -353,7 +353,7 @@ export default function AdminUsers() {
       </div>
 
       {/* Invite dialog — modern */}
-      <Dialog open={showInvite} onOpenChange={setShowInvite}>
+      {showInvite && <Dialog open={showInvite} onOpenChange={setShowInvite}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Invite User</DialogTitle></DialogHeader>
           <div className="space-y-5 pt-2">
@@ -458,7 +458,7 @@ export default function AdminUsers() {
             </div>
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
 
       {/* Edit role dialog — modern */}
       {editing && (
@@ -599,6 +599,7 @@ export default function AdminUsers() {
       )}
 
       {/* Delete / Deactivate confirmation */}
+      {confirmDelete && (
       <Dialog open={!!confirmDelete} onOpenChange={() => setConfirmDelete(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Remove User — {confirmDelete?.full_name || confirmDelete?.email}</DialogTitle></DialogHeader>
@@ -619,6 +620,7 @@ export default function AdminUsers() {
           </div>
         </DialogContent>
       </Dialog>
+      )}
     </div>
   );
 }
