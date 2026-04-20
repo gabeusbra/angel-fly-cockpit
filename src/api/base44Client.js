@@ -8,7 +8,7 @@ export const base44 = createClient({
   appId,
   token,
   functionsVersion,
-  serverUrl: appBaseUrl || 'https://angel-fly-pilot.base44.app',
+  serverUrl: appBaseUrl || 'https://api.base44.com',
   requiresAuth: false,
   appBaseUrl
 });
