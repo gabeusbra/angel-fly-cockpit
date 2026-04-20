@@ -23,6 +23,12 @@ jobs:
       - name: Install Dependencies
         run: npm ci || npm install
 
+      - name: Inject Environment Variables
+        run: |
+          echo "VITE_BASE44_APP_ID=${{ secrets.BASE44_APP_ID }}" >> .env
+          echo "VITE_BASE44_APP_BASE_URL=${{ secrets.BASE44_APP_BASE_URL }}" >> .env
+          echo "VITE_BASE44_FUNCTIONS_VERSION=${{ secrets.BASE44_FUNCTIONS_VERSION }}" >> .env
+
       - name: Build Project
         run: npm run build
 
