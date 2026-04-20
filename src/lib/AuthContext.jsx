@@ -41,6 +41,11 @@ export const AuthProvider = ({ children }) => {
         if (appParams.token) {
           await checkUserAuth();
         } else {
+          // No token available — force login redirect
+          setAuthError({
+            type: 'auth_required',
+            message: 'Authentication required'
+          });
           setIsLoadingAuth(false);
           setIsAuthenticated(false);
         }
