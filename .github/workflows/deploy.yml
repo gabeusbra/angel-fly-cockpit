@@ -34,5 +34,5 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           # O Vite gera os arquivos prontos para produção na pasta 'dist'
           local-dir: ./dist/
-          # Diretório da Hostinger onde os arquivos devem ser enviados
-          server-dir: ./public_html/
+          # O Hostinger geralmente já direciona esse acesso FTP direto para dentro da public_html
+          server-dir: ./
