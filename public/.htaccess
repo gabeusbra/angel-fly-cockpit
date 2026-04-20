@@ -1,0 +1,12 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Proxy /api requests natively to Base44 VPS
+  RewriteRule ^api/(.*)$ https://angel-fly-pilot.base44.app/api/$1 [P,L]
+
+  # Redirect routing for React/Vite SPA
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^ index.html [QSA,L]
+</IfModule>
