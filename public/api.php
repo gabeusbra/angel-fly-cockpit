@@ -9,7 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 $request = $_GET['request'] ?? '';
-$target_url = "https://angel-fly-pilot.base44.app/api/" . $request;
+$target_url = "https://api.base44.com/api/" . $request;
 
 // Append query parameters normally
 $query_string = $_SERVER['QUERY_STRING'] ?? '';
@@ -40,7 +40,6 @@ foreach (getallheaders() as $name => $value) {
         $headers[] = "$name: $value";
     }
 }
-$headers[] = 'Host: angel-fly-pilot.base44.app';
 curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
 $input = file_get_contents('php://input');
