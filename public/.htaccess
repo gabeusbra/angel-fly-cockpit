@@ -2,8 +2,7 @@
   RewriteEngine On
   RewriteBase /
 
-  # Proxy /api requests natively to Base44 VPS
-  RewriteRule ^api/(.*)$ https://angel-fly-pilot.base44.app/api/$1 [P,L]
+  RewriteRule ^api/(.*)$ api.php?request=$1 [QSA,L]
 
   # Redirect routing for React/Vite SPA
   RewriteCond %{REQUEST_FILENAME} !-f
