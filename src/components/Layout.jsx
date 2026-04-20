@@ -86,6 +86,9 @@ export default function Layout() {
 
       setUser(finalUser);
       setChecked(true);
+    }).catch(err => {
+      console.error("Layout auth me error:", err);
+      setChecked(true); // Let AuthContext handle the redirect if it was an auth error
     });
   }, []);
 
