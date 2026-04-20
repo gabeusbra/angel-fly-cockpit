@@ -42,3 +42,4 @@ jobs:
           local-dir: ./dist/
           # O Hostinger geralmente já direciona esse acesso FTP direto para dentro da public_html
           server-dir: ./
+          timeout: 100000
