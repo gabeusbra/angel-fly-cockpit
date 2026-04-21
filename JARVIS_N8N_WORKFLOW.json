@@ -19,7 +19,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const GROUP_MAP = {\n  '120363426390515923@g.us': { context: 'angelfly', label: 'Angel Fly' },\n  '120363420996892188@g.us': { context: 'garlic',   label: 'Garlic N Lemon' },\n  '120363422948599063@g.us': { context: 'ernesto',  label: 'Ernesto' },\n};\n\nconst raw  = $input.first().json;\nconst body = raw.body || raw;\n\nconst debugKeys = Object.keys(body || {}).join(', ');\nconst debugData = body?.data ? Object.keys(body.data).join(', ') : 'n/a';\n\nconst messageText =\n  body?.text ||\n  body?.message?.text ||\n  body?.message?.body ||\n  body?.data?.text ||\n  body?.data?.message?.text ||\n  body?.data?.message?.body ||\n  body?.data?.message?.conversation ||\n  body?.data?.message?.extendedTextMessage?.text ||\n  '';\n\nconst senderName =\n  body?.senderName ||\n  body?.message?.senderName ||\n  body?.data?.senderName ||\n  body?.sender?.pushname ||\n  body?.data?.pushName ||\n  'Unknown';\n\nconst chatId =\n  body?.chatid ||\n  body?.chatId ||\n  body?.wa_chatid ||\n  body?.waChatId ||\n  body?.remoteJid ||\n  body?.data?.key?.remoteJid ||\n  body?.data?.message?.key?.remoteJid ||\n  body?.message?.key?.remoteJid ||\n  body?.id ||\n  body?.data?.chatid ||\n  body?.data?.chatId ||\n  body?.data?.wa_chatid ||\n  body?.data?.remoteJid ||\n  body?.message?.chatid ||\n  body?.message?.chatId ||\n  body?.message?.remoteJid ||\n  '';\n\nconst groupInfo = GROUP_MAP[chatId] || { context: 'unknown', label: 'Unknown' };\nconst cleanMessage = String(messageText || '')\n  .replace(/@jarvis/ig, '')\n  .replace(/59739253801103/g, '')\n  .replace(/@\\w+/g, '')\n  .trim();\n\nreturn [{ json: {\n  rawMessage: messageText,\n  cleanMessage,\n  senderName,\n  chatId,\n  waChatId: chatId,\n  groupContext: groupInfo.context,\n  groupLabel: groupInfo.label,\n  timestamp: new Date().toISOString(),\n  _debug_keys: debugKeys,\n  _debug_data_keys: debugData\n}}];"
+        "jsCode": "const GROUP_MAP = {\n  '120363426390515923@g.us': { context: 'angelfly', label: 'Angel Fly' },\n  '120363420996892188@g.us': { context: 'garlic',   label: 'Garlic N Lemon' },\n  '120363422948599063@g.us': { context: 'ernesto',  label: 'Ernesto' },\n};\n\nconst raw  = $input.first().json;\nconst body = raw.body || raw;\n\nconst debugKeys = Object.keys(body || {}).join(', ');\nconst debugData = body?.data ? Object.keys(body.data).join(', ') : 'n/a';\n\nconst messageText =\n  body?.text ||\n  body?.message?.text ||\n  body?.message?.body ||\n  body?.data?.text ||\n  body?.data?.message?.text ||\n  body?.data?.message?.body ||\n  body?.data?.message?.conversation ||\n  body?.data?.message?.extendedTextMessage?.text ||\n  '';\n\nconst senderName =\n  body?.senderName ||\n  body?.message?.senderName ||\n  body?.data?.senderName ||\n  body?.sender?.pushname ||\n  body?.data?.pushName ||\n  'Unknown';\n\nconst chatId =\n  body?.chatid ||\n  body?.chatId ||\n  body?.wa_chatid ||\n  body?.waChatId ||\n  body?.remoteJid ||\n  body?.data?.key?.remoteJid ||\n  body?.data?.message?.key?.remoteJid ||\n  body?.message?.key?.remoteJid ||\n  body?.id ||\n  body?.data?.chatid ||\n  body?.data?.chatId ||\n  body?.data?.wa_chatid ||\n  body?.data?.remoteJid ||\n  body?.message?.chatid ||\n  body?.message?.chatId ||\n  body?.message?.remoteJid ||\n  '';\n\nconst groupInfo = GROUP_MAP[chatId] || { context: 'unknown', label: 'Unknown' };\nconst cleanMessage = String(messageText || '')\n  .replace(/@jarvis/ig, '')\n  .replace(/\\bjarvis\\b/ig, '')\n  .replace(/59739253801103/g, '')\n  .replace(/@\\w+/g, '')\n  .trim();\n\nreturn [{ json: {\n  rawMessage: messageText,\n  cleanMessage,\n  senderName,\n  chatId,\n  waChatId: chatId,\n  groupContext: groupInfo.context,\n  groupLabel: groupInfo.label,\n  timestamp: new Date().toISOString(),\n  _debug_keys: debugKeys,\n  _debug_data_keys: debugData\n}}];"
       },
       "id": "node-parse",
       "name": "Parse Message",
@@ -52,6 +52,15 @@
               "id": "filter-jarvis-mention-name",
               "leftValue": "={{ $json.rawMessage.toLowerCase() }}",
               "rightValue": "@jarvis",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "filter-jarvis-plain-name",
+              "leftValue": "={{ ($json.rawMessage || \"\").toLowerCase() }}",
+              "rightValue": "jarvis",
               "operator": {
                 "type": "string",
                 "operation": "contains"
@@ -97,7 +106,7 @@
           "values": [
             {
               "role": "system",
-              "content": "Você é o Jarvis, assistente de IA da Angel Fly Digital Solutions.\n\n## Tom e Personalidade\nNível de humor: {{ $json.humorDesc }}. Respostas diretas. Sem apresentações repetidas.\n\n## Contexto dos Grupos WhatsApp\n- **Angel Fly** (angelfly): Equipe interna, demandas operacionais\n- **Garlic N Lemon | Branding** (garlic): Cliente restaurante americano — branding, design, artes\n- **Ernesto | Site & Identidade Visual** (ernesto): Cliente restaurante — site, identidade visual\n\n## Projetos Ativos no Cockpit\\n{{ $json.projectsRef }}\\n\\n## KNOWLEDGE CARD DO GRUPO (use como contexto fixo)\\n{{ $json.groupKnowledgeSnippet }}\n\n## HISTÓRICO RECENTE DO GRUPO (últimas mensagens — use para entender contexto e referências como \"novamente\", \"isso\", \"aquele projeto\"):\n{{ $json.historyText }}\n\n---\n\n## Mensagem Atual\n**Autor:** {{ $json.senderName }}\n**Mensagem:** {{ $json.cleanMessage }}\n**Grupo:** {{ $json.groupLabel }}\n\n---\n\n## Regras de Classificação\n\n**create_task** — \"criar tarefa\", \"adicionar task\", \"precisa ser feito\":\n- Use o histórico para entender referências contextuais (\"novamente\", \"aquele projeto\", \"isso\")\n- Identifique o projeto correto da lista acima\n- status SEMPRE = \"assigned\"\n- Retorne project_id e project_name do projeto correto\n\n**create_ticket** — bugs, erros, reclamações (\"parou\", \"quebrou\", \"problema\"):\\n- Priorize create_ticket quando a mensagem mencionar bug/erro/problema/chamado\\n- Retorne subject, client_name, category\n\n**create_project** — \"novo projeto\", \"novo cliente\"\n\n**create_payment_incoming** / **create_payment_outgoing** — pagamentos\n\n**none** — conversa normal, dúvidas, sem ação clara\n\n## Formato de Resposta — JSON OBRIGATÓRIO\n\ncreate_task:\n{\"intent\": \"create_task\", \"entity\": {\"title\": \"...\", \"description\": \"...\", \"priority\": \"high|medium|low\", \"project_id\": 1, \"project_name\": \"...\"}, \"reply\": \"✅ Tarefa criada em [projeto]!\"}\n\ncreate_ticket:\n{\"intent\": \"create_ticket\", \"entity\": {\"subject\": \"...\", \"description\": \"...\", \"priority\": \"high|medium|low\", \"category\": \"bug|change_request|complaint|question\", \"client_name\": \"...\"}, \"reply\": \"🎫 Ticket registrado para [cliente]!\"}\n\nnone:\n{\"intent\": \"none\", \"entity\": {}, \"reply\": \"Sua resposta conversacional em português\"}"
+              "content": "Você é o Jarvis, assistente de IA da Angel Fly Digital Solutions.\n\n## Tom e Personalidade\nNível de humor: {{ $json.humorDesc }}. Respostas diretas. Sem apresentações repetidas.\n\n## Contexto dos Grupos WhatsApp\n- **Angel Fly** (angelfly): Equipe interna, demandas operacionais\n- **Garlic N Lemon | Branding** (garlic): Cliente restaurante americano — branding, design, artes\n- **Ernesto | Site & Identidade Visual** (ernesto): Cliente restaurante — site, identidade visual\n\n## Projetos Ativos no Cockpit\\n{{ $json.projectsRef }}\\n\\n## KNOWLEDGE CARD DO GRUPO (use como contexto fixo)\\n{{ $json.groupKnowledgeSnippet }}\n\n## HISTÓRICO RECENTE DO GRUPO (últimas mensagens — use para entender contexto e referências como \"novamente\", \"isso\", \"aquele projeto\"):\n{{ $json.historyText }}\n\n---\n\n## Mensagem Atual\n**Autor:** {{ $json.senderName }}\n**Mensagem:** {{ $json.cleanMessage }}\n**Grupo:** {{ $json.groupLabel }}\n\n---\n\n## Regras de Classificação\n\n**create_task** — \"criar tarefa\", \"adicionar task\", \"precisa ser feito\":\n- Use o histórico para entender referências contextuais (\"novamente\", \"aquele projeto\", \"isso\")\n- Identifique o projeto correto da lista acima\n- status SEMPRE = \"assigned\"\n- Retorne project_id e project_name do projeto correto\n\n**create_ticket** — bugs, erros, reclamações (\"parou\", \"quebrou\", \"problema\"):\\n- SEMPRE priorize create_ticket quando a mensagem mencionar \"ticket\", \"chamado\", \"bug\", \"erro\" ou \"problema\"\\n- Nunca classifique como create_task quando a intenção for ticket/chamado\\n- Retorne subject, client_name, category\n\n**create_project** — \"novo projeto\", \"novo cliente\"\n\n**create_payment_incoming** / **create_payment_outgoing** — pagamentos\n\n**fetch_report** — consultas e relatórios (\"quais tasks\", \"tarefas de hoje\", \"tickets abertos\", \"resumo do projeto\")\n\n**none** — conversa normal, dúvidas, sem ação clara\n\n## Formato de Resposta — JSON OBRIGATÓRIO\n\ncreate_task:\n{\"intent\": \"create_task\", \"entity\": {\"title\": \"...\", \"description\": \"...\", \"priority\": \"high|medium|low\", \"project_id\": 1, \"project_name\": \"...\"}, \"reply\": \"✅ Tarefa criada em [projeto]!\"}\n\ncreate_ticket:\n{\"intent\": \"create_ticket\", \"entity\": {\"subject\": \"...\", \"description\": \"...\", \"priority\": \"high|medium|low\", \"category\": \"bug|change_request|complaint|question\", \"client_name\": \"...\"}, \"reply\": \"🎫 Ticket registrado para [cliente]!\"}\n\nnone:\n{\"intent\": \"none\", \"entity\": {}, \"reply\": \"Sua resposta conversacional em português\"}\n\nfetch_report:\n{\"intent\": \"fetch_report\", \"entity\": {\"scope\": \"today|open|all\", \"target\": \"tasks|tickets|both\", \"project_id\": 1, \"project_name\": \"...\"}, \"reply\": \"Consultando Cockpit...\"}"
             },
             {
               "role": "user",
@@ -123,7 +132,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const inputData = $input.first().json;\nconst staticData = $getWorkflowStaticData('global');\nstaticData.groupMemory = staticData.groupMemory || {};\n\nlet responseText = '';\nif (inputData?.message?.content) responseText = inputData.message.content;\nelse if (inputData?.choices?.[0]?.message?.content) responseText = inputData.choices[0].message.content;\nelse if (typeof inputData?.text === 'string') responseText = inputData.text;\nelse responseText = JSON.stringify(inputData);\n\nlet parsed;\ntry {\n  const clean = responseText.replace(/\\u0060\\u0060\\u0060json/g, '').replace(/\\u0060\\u0060\\u0060/g, '').trim();\n  const match = clean.match(/({[\\s\\S]*})/);\n  parsed = JSON.parse(match ? match[1] : clean);\n} catch (e) {\n  parsed = { intent: 'none', reply: 'Não consegui processar. Pode reformular?', entity: {} };\n}\n\nconst pm = $('Check Personality Command').first().json;\nconst ctx = $('Build Context').first().json;\nconst chatId = pm.chatId || pm.waChatId || 'unknown';\n\nlet knownProjects = [];\ntry { knownProjects = JSON.parse(ctx.projectsList || '[]'); } catch (e) { knownProjects = []; }\n\nif (!staticData.groupMemory[chatId]) {\n  staticData.groupMemory[chatId] = {\n    messages: [],\n    lastProjectId: null,\n    lastProjectName: '',\n    pendingTask: null,\n    pendingTicket: null,\n  };\n}\nconst chatMemory = staticData.groupMemory[chatId];\n\nconst normalize = (v) => String(v || '')\n  .toLowerCase()\n  .normalize('NFD')\n  .replace(/[\\u0300-\\u036f]/g, '')\n  .replace(/[^a-z0-9\\s]/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\nconst mapIntent = (rawIntent, msg) => {\n  const i = normalize(rawIntent).replace(/\\s+/g, '_');\n  if (['create_task','task','criar_tarefa','tarefa'].includes(i)) return 'create_task';\n  if (['create_ticket','ticket','criar_ticket','chamado'].includes(i)) return 'create_ticket';\n  if (['create_project','project','criar_projeto','projeto_novo'].includes(i)) return 'create_project';\n  if (['create_payment_incoming','payment_incoming','incoming'].includes(i)) return 'create_payment_incoming';\n  if (['create_payment_outgoing','payment_outgoing','outgoing'].includes(i)) return 'create_payment_outgoing';\n\n  const m = normalize(msg);\n  const isTicket = /(bug|erro|quebrou|falha|nao funciona|não funciona|ticket|chamado|problema)/.test(m);\n  const isTask = /(task|tarefa|fazer|criar|implementar|ajustar|melhorar|alterar)/.test(m);\n  if (isTicket) return 'create_ticket';\n  if (isTask) return 'create_task';\n  return 'none';\n};\n\nconst overlapScore = (a, b) => {\n  const aa = normalize(a).split(' ').filter(x => x.length > 2);\n  const bb = normalize(b).split(' ').filter(x => x.length > 2);\n  if (aa.length === 0 || bb.length === 0) return 0;\n  const setB = new Set(bb);\n  const hits = aa.filter(x => setB.has(x)).length;\n  return hits / Math.max(aa.length, bb.length);\n};\n\nconst findProjectByName = (name, pool = knownProjects) => {\n  const target = normalize(name);\n  if (!target || !pool.length) return null;\n\n  let direct = pool.find(p => normalize(p.name) === target);\n  if (direct) return direct;\n\n  direct = pool.find(p => {\n    const pn = normalize(p.name);\n    return pn.includes(target) || target.includes(pn);\n  });\n  if (direct) return direct;\n\n  let best = null;\n  let bestScore = 0;\n  for (const p of pool) {\n    const s = overlapScore(target, p.name);\n    if (s > bestScore) {\n      bestScore = s;\n      best = p;\n    }\n  }\n  return bestScore >= 0.34 ? best : null;\n};\n\nconst inferProjectFromMessage = (message, pool = knownProjects) => {\n  const msg = normalize(message);\n  if (!msg || !pool.length) return null;\n  const hits = pool.filter(p => {\n    const pn = normalize(p.name);\n    return pn && (msg.includes(pn) || pn.split(' ').some(w => w.length > 3 && msg.includes(w)));\n  });\n  return hits.length === 1 ? hits[0] : null;\n};\n\nconst entity = parsed.entity || {};\nconst currentMessage = pm.cleanMessage || pm.rawMessage || '';\nconst replyTarget = pm.waChatId || pm.chatId || '120363426390515923@g.us';\nlet finalIntent = mapIntent(parsed.intent || 'none', currentMessage);\n\nconst groupClient = pm.groupContext === 'garlic' ? 'garlic' : (pm.groupContext === 'ernesto' ? 'ernesto' : '');\nconst groupProjects = groupClient\n  ? knownProjects.filter(p => normalize(p.client_name).includes(groupClient) || normalize(p.name).includes(groupClient))\n  : [];\n\nconst resolveProject = () => {\n  if (!knownProjects.length) return null;\n\n  if (entity.project_name) {\n    const byNameInGroup = groupProjects.length ? findProjectByName(entity.project_name, groupProjects) : null;\n    if (byNameInGroup) return byNameInGroup;\n\n    const byNameGlobal = findProjectByName(entity.project_name, knownProjects);\n    if (byNameGlobal) return byNameGlobal;\n  }\n\n  if (entity.project_id) {\n    const byId = knownProjects.find(p => String(p.id) === String(entity.project_id));\n    if (byId) return byId;\n  }\n\n  const byMsgInGroup = groupProjects.length ? inferProjectFromMessage(currentMessage, groupProjects) : null;\n  if (byMsgInGroup) return byMsgInGroup;\n\n  const byMsgGlobal = inferProjectFromMessage(currentMessage, knownProjects);\n  if (byMsgGlobal) return byMsgGlobal;\n\n  if (groupProjects.length === 1) return groupProjects[0];\n\n  if (ctx.defaultProjectId) {\n    const byCtx = knownProjects.find(p => String(p.id) === String(ctx.defaultProjectId));\n    if (byCtx) return byCtx;\n  }\n\n  if (chatMemory.lastProjectId) {\n    const byMem = knownProjects.find(p => String(p.id) === String(chatMemory.lastProjectId));\n    if (byMem) return byMem;\n  }\n\n  return null;\n};\n\nconst retryHint = /(^|\\s)(consegue|agora|agora sim|pode|vai|segue|manda ver|tenta de novo|retry|sim)(\\s|$)/i.test(currentMessage);\nif (finalIntent === 'none' && (chatMemory.pendingTask || chatMemory.pendingTicket) && retryHint) {\n  if (chatMemory.pendingTask) {\n    finalIntent = 'create_task';\n    Object.assign(entity, chatMemory.pendingTask);\n  } else if (chatMemory.pendingTicket) {\n    finalIntent = 'create_ticket';\n    Object.assign(entity, chatMemory.pendingTicket);\n  }\n}\n\nlet resolvedProject = null;\n\nif (finalIntent === 'create_task') {\n  if (!entity.title) {\n    finalIntent = 'none';\n    parsed.reply = 'Preciso do título da tarefa. Pode detalhar mais?';\n  } else {\n    resolvedProject = resolveProject();\n    if (resolvedProject) {\n      entity.project_id = resolvedProject.id;\n      entity.project_name = resolvedProject.name;\n      chatMemory.lastProjectId = resolvedProject.id;\n      chatMemory.lastProjectName = resolvedProject.name;\n      chatMemory.pendingTask = null;\n    } else {\n      chatMemory.pendingTask = {\n        title: entity.title || '',\n        description: entity.description || '',\n        priority: entity.priority || 'medium',\n        project_name: entity.project_name || '',\n      };\n      finalIntent = 'none';\n      parsed.reply = knownProjects.length > 0\n        ? '⚠️ Não consegui identificar o projeto da task. Me diga o projeto exato ou confirme que uso o projeto padrão do grupo.'\n        : '⚠️ Não consegui carregar projetos do Cockpit agora. Tenta novamente em instantes.';\n    }\n  }\n}\n\nif (finalIntent === 'create_ticket') {\n  if (!entity.subject && !entity.title) {\n    finalIntent = 'none';\n    parsed.reply = 'Preciso do assunto do ticket. Pode descrever o problema?';\n  } else {\n    resolvedProject = resolveProject();\n    if (resolvedProject) {\n      entity.project_id = resolvedProject.id;\n      entity.project_name = resolvedProject.name;\n      chatMemory.lastProjectId = resolvedProject.id;\n      chatMemory.lastProjectName = resolvedProject.name;\n    }\n    chatMemory.pendingTicket = {\n      subject: entity.subject || entity.title || '',\n      description: entity.description || '',\n      priority: entity.priority || 'medium',\n      category: entity.category || 'question',\n    };\n    chatMemory.pendingTask = null;\n  }\n}\n\nif (finalIntent !== 'create_ticket') chatMemory.pendingTicket = null;\n\nconst clientName = entity.client_name ||\n  (pm.groupContext === 'garlic' ? 'Garlic N Lemon' :\n   pm.groupContext === 'ernesto' ? 'Ernesto Pizza' : 'Angel Fly');\n\nif (finalIntent !== 'none') {\n  parsed.reply = 'Processando sua solicitação...';\n}\n\nreturn [{ json: {\n  intent: finalIntent,\n  entity,\n  title: entity.title || entity.subject || '',\n  description: entity.description || '',\n  priority: entity.priority || 'medium',\n  project_id: entity.project_id || null,\n  project_name: entity.project_name || '',\n  subject: entity.subject || entity.title || '',\n  category: entity.category || 'question',\n  client_name: clientName,\n  amount: entity.amount || 0,\n  reply: parsed.reply || 'Entendido!',\n  senderName: pm.senderName,\n  chatId: pm.chatId,\n  waChatId: replyTarget,\n  groupContext: pm.groupContext,\n  groupLabel: pm.groupLabel\n}}];"
+        "jsCode": "const inputData = $input.first().json;\nconst staticData = $getWorkflowStaticData('global');\nstaticData.groupMemory = staticData.groupMemory || {};\n\nlet responseText = '';\nif (inputData?.message?.content) responseText = inputData.message.content;\nelse if (inputData?.choices?.[0]?.message?.content) responseText = inputData.choices[0].message.content;\nelse if (typeof inputData?.text === 'string') responseText = inputData.text;\nelse responseText = JSON.stringify(inputData);\n\nlet parsed;\ntry {\n  const clean = responseText.replace(/\\u0060\\u0060\\u0060json/g, '').replace(/\\u0060\\u0060\\u0060/g, '').trim();\n  const match = clean.match(/({[\\s\\S]*})/);\n  parsed = JSON.parse(match ? match[1] : clean);\n} catch (e) {\n  parsed = { intent: 'none', reply: 'Não consegui processar. Pode reformular?', entity: {} };\n}\n\nconst pm = $('Check Personality Command').first().json;\nconst ctx = $('Build Context').first().json;\nconst chatId = pm.chatId || pm.waChatId || 'unknown';\n\nlet knownProjects = [];\ntry { knownProjects = JSON.parse(ctx.projectsList || '[]'); } catch (e) { knownProjects = []; }\n\nif (!staticData.groupMemory[chatId]) {\n  staticData.groupMemory[chatId] = {\n    messages: [],\n    lastProjectId: null,\n    lastProjectName: '',\n    pendingTask: null,\n    pendingTicket: null,\n  };\n}\nconst chatMemory = staticData.groupMemory[chatId];\n\nconst normalize = (v) => String(v || '')\n  .toLowerCase()\n  .normalize('NFD')\n  .replace(/[\\u0300-\\u036f]/g, '')\n  .replace(/[^a-z0-9\\s]/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\nconst mapIntent = (rawIntent, msg) => {\n  const i = normalize(rawIntent).replace(/\\s+/g, '_');\n  if (['create_task','task','criar_tarefa','tarefa'].includes(i)) return 'create_task';\n  if (['create_ticket','ticket','criar_ticket','chamado'].includes(i)) return 'create_ticket';\n  if (['create_project','project','criar_projeto','projeto_novo'].includes(i)) return 'create_project';\n  if (['fetch_report','report','relatorio','relatorio_hoje','listar_tasks','listar_tickets','consulta'].includes(i)) return 'fetch_report';\n  if (['create_payment_incoming','payment_incoming','incoming'].includes(i)) return 'create_payment_incoming';\n  if (['create_payment_outgoing','payment_outgoing','outgoing'].includes(i)) return 'create_payment_outgoing';\n\n  const m = normalize(msg);\n  const isTicket = /(\\bticket\\b|\\bchamado\\b|bug|erro|quebrou|falha|nao funciona|não funciona|problema)/.test(m);\n  const isTask = /(\\btask\\b|\\btarefa\\b|fazer|criar|implementar|ajustar|melhorar|alterar)/.test(m);\n  const isReport = /(quais|listar|lista|resumo|relatorio|relatório|status|temos hoje|de hoje|hoje)\\s*(tasks|tarefas|tickets|chamados)?/.test(m) || /(tasks|tarefas|tickets|chamados).*(hoje|abert|pendent|status)/.test(m);\n  if (isTicket) return 'create_ticket';\n  if (isReport) return 'fetch_report';\n  if (isTask) return 'create_task';\n  return 'none';\n};\n\nconst overlapScore = (a, b) => {\n  const aa = normalize(a).split(' ').filter(x => x.length > 2);\n  const bb = normalize(b).split(' ').filter(x => x.length > 2);\n  if (aa.length === 0 || bb.length === 0) return 0;\n  const setB = new Set(bb);\n  const hits = aa.filter(x => setB.has(x)).length;\n  return hits / Math.max(aa.length, bb.length);\n};\n\nconst findProjectByName = (name, pool = knownProjects) => {\n  const target = normalize(name);\n  if (!target || !pool.length) return null;\n\n  let direct = pool.find(p => normalize(p.name) === target);\n  if (direct) return direct;\n\n  direct = pool.find(p => {\n    const pn = normalize(p.name);\n    return pn.includes(target) || target.includes(pn);\n  });\n  if (direct) return direct;\n\n  let best = null;\n  let bestScore = 0;\n  for (const p of pool) {\n    const s = overlapScore(target, p.name);\n    if (s > bestScore) {\n      bestScore = s;\n      best = p;\n    }\n  }\n  return bestScore >= 0.34 ? best : null;\n};\n\nconst inferProjectFromMessage = (message, pool = knownProjects) => {\n  const msg = normalize(message);\n  if (!msg || !pool.length) return null;\n  const hits = pool.filter(p => {\n    const pn = normalize(p.name);\n    return pn && (msg.includes(pn) || pn.split(' ').some(w => w.length > 3 && msg.includes(w)));\n  });\n  return hits.length === 1 ? hits[0] : null;\n};\n\nconst entity = parsed.entity || {};\nconst currentMessage = pm.cleanMessage || pm.rawMessage || '';\nconst replyTarget = pm.waChatId || pm.chatId || '120363426390515923@g.us';\nlet finalIntent = mapIntent(parsed.intent || 'none', currentMessage);\nconst mNorm = normalize(currentMessage);\nconst explicitTicket = /(\\bticket\\b|\\bchamado\\b|bug|erro|problema)/.test(mNorm);\nif (explicitTicket && finalIntent === 'create_task') finalIntent = 'create_ticket';\n\nconst groupClient = pm.groupContext === 'garlic' ? 'garlic' : (pm.groupContext === 'ernesto' ? 'ernesto' : '');\nconst groupProjects = groupClient\n  ? knownProjects.filter(p => normalize(p.client_name).includes(groupClient) || normalize(p.name).includes(groupClient))\n  : [];\n\nconst resolveProject = () => {\n  if (!knownProjects.length) return null;\n\n  if (entity.project_name) {\n    const byNameInGroup = groupProjects.length ? findProjectByName(entity.project_name, groupProjects) : null;\n    if (byNameInGroup) return byNameInGroup;\n\n    const byNameGlobal = findProjectByName(entity.project_name, knownProjects);\n    if (byNameGlobal) return byNameGlobal;\n  }\n\n  if (entity.project_id) {\n    const byId = knownProjects.find(p => String(p.id) === String(entity.project_id));\n    if (byId) return byId;\n  }\n\n  const byMsgInGroup = groupProjects.length ? inferProjectFromMessage(currentMessage, groupProjects) : null;\n  if (byMsgInGroup) return byMsgInGroup;\n\n  const byMsgGlobal = inferProjectFromMessage(currentMessage, knownProjects);\n  if (byMsgGlobal) return byMsgGlobal;\n\n  if (groupProjects.length === 1) return groupProjects[0];\n\n  if (ctx.defaultProjectId) {\n    const byCtx = knownProjects.find(p => String(p.id) === String(ctx.defaultProjectId));\n    if (byCtx) return byCtx;\n  }\n\n  if (chatMemory.lastProjectId) {\n    const byMem = knownProjects.find(p => String(p.id) === String(chatMemory.lastProjectId));\n    if (byMem) return byMem;\n  }\n\n  return null;\n};\n\nconst retryHint = /(^|\\s)(consegue|agora|agora sim|pode|vai|segue|manda ver|tenta de novo|retry|sim)(\\s|$)/i.test(currentMessage);\nif (finalIntent === 'none' && (chatMemory.pendingTask || chatMemory.pendingTicket) && retryHint) {\n  if (chatMemory.pendingTask) {\n    finalIntent = 'create_task';\n    Object.assign(entity, chatMemory.pendingTask);\n  } else if (chatMemory.pendingTicket) {\n    finalIntent = 'create_ticket';\n    Object.assign(entity, chatMemory.pendingTicket);\n  }\n}\n\nlet resolvedProject = null;\n\nif (finalIntent === 'create_task') {\n  if (!entity.title) {\n    finalIntent = 'none';\n    parsed.reply = 'Preciso do título da tarefa. Pode detalhar mais?';\n  } else {\n    resolvedProject = resolveProject();\n    if (resolvedProject) {\n      entity.project_id = resolvedProject.id;\n      entity.project_name = resolvedProject.name;\n      chatMemory.lastProjectId = resolvedProject.id;\n      chatMemory.lastProjectName = resolvedProject.name;\n      chatMemory.pendingTask = null;\n    } else {\n      chatMemory.pendingTask = {\n        title: entity.title || '',\n        description: entity.description || '',\n        priority: entity.priority || 'medium',\n        project_name: entity.project_name || '',\n      };\n      finalIntent = 'none';\n      parsed.reply = knownProjects.length > 0\n        ? '⚠️ Não consegui identificar o projeto da task. Me diga o projeto exato ou confirme que uso o projeto padrão do grupo.'\n        : '⚠️ Não consegui carregar projetos do Cockpit agora. Tenta novamente em instantes.';\n    }\n  }\n}\n\nif (finalIntent === 'create_ticket') {\n  if (!entity.subject && !entity.title) {\n    finalIntent = 'none';\n    parsed.reply = 'Preciso do assunto do ticket. Pode descrever o problema?';\n  } else {\n    resolvedProject = resolveProject();\n    if (resolvedProject) {\n      entity.project_id = resolvedProject.id;\n      entity.project_name = resolvedProject.name;\n      chatMemory.lastProjectId = resolvedProject.id;\n      chatMemory.lastProjectName = resolvedProject.name;\n    }\n    chatMemory.pendingTicket = {\n      subject: entity.subject || entity.title || '',\n      description: entity.description || '',\n      priority: entity.priority || 'medium',\n      category: entity.category || 'question',\n    };\n    chatMemory.pendingTask = null;\n  }\n}\n\nif (finalIntent === 'fetch_report') {\n  entity.scope = entity.scope || (/hoje/.test(mNorm) ? 'today' : (/abert|pendente/.test(mNorm) ? 'open' : 'all'));\n  entity.target = entity.target || (/(task|tarefa)/.test(mNorm) && /(ticket|chamado)/.test(mNorm) ? 'both' : (/(ticket|chamado)/.test(mNorm) ? 'tickets' : (/(task|tarefa)/.test(mNorm) ? 'tasks' : 'both')));\n  resolvedProject = resolveProject();\n  if (resolvedProject) {\n    entity.project_id = resolvedProject.id;\n    entity.project_name = resolvedProject.name;\n    chatMemory.lastProjectId = resolvedProject.id;\n    chatMemory.lastProjectName = resolvedProject.name;\n  }\n}\n\nif (finalIntent !== 'create_ticket') chatMemory.pendingTicket = null;\n\nconst clientName = entity.client_name ||\n  (pm.groupContext === 'garlic' ? 'Garlic N Lemon' :\n   pm.groupContext === 'ernesto' ? 'Ernesto Pizza' : 'Angel Fly');\n\nif (finalIntent !== 'none') {\n  parsed.reply = 'Processando sua solicitação...';\n}\n\nreturn [{ json: {\n  intent: finalIntent,\n  entity,\n  title: entity.title || entity.subject || '',\n  description: entity.description || '',\n  priority: entity.priority || 'medium',\n  project_id: entity.project_id || null,\n  project_name: entity.project_name || '',\n  subject: entity.subject || entity.title || '',\n  category: entity.category || 'question',\n  client_name: clientName,\n  amount: entity.amount || 0,\n  reply: parsed.reply || 'Entendido!',\n  senderName: pm.senderName,\n  chatId: pm.chatId,\n  waChatId: replyTarget,\n  groupContext: pm.groupContext,\n  groupLabel: pm.groupLabel\n}}];"
       },
       "id": "node-parse-ai",
       "name": "Parse AI Response",
@@ -232,6 +241,25 @@
               },
               "renameOutput": true,
               "outputKey": "payment_out"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "fetch_report",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "report"
             },
             {
               "conditions": {
@@ -446,7 +474,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ (() => { const parsed = $('Parse AI Response').first().json || {}; const intent = parsed.intent || 'none'; const current = $json || {}; const number = current.waChatId || parsed.waChatId; let text = current.reply || parsed.reply || 'Entendido!'; const hasError = !!current.error; const createdId = current.id || (current.data && current.data.id); const isAction = intent !== 'none'; if (hasError) { text = '⚠️ *Jarvis:* ' + intent + ' não pôde ser concluída.\\n\\nErro: ' + ((current.error && current.error.message) || current.message || 'Falha na API do Cockpit.'); } else if (createdId) { if (intent === 'create_task') text = '✅ Tarefa criada com sucesso no projeto \"' + (current.project_name || parsed.project_name || 'selecionado') + '\".'; else if (intent === 'create_ticket') text = '🎫 Ticket registrado com sucesso para ' + (current.client_name || parsed.client_name || 'cliente') + '.'; else if (intent === 'create_project') text = '🚀 Projeto criado com sucesso: \"' + (current.name || current.project_name || parsed.project_name || 'novo projeto') + '\".'; else if (intent === 'create_payment_incoming') text = '💰 Payment incoming registrado com sucesso.'; else if (intent === 'create_payment_outgoing') text = '💸 Payment outgoing registrado com sucesso.'; } else if (isAction) { text = '⚠️ Não consegui confirmar a criação no Cockpit. Vou precisar tentar novamente.'; } return JSON.stringify({ number, text }); })() }}",
+        "jsonBody": "={{ (() => { const parsed = $('Parse AI Response').first().json || {}; const intent = parsed.intent || 'none'; const current = $json || {}; const number = current.waChatId || parsed.waChatId; let text = current.reply || parsed.reply || 'Entendido!'; const hasError = !!current.error; const createdId = current.id || (current.data && current.data.id); const isAction = intent !== 'none' && intent !== 'fetch_report'; if (hasError) { text = '⚠️ *Jarvis:* ' + intent + ' não pôde ser concluída.\\n\\nErro: ' + ((current.error && current.error.message) || current.message || 'Falha na API do Cockpit.'); } else if (createdId) { if (intent === 'create_task') text = '✅ Tarefa criada com sucesso no projeto \"' + (current.project_name || parsed.project_name || 'selecionado') + '\".'; else if (intent === 'create_ticket') text = '🎫 Ticket registrado com sucesso para ' + (current.client_name || parsed.client_name || 'cliente') + '.'; else if (intent === 'create_project') text = '🚀 Projeto criado com sucesso: \"' + (current.name || current.project_name || parsed.project_name || 'novo projeto') + '\".'; else if (intent === 'create_payment_incoming') text = '💰 Payment incoming registrado com sucesso.'; else if (intent === 'create_payment_outgoing') text = '💸 Payment outgoing registrado com sucesso.'; } else if (isAction) { text = '⚠️ Não consegui confirmar a criação no Cockpit. Vou precisar tentar novamente.'; } return JSON.stringify({ number, text }); })() }}",
         "options": {}
       },
       "id": "node-reply",
@@ -686,6 +714,81 @@
         1100,
         300
       ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://cockpit.angelfly.io/api/tasks",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "node-fetch-tasks-report",
+      "name": "Fetch Tasks in Cockpit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2440,
+        660
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://cockpit.angelfly.io/api/tickets",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "node-fetch-tickets-report",
+      "name": "Fetch Tickets in Cockpit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2680,
+        660
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const parsed = $('Parse AI Response').first().json || {};\nconst tasksRaw = $items('Fetch Tasks in Cockpit').map(i => i.json);\nconst ticketsRaw = $items('Fetch Tickets in Cockpit').map(i => i.json);\n\nconst flatten = (rows) => {\n  const out = [];\n  for (const r of rows || []) {\n    if (!r) continue;\n    if (Array.isArray(r)) out.push(...r);\n    else if (Array.isArray(r.data)) out.push(...r.data);\n    else if (Array.isArray(r.items)) out.push(...r.items);\n    else out.push(r);\n  }\n  return out;\n};\n\nconst tasks = flatten(tasksRaw);\nconst tickets = flatten(ticketsRaw);\n\nconst scope = (parsed.entity?.scope || 'all').toLowerCase();\nconst target = (parsed.entity?.target || 'both').toLowerCase();\nconst projectId = parsed.project_id || parsed.entity?.project_id || null;\nconst projectName = String(parsed.project_name || parsed.entity?.project_name || '').toLowerCase();\nconst groupContext = parsed.groupContext || '';\nconst today = new Date().toISOString().slice(0,10);\n\nconst isOpen = (s) => !['closed','completed','cancelled','resolved','done'].includes(String(s || '').toLowerCase());\nconst dateOf = (obj) => {\n  const d = obj?.due_date || obj?.date || obj?.created_at || obj?.updated_at || '';\n  return String(d).slice(0,10);\n};\nconst projectMatch = (obj) => {\n  if (projectId && String(obj?.project_id) === String(projectId)) return true;\n  if (projectName && String(obj?.project_name || '').toLowerCase().includes(projectName)) return true;\n  if (groupContext === 'garlic') return /garlic|gnl/.test(String(obj?.project_name || obj?.client_name || '').toLowerCase());\n  if (groupContext === 'ernesto') return /ernesto/.test(String(obj?.project_name || obj?.client_name || '').toLowerCase());\n  if (groupContext === 'angelfly') return /angel\\s*fly|cockpit/.test(String(obj?.project_name || obj?.client_name || '').toLowerCase());\n  return true;\n};\n\nconst scoped = (arr, kind) => arr.filter(x => {\n  if (!projectMatch(x)) return false;\n  if (scope === 'today') return dateOf(x) === today;\n  if (scope === 'open') return isOpen(kind === 'ticket' ? (x.status || 'open') : (x.status || 'assigned'));\n  return true;\n});\n\nconst fTasks = scoped(tasks, 'task');\nconst fTickets = scoped(tickets, 'ticket');\n\nconst top = (arr, fields) => arr.slice(0,6).map((x, idx) => {\n  const name = x[fields.title] || x[fields.subject] || x.title || x.subject || '(sem título)';\n  const st = x.status || '-';\n  const pr = x.priority || '-';\n  return String(idx + 1) + '. ' + name + ' [' + st + '/' + pr + ']';\n});\n\nlet text = '📊 Relatório Cockpit';\nif (parsed.project_name) text += ' - ' + parsed.project_name;\ntext += '\\nFiltro: ' + scope + ' | ' + target;\n\nif (target === 'tasks' || target === 'both') {\n  text += '\\n\\n🧩 Tasks (' + fTasks.length + ')';\n  if (fTasks.length) text += '\\n' + top(fTasks, { title: 'title', subject: 'subject' }).join('\\n');\n}\nif (target === 'tickets' || target === 'both') {\n  text += '\\n\\n🎫 Tickets (' + fTickets.length + ')';\n  if (fTickets.length) text += '\\n' + top(fTickets, { title: 'subject', subject: 'subject' }).join('\\n');\n}\nif ((target === 'tasks' && fTasks.length === 0) || (target === 'tickets' && fTickets.length === 0) || (target === 'both' && fTasks.length === 0 && fTickets.length === 0)) {\n  text += '\\n\\nNenhum item encontrado com esse filtro.';\n}\n\nreturn [{ json: { ...parsed, reply: text, waChatId: parsed.waChatId } }];"
+      },
+      "id": "node-build-report",
+      "name": "Build Cockpit Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2920,
+        660
+      ]
     }
   ],
   "connections": {
@@ -784,6 +887,13 @@
         [
           {
             "node": "Create Payment Outgoing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Tasks in Cockpit",
             "type": "main",
             "index": 0
           }
@@ -1001,6 +1111,53 @@
         [
           {
             "node": "Fetch Projects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Tasks in Cockpit": {
+      "main": [
+        [
+          {
+            "node": "Fetch Tickets in Cockpit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Tickets in Cockpit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Tickets in Cockpit": {
+      "main": [
+        [
+          {
+            "node": "Build Cockpit Report",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Cockpit Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Cockpit Report": {
+      "main": [
+        [
+          {
+            "node": "Reply on WhatsApp (Uzapi)",
             "type": "main",
             "index": 0
           }
