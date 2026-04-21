@@ -1,0 +1,937 @@
+{
+  "name": "Jarvis — WhatsApp PM Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "jarvis-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook",
+      "name": "Webhook (Uzapi)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const GROUP_MAP = {\n  '120363426390515923@g.us': { context: 'angelfly', label: 'Angel Fly' },\n  '120363420996892188@g.us': { context: 'garlic',   label: 'Garlic N Lemon' },\n  '120363422948599063@g.us': { context: 'ernesto',  label: 'Ernesto' },\n};\n\nconst raw  = $input.first().json;\nconst body = raw.body || raw;\n\n// Debug: capture all keys at every level\nconst debugKeys = Object.keys(body || {}).join(', ');\nconst debugData = body?.data ? Object.keys(body.data).join(', ') : 'n/a';\n\n// --- Message text (try all common paths) ---\nconst messageText =\n  body?.text ||\n  body?.message?.text ||\n  body?.message?.body ||\n  body?.data?.text ||\n  body?.data?.message?.text ||\n  body?.data?.message?.body ||\n  '';\n\n// --- Sender name ---\nconst senderName =\n  body?.senderName ||\n  body?.message?.senderName ||\n  body?.data?.senderName ||\n  body?.sender?.pushname ||\n  'Unknown';\n\n// --- Chat ID (try every possible field name) ---\nconst chatId =\n  body?.chatid ||\n  body?.chatId ||\n  body?.wa_chatid ||\n  body?.waChatId ||\n  body?.remoteJid ||\n  body?.id ||\n  body?.data?.chatid ||\n  body?.data?.chatId ||\n  body?.data?.wa_chatid ||\n  body?.data?.remoteJid ||\n  body?.message?.chatid ||\n  body?.message?.chatId ||\n  body?.message?.remoteJid ||\n  '';\n\nconst groupInfo = GROUP_MAP[chatId] || { context: 'unknown', label: 'Unknown' };\n\nreturn [{ json: {\n  rawMessage: messageText,\n  cleanMessage: messageText.replace(/@\\w+/g, '').trim(),\n  senderName,\n  chatId,\n  waChatId: chatId,\n  groupContext: groupInfo.context,\n  groupLabel: groupInfo.label,\n  timestamp: new Date().toISOString(),\n  _debug_keys: debugKeys,\n  _debug_data_keys: debugData\n}}];"
+      },
+      "id": "node-parse",
+      "name": "Parse Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        340,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "filter-jarvis-mention-number",
+              "leftValue": "={{ $json.rawMessage }}",
+              "rightValue": "59739253801103",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "filter-jarvis-mention-name",
+              "leftValue": "={{ $json.rawMessage.toLowerCase() }}",
+              "rightValue": "@jarvis",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "node-filter",
+      "name": "Filter: Group & @Jarvis?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        580,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "ok",
+        "options": {}
+      },
+      "id": "node-ignore",
+      "name": "Ignore (Wrong Group or No Mention)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        840,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "options": {
+          "temperature": 0.4,
+          "maxTokens": 1000
+        },
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "Você é o Jarvis, assistente de Gerenciamento de Projetos da Angel Fly Digital Solutions.\n\n## Tom e Personalidade\nNível de humor atual: {{ $json.humorDesc }}.\nRespostas diretas e objetivas. Sem apresentações.\n\n## Contexto dos Grupos\n- **Angel Fly Marketing Geral** (angelfly): Equipe interna, demandas operacionais\n- **Garlic N Lemon | Branding** (garlic): Cliente restaurante americano — branding, design, identidade visual, cardápios, artes\n- **Ernesto | Site & Identidade Visual** (ernesto): Cliente restaurante — site institucional, identidade visual\n\n## Projetos Ativos no Sistema\n{{ $json.projectsRef }}\n\n## Regras de Classificação (CRÍTICO)\n\n**create_task** — quando pedirem \"criar tarefa\", \"adicionar task\", \"precisa ser feito\":\n- Identifique qual projeto da lista acima é mais relevante pelo contexto (nome do projeto, cliente, tema)\n- Retorne project_id e project_name do projeto correto\n- status SEMPRE = \"assigned\"\n\n**create_ticket** — bugs, erros, reclamações de cliente (\"parou\", \"quebrou\", \"problema\"):\n- Retorne client_name do cliente afetado (do grupo ou da mensagem)\n- project_id é opcional caso seja claro\n\n**create_project** — \"novo projeto\", \"novo cliente\", \"iniciar projeto\":\n- Retorne name e client_name\n\n**create_payment_incoming** — pagamento recebido, cliente pagou:\n- Extraia amount se disponível\n\n**create_payment_outgoing** — conta a pagar, despesa, fornecedor:\n- Extraia amount se disponível\n\n**none** — conversa, pergunta, saudação, informação insuficiente\n\n## Formato de Resposta\nJSON válido obrigatório:\n\nPara create_task:\n{\"intent\": \"create_task\", \"entity\": {\"title\": \"...\", \"description\": \"...\", \"priority\": \"high|medium|low\", \"project_id\": 1, \"project_name\": \"Nome do Projeto\"}, \"reply\": \"✅ Tarefa criada em [projeto]\"}\n\nPara create_ticket:\n{\"intent\": \"create_ticket\", \"entity\": {\"subject\": \"...\", \"description\": \"...\", \"priority\": \"high|medium|low\", \"category\": \"Bug|Change Request|Complaint|Question\", \"client_name\": \"...\"}, \"reply\": \"🎫 Ticket registrado para [cliente]\"}\n\nPara none:\n{\"intent\": \"none\", \"entity\": {}, \"reply\": \"resposta\"}"
+            },
+            {
+              "role": "user",
+              "content": "=Grupo: {{ $json.groupLabel }} | Contexto: {{ $json.groupContext }}\nRemetente: {{ $json.senderName }}\n\nMensagem atual:\n{{ $json.cleanMessage }}"
+            }
+          ]
+        }
+      },
+      "id": "node-openai",
+      "name": "OpenAI — Interpret Intent",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.5,
+      "position": [
+        1520,
+        380
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputData = $input.first().json;\nlet responseText = '';\nif (inputData?.message?.content) {\n  responseText = inputData.message.content;\n} else if (inputData?.choices?.[0]?.message?.content) {\n  responseText = inputData.choices[0].message.content;\n} else if (typeof inputData?.text === 'string') {\n  responseText = inputData.text;\n} else {\n  responseText = JSON.stringify(inputData);\n}\n\nlet parsed;\ntry {\n  const clean = responseText.replace(/```(?:json)?/g, '').replace(/```/g, '').trim();\n  const match = clean.match(/({[\\s\\S]*})/);\n  parsed = JSON.parse(match ? match[1] : clean);\n} catch (e) {\n  parsed = { intent: 'none', reply: 'Não consegui processar isso. Pode reformular?', entity: {} };\n}\n\nconst entity = parsed.entity || {};\nconst pm = $('Check Personality Command').first().json;\n\n// For create_task: require project_id OR title, for tickets: require subject\nconst actionIntents = ['create_task','create_ticket','create_project','create_payment_incoming','create_payment_outgoing'];\nlet intent = parsed.intent || 'none';\n\nif (intent === 'create_task' && !entity.title && !entity.project_id) {\n  intent = 'none';\n  parsed.reply = parsed.reply || 'Precisa de mais detalhes para criar a tarefa. Qual é o título e em qual projeto?';\n}\nif (intent === 'create_ticket' && !entity.subject) {\n  intent = 'none';\n  parsed.reply = parsed.reply || 'Precisa de mais detalhes para o ticket. Qual é o problema?';\n}\n\nconst replyTarget = pm.waChatId || pm.chatId || '120363426390515923@g.us';\n\nreturn [{ json: {\n  intent,\n  entity,\n  // task fields\n  title: entity.title || entity.subject || '',\n  description: entity.description || '',\n  priority: entity.priority || 'medium',\n  project_id: entity.project_id || null,\n  project_name: entity.project_name || '',\n  // ticket fields\n  subject: entity.subject || entity.title || '',\n  category: entity.category || '',\n  client_name: entity.client_name || (pm.groupContext === 'garlic' ? 'Garlic N Lemon' : pm.groupContext === 'ernesto' ? 'Ernesto' : 'Angel Fly'),\n  // payments\n  amount: entity.amount || 0,\n  // reply & routing\n  reply: parsed.reply || 'Entendido!',\n  senderName: pm.senderName,\n  chatId: pm.chatId,\n  waChatId: replyTarget,\n  groupContext: pm.groupContext,\n  groupLabel: pm.groupLabel\n}}];"
+      },
+      "id": "node-parse-ai",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "create_task",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "task"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "create_ticket",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "ticket"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "create_project",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "project"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "create_payment_incoming",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "payment_in"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "create_payment_outgoing",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "payment_out"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.intent }}",
+                    "rightValue": "none",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "none"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "node-route",
+      "name": "Route by Intent",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        2200,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://cockpit.angelfly.io/api/tasks",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ title: $json.title, description: $json.description || \"\", priority: $json.priority || \"medium\", status: \"assigned\", project_id: $json.project_id || null, project_name: $json.project_name || \"\", client_name: $json.client_name || \"\" }) }}",
+        "options": {}
+      },
+      "id": "node-task",
+      "name": "Create Task in Cockpit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2440,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://cockpit.angelfly.io/api/tickets",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ subject: $json.subject || $json.title, description: $json.description || \"\", priority: $json.priority || \"medium\", status: \"open\", category: $json.category || \"Question\", client_name: $json.client_name || \"\", project_id: $json.project_id || null, project_name: $json.project_name || \"\" }) }}",
+        "options": {}
+      },
+      "id": "node-ticket",
+      "name": "Create Ticket in Cockpit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2440,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://cockpit.angelfly.io/api/projects",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ name: $json.title, description: $json.description || \"\", status: \"active\" }) }}",
+        "options": {}
+      },
+      "id": "node-project",
+      "name": "Create Project in Cockpit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2440,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://cockpit.angelfly.io/api/payments_incoming",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ description: $json.title + (($json.description && $json.description !== $json.title) ? \": \" + $json.description : \"\"), amount: $json.entity && $json.entity.amount ? $json.entity.amount : 0, status: \"pending\", client_name: $json.groupContext === \"angelfly\" ? \"Angel Fly\" : $json.groupContext === \"garlic\" ? \"Garlic N Lemon\" : $json.groupContext === \"ernesto\" ? \"Ernesto\" : $json.groupLabel }) }}",
+        "options": {}
+      },
+      "id": "node-payment-in",
+      "name": "Create Payment Incoming",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2440,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://cockpit.angelfly.io/api/payments_outgoing",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ description: $json.title + (($json.description && $json.description !== $json.title) ? \": \" + $json.description : \"\"), amount: $json.entity && $json.entity.amount ? $json.entity.amount : 0, status: \"pending\" }) }}",
+        "options": {}
+      },
+      "id": "node-payment-out",
+      "name": "Create Payment Outgoing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2440,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://angelfly.uazapi.com/send/text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "a232b655-1733-46c1-b872-1f82782b9cbe"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $('Parse AI Response').first().json.waChatId, text: $('Parse AI Response').first().json.reply }) }}",
+        "options": {}
+      },
+      "id": "node-reply",
+      "name": "Reply on WhatsApp (Uzapi)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2680,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "ok",
+        "options": {}
+      },
+      "id": "node-respond",
+      "name": "Respond to Uzapi",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2900,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-has-action",
+              "leftValue": "={{ $json.intent }}",
+              "rightValue": "none",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            },
+            {
+              "id": "check-has-title",
+              "leftValue": "={{ $json.title }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-pre-route",
+      "name": "Has Action Intent?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = $input.first().json.cleanMessage.toLowerCase();\n\n// Detect personality adjustment commands\nconst isPersonalityCmd = (\n  (msg.includes('humor') || msg.includes('seriedade') || msg.includes('sério') || msg.includes('serio') || msg.includes('personalidade'))\n  && (msg.includes('aument') || msg.includes('diminui') || msg.includes('reduz') || msg.includes('coloca') || msg.includes('%') || /\\d+/.test(msg))\n);\n\nreturn [{ json: { ...($input.first().json), isPersonalityCmd } }];"
+      },
+      "id": "node-personality-check",
+      "name": "Check Personality Command",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-personality",
+              "leftValue": "={{ $json.isPersonalityCmd }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-personality-if",
+      "name": "Is Personality Command?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst msg = $input.first().json.cleanMessage.toLowerCase();\n\n// Current level (0 = serious, 100 = very funny)\nlet currentLevel = staticData.humorLevel !== undefined ? staticData.humorLevel : 30;\n\n// Extract percentage from message\nconst pctMatch = msg.match(/(\\d+)\\s*%/);\nconst numMatch = msg.match(/(\\d+)/);\nconst pct = pctMatch ? parseInt(pctMatch[1]) : (numMatch ? parseInt(numMatch[1]) : 20);\n\nlet newLevel = currentLevel;\nlet action = '';\n\nif (msg.includes('aument') || msg.includes('mais')) {\n  newLevel = Math.min(100, currentLevel + pct);\n  action = 'aumentado';\n} else if (msg.includes('diminui') || msg.includes('reduz') || msg.includes('menos')) {\n  newLevel = Math.max(0, currentLevel - pct);\n  action = 'reduzido';\n} else if (msg.includes('coloca') || msg.includes('define') || msg.includes('set')) {\n  newLevel = Math.min(100, Math.max(0, pct));\n  action = 'definido para';\n}\n\nstaticData.humorLevel = newLevel;\n\nconst levelDesc = newLevel <= 20 ? 'muito sério' : newLevel <= 40 ? 'sério' : newLevel <= 60 ? 'equilibrado' : newLevel <= 80 ? 'descontraído' : 'bem humorado';\n\nreturn [{ json: {\n  waChatId: $input.first().json.waChatId,\n  reply: `✅ Nível de humor ${action}: ${newLevel}% (${levelDesc}). Ajuste aplicado.`\n}}];"
+      },
+      "id": "node-personality-handle",
+      "name": "Adjust Personality",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://angelfly.uazapi.com/message/find",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "a232b655-1733-46c1-b872-1f82782b9cbe"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chatid: $json.chatId, limit: 15, offset: 0 }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "node-get-history",
+      "name": "Get Chat History",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst humorLevel = staticData.humorLevel !== undefined ? staticData.humorLevel : 30;\n\nconst pm = $('Check Personality Command').first().json;\n\n// Get history from Uzapi\nlet historyMessages = [];\ntry {\n  const historyData = $('Get Chat History').first().json;\n  const msgs = historyData?.messages || [];\n  historyMessages = msgs\n    .filter(m => m.text && m.text.trim())\n    .slice(0, 10)\n    .reverse()\n    .map(m => ({\n      role: m.fromMe ? 'assistant' : 'user',\n      content: m.fromMe ? m.text : `[${m.senderName || 'Membro'}]: ${m.text}`\n    }));\n} catch(e) { historyMessages = []; }\n\n// Get projects from Cockpit\nlet projectsList = [];\ntry {\n  const projData = $('Fetch Projects').first().json;\n  const projs = Array.isArray(projData) ? projData : [];\n  projectsList = projs\n    .filter(p => p.status === 'active')\n    .map(p => ({ id: p.id, name: p.name, client_name: p.client_name || '' }));\n} catch(e) { projectsList = []; }\n\nconst humorDesc = humorLevel <= 20 ? 'muito sério e formal, sem humor'\n  : humorLevel <= 40 ? 'profissional com leveza ocasional'\n  : humorLevel <= 60 ? 'equilibrado entre profissional e descontraído'\n  : humorLevel <= 80 ? 'descontraído com bom humor moderado'\n  : 'bem humorado e leve, com humor frequente';\n\n// Build project reference string for the prompt\nconst projectsRef = projectsList.length > 0\n  ? projectsList.map(p => `  - id=${p.id} | \"${p.name}\" | cliente: \"${p.client_name}\"`).join('\\n')\n  : '  (nenhum projeto cadastrado ainda)';\n\nreturn [{ json: {\n  ...pm,\n  humorLevel,\n  humorDesc,\n  projectsRef,\n  projectsList: JSON.stringify(projectsList),\n  historyMessages: JSON.stringify(historyMessages)\n}}];"
+      },
+      "id": "node-build-context",
+      "name": "Build Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://cockpit.angelfly.io/api/projects",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "node-fetch-projects",
+      "name": "Fetch Projects",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook (Uzapi)": {
+      "main": [
+        [
+          {
+            "node": "Parse Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Message": {
+      "main": [
+        [
+          {
+            "node": "Filter: Group & @Jarvis?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter: Group & @Jarvis?": {
+      "main": [
+        [
+          {
+            "node": "Check Personality Command",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ignore (Wrong Group or No Mention)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI — Interpret Intent": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Response": {
+      "main": [
+        [
+          {
+            "node": "Has Action Intent?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Intent": {
+      "main": [
+        [
+          {
+            "node": "Create Task in Cockpit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Ticket in Cockpit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Project in Cockpit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Payment Incoming",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Payment Outgoing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply on WhatsApp (Uzapi)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply on WhatsApp (Uzapi)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Task in Cockpit": {
+      "main": [
+        [
+          {
+            "node": "Reply on WhatsApp (Uzapi)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Ticket in Cockpit": {
+      "main": [
+        [
+          {
+            "node": "Reply on WhatsApp (Uzapi)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Project in Cockpit": {
+      "main": [
+        [
+          {
+            "node": "Reply on WhatsApp (Uzapi)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Payment Incoming": {
+      "main": [
+        [
+          {
+            "node": "Reply on WhatsApp (Uzapi)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Payment Outgoing": {
+      "main": [
+        [
+          {
+            "node": "Reply on WhatsApp (Uzapi)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reply on WhatsApp (Uzapi)": {
+      "main": [
+        [
+          {
+            "node": "Respond to Uzapi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Action Intent?": {
+      "main": [
+        [
+          {
+            "node": "Route by Intent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply on WhatsApp (Uzapi)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Personality Command": {
+      "main": [
+        [
+          {
+            "node": "Is Personality Command?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Personality Command?": {
+      "main": [
+        [
+          {
+            "node": "Adjust Personality",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Chat History",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Projects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Adjust Personality": {
+      "main": [
+        [
+          {
+            "node": "Reply on WhatsApp (Uzapi)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Chat History": {
+      "main": [
+        [
+          {
+            "node": "Build Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Context": {
+      "main": [
+        [
+          {
+            "node": "OpenAI — Interpret Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Projects": {
+      "main": [
+        [
+          {
+            "node": "Build Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "instanceId": "jarvis-angelfly-v5"
+  }
+}

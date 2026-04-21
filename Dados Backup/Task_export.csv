@@ -1,0 +1,29 @@
+description,title,project_name,priority,project_id,actual_hours,estimated_hours,deadline,deliverable_url,assigned_to_name,client_name,assigned_to,status,id,created_date,updated_date,created_by_id,created_by,is_sample
+"TEST
+
+--- Ticket | change_request | medium priority | Client: alana.s.camara
+
+--- Attachments ---
+1. https://base44.app/api/apps/69db100d236c52d6a4de9e3a/files/mp/public/69db100d236c52d6a4de9e3a/37ab42608_Imagem1kebabswe.png
+2. https://drive.google.com/file/d/1km89XaBGS19dsB3clmjZzo1sWH_nJfAf/view?usp=drive_link","[Ticket] TEST","","medium","","","","","https://base44.app/api/apps/69db100d236c52d6a4de9e3a/files/mp/public/69db100d236c52d6a4de9e3a/37ab42608_Imagem1kebabswe.png","Rodrigo ","alana.s.camara","69defa8642153b4cf4abd38f","assigned","69dfaaf6da7fe45b2c0a479f","2026-04-15T15:12:54.642000","2026-04-15T15:12:54.642000","69dd428bbfb50b6b1a6a3316","alana.s.camara@gmail.com","false"
+"Take a look at these. I pulled these off the management page last week. 
+The second one (financial report) does not have the meals tax included but the totals on both match. 
+
+
+--- Ticket | bug | medium priority | Client: bostonpizza617
+
+--- Attachments ---
+1. https://base44.app/api/apps/69db100d236c52d6a4de9e3a/files/mp/public/69db100d236c52d6a4de9e3a/a78bdeab4_IMG_0448.png
+2. https://base44.app/api/apps/69db100d236c52d6a4de9e3a/files/mp/public/69db100d236c52d6a4de9e3a/1682ba629_IMG_0449.png","[Ticket] Ernesto’s Pizza Reports  (copy)","","medium","","","","","https://base44.app/api/apps/69db100d236c52d6a4de9e3a/files/mp/public/69db100d236c52d6a4de9e3a/a78bdeab4_IMG_0448.png","Rodrigo ","bostonpizza617","69defa8642153b4cf4abd38f","assigned","69deb7a05b653c8c51622385","2026-04-14T21:54:40.111000","2026-04-15T02:48:06.226000","69de5f3c2031f948e04d99a8","fly@angelfly.xyz","false"
+"fix it
+
+--- Ticket | bug | medium priority | Client: gabriel
+
+[Note]: gdgd
+
+[Client feedback]: i dont like it
+","[Ticket] helo","Angel Fly Cockpit","medium","69db1ad6fc0577f3da1cd955","","","2026-04-13","https://base44.app/api/apps/69db100d236c52d6a4de9e3a/files/mp/public/69db100d236c52d6a4de9e3a/8dbe5feee_Screenshot2026-04-12at85745PM.png","gabriellcwb","gabriel","69dc3d1812c864fa0536b621","review","69dc3c627bc5f6c8665ae815","2026-04-13T00:44:18.076000","2026-04-13T01:00:05.890000","69db100d236c52d6a4de9e3b","gabriel@grupofly.com.br","false"
+"I want the catering menu on ti 
+
+--- Ticket | change_request | high priority | Client: gabriellcwb","[Ticket] Website ","Angel Fly Cockpit","high","69db1ad6fc0577f3da1cd955","","0","2026-04-13","","gabriellcwb","gabriellcwb","69dbf8c7f66a9f727a7eff11","review","69dbf7664a6726a60f9a664a","2026-04-12T19:49:58.474000","2026-04-13T00:43:19.440000","69db100d236c52d6a4de9e3b","gabriel@grupofly.com.br","false"
+"","Prototype","Angel Fly Cockpit","medium","69db1ad6fc0577f3da1cd955","","0","","","gabriellcwb","Angel Fly ","69dbf8c7f66a9f727a7eff11","assigned","69db1ae31eb83abf69e0a458","2026-04-12T04:09:07.855000","2026-04-13T00:33:23.348000","69db100d236c52d6a4de9e3b","gabriel@grupofly.com.br","false"

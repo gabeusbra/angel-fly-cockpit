@@ -29,3 +29,4 @@ dist-ssr
 
 .env
 .vite
+client_secret_*.json

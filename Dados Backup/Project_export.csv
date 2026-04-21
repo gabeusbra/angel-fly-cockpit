@@ -1,0 +1,2 @@
+end_date,payment_type,scope_description,total_budget,name,recurrence_interval,client_name,client_id,status,start_date,id,created_date,updated_date,created_by_id,created_by,is_sample
+"2026-04-13","one-time","","10000","Angel Fly Cockpit","none","gabriel","69dc323eafa59bd950c51b5a","active","2026-04-12","69db1ad6fc0577f3da1cd955","2026-04-12T04:08:54.567000","2026-04-13T00:14:16.483000","69db100d236c52d6a4de9e3b","gabriel@grupofly.com.br","false"
