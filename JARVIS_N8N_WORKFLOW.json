@@ -123,7 +123,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const inputData = $input.first().json;\nlet responseText = '';\nif (inputData?.message?.content) {\n  responseText = inputData.message.content;\n} else if (inputData?.choices?.[0]?.message?.content) {\n  responseText = inputData.choices[0].message.content;\n} else if (typeof inputData?.text === 'string') {\n  responseText = inputData.text;\n} else {\n  responseText = JSON.stringify(inputData);\n}\n\nlet parsed;\ntry {\n  const clean = responseText.replace(/```(?:json)?/g, '').replace(/```/g, '').trim();\n  const match = clean.match(/({[\\s\\S]*})/);\n  parsed = JSON.parse(match ? match[1] : clean);\n} catch (e) {\n  parsed = { intent: 'none', reply: 'Não consegui processar isso. Pode reformular?', entity: {} };\n}\n\nconst entity = parsed.entity || {};\nconst pm = $('Check Personality Command').first().json;\n\n// For create_task: require project_id OR title, for tickets: require subject\nconst actionIntents = ['create_task','create_ticket','create_project','create_payment_incoming','create_payment_outgoing'];\nlet intent = parsed.intent || 'none';\n\nif (intent === 'create_task' && !entity.title && !entity.project_id) {\n  intent = 'none';\n  parsed.reply = parsed.reply || 'Precisa de mais detalhes para criar a tarefa. Qual é o título e em qual projeto?';\n}\nif (intent === 'create_ticket' && !entity.subject) {\n  intent = 'none';\n  parsed.reply = parsed.reply || 'Precisa de mais detalhes para o ticket. Qual é o problema?';\n}\n\nconst replyTarget = pm.waChatId || pm.chatId || '120363426390515923@g.us';\n\nreturn [{ json: {\n  intent,\n  entity,\n  // task fields\n  title: entity.title || entity.subject || '',\n  description: entity.description || '',\n  priority: entity.priority || 'medium',\n  project_id: entity.project_id || null,\n  project_name: entity.project_name || '',\n  // ticket fields\n  subject: entity.subject || entity.title || '',\n  category: entity.category || '',\n  client_name: entity.client_name || (pm.groupContext === 'garlic' ? 'Garlic N Lemon' : pm.groupContext === 'ernesto' ? 'Ernesto' : 'Angel Fly'),\n  // payments\n  amount: entity.amount || 0,\n  // reply & routing\n  reply: parsed.reply || 'Entendido!',\n  senderName: pm.senderName,\n  chatId: pm.chatId,\n  waChatId: replyTarget,\n  groupContext: pm.groupContext,\n  groupLabel: pm.groupLabel\n}}];"
+        "jsCode": "const inputData = $input.first().json;\nlet responseText = '';\nif (inputData?.message?.content) {\n  responseText = inputData.message.content;\n} else if (inputData?.choices?.[0]?.message?.content) {\n  responseText = inputData.choices[0].message.content;\n} else if (typeof inputData?.text === 'string') {\n  responseText = inputData.text;\n} else {\n  responseText = JSON.stringify(inputData);\n}\n\nlet parsed;\ntry {\n  const clean = responseText.replace(/```(?:json)?/g, '').replace(/```/g, '').trim();\n  const match = clean.match(/({[\\s\\S]*})/);\n  parsed = JSON.parse(match ? match[1] : clean);\n} catch (e) {\n  parsed = { intent: 'none', reply: 'Não consegui processar isso. Pode reformular?', entity: {} };\n}\n\nconst entity = parsed.entity || {};\nconst pm = $('Check Personality Command').first().json;\n\n// Get known projects to validate project_id\nlet knownProjects = [];\ntry {\n  const ctx = $('Build Context').first().json;\n  knownProjects = JSON.parse(ctx.projectsList || '[]');\n} catch(e) {}\n\nlet intent = parsed.intent || 'none';\n\n// Validate project_id against known projects\nif (intent === 'create_task') {\n  if (!entity.title) {\n    intent = 'none';\n    parsed.reply = 'Preciso de mais detalhes para criar a tarefa. Qual é o título?';\n  } else if (entity.project_id) {\n    // Check that project_id actually exists in our fetched list\n    const validProject = knownProjects.find(p => String(p.id) === String(entity.project_id));\n    if (!validProject) {\n      // Project not found — try fuzzy match by name\n      const targetName = (entity.project_name || '').toLowerCase();\n      const fuzzy = knownProjects.find(p => p.name.toLowerCase().includes(targetName) || targetName.includes(p.name.toLowerCase()));\n      if (fuzzy) {\n        entity.project_id = fuzzy.id;\n        entity.project_name = fuzzy.name;\n      } else {\n        // No match — create without project_id, warn user\n        entity.project_id = null;\n        parsed.reply = `⚠️ Projeto \"${entity.project_name || 'solicitado'}\" não encontrado no Cockpit. Crie o projeto primeiro e tente novamente. A tarefa *não* foi criada.`;\n        intent = 'none';\n      }\n    }\n  }\n}\n\nif (intent === 'create_ticket' && !entity.subject) {\n  intent = 'none';\n  parsed.reply = 'Preciso de mais detalhes para o ticket. Qual é o assunto?';\n}\n\nconst replyTarget = pm.waChatId || pm.chatId || '120363426390515923@g.us';\nconst clientName = entity.client_name || (pm.groupContext === 'garlic' ? 'Garlic N Lemon' : pm.groupContext === 'ernesto' ? 'Ernesto' : 'Angel Fly');\n\nreturn [{ json: {\n  intent,\n  entity,\n  title: entity.title || entity.subject || '',\n  description: entity.description || '',\n  priority: entity.priority || 'medium',\n  project_id: entity.project_id || null,\n  project_name: entity.project_name || '',\n  subject: entity.subject || entity.title || '',\n  category: entity.category || 'question',\n  client_name: clientName,\n  amount: entity.amount || 0,\n  reply: parsed.reply || 'Entendido!',\n  senderName: pm.senderName,\n  chatId: pm.chatId,\n  waChatId: replyTarget,\n  groupContext: pm.groupContext,\n  groupLabel: pm.groupLabel\n}}];"
       },
       "id": "node-parse-ai",
       "name": "Parse AI Response",
@@ -296,7 +296,8 @@
       "position": [
         2440,
         100
-      ]
+      ],
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -327,7 +328,8 @@
       "position": [
         2440,
         240
-      ]
+      ],
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -358,7 +360,8 @@
       "position": [
         2440,
         380
-      ]
+      ],
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -389,7 +392,8 @@
       "position": [
         2440,
         520
-      ]
+      ],
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -420,7 +424,8 @@
       "position": [
         2440,
         660
-      ]
+      ],
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -646,6 +651,47 @@
         1100,
         300
       ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://uazapi.app/send/text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "a232b655-1733-46c1-b872-1f82782b9cbe"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "instanceId",
+              "value": "EaQ1cd"
+            },
+            {
+              "name": "to",
+              "value": "={{ $('Parse AI Response').first().json.waChatId }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ '⚠️ *Jarvis:* ' + ($('Route by Intent').first().json.intent || 'ação') + ' não pôde ser concluída.\\n\\n' + 'Erro: ' + ($json.error?.message || $json.message || 'Falha na API do Cockpit. Tente novamente ou verifique os dados.')  }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-error-notify",
+      "name": "Notify Error on WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        500
+      ]
     }
   ],
   "connections": {
@@ -772,6 +818,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Notify Error on WhatsApp",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -780,6 +833,13 @@
         [
           {
             "node": "Reply on WhatsApp (Uzapi)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Error on WhatsApp",
             "type": "main",
             "index": 0
           }
@@ -794,6 +854,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Notify Error on WhatsApp",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -805,6 +872,13 @@
             "type": "main",
             "index": 0
           }
+        ],
+        [
+          {
+            "node": "Notify Error on WhatsApp",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
@@ -813,6 +887,13 @@
         [
           {
             "node": "Reply on WhatsApp (Uzapi)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Error on WhatsApp",
             "type": "main",
             "index": 0
           }
