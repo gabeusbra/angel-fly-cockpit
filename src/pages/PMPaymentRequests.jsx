@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useOutletContext } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,10 +22,10 @@ export default function PMPaymentRequests() {
   useEffect(() => {
     const init = async () => {
       let p = [], t = [], u = [];
-      try { p = await base44.entities.PaymentOutgoing.list("-created_date"); } catch { try { p = await base44.entities.PaymentOutgoing.list(); } catch { /* ignore */ } }
-      try { t = await base44.entities.Task.list(); } catch { /* ignore */ }
-      try { u = await base44.entities.User.filter({ role: "professional", status: "active" }); } catch {
-        try { const all = await base44.entities.User.list(); u = all.filter(usr => usr.role === "professional"); } catch { /* ignore */ }
+      try { p = await api.entities.PaymentOutgoing.list("-created_date"); } catch { try { p = await api.entities.PaymentOutgoing.list(); } catch { /* ignore */ } }
+      try { t = await api.entities.Task.list(); } catch { /* ignore */ }
+      try { u = await api.entities.User.filter({ role: "professional", status: "active" }); } catch {
+        try { const all = await api.entities.User.list(); u = all.filter(usr => usr.role === "professional"); } catch { /* ignore */ }
       }
       if (u.length === 0 && t.length > 0) {
         const proMap = {};
@@ -40,7 +40,7 @@ export default function PMPaymentRequests() {
   const handleCreate = async () => {
     const pro = pros.find(u => u.id === form.professional_id);
     const task = tasks.find(t => t.id === form.task_id);
-    await base44.entities.PaymentOutgoing.create({
+    await api.entities.PaymentOutgoing.create({
       professional_id: form.professional_id,
       professional_name: pro?.full_name || "",
       task_id: form.task_id,
@@ -55,7 +55,7 @@ export default function PMPaymentRequests() {
     });
     setShowCreate(false);
     setForm({ professional_id: "", task_id: "", amount: "", notes: "" });
-    const p = await base44.entities.PaymentOutgoing.list("-created_date");
+    const p = await api.entities.PaymentOutgoing.list("-created_date");
     setPayments(p);
   };
 

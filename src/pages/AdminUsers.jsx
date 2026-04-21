@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { Mail, Search, Pencil, Trash2, UserCircle, AlertCircle, Clock, X, Crown, Briefcase, Palette, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,7 +59,7 @@ export default function AdminUsers() {
   useEffect(() => { load(); }, []);
 
   const load = async () => {
-    const data = await base44.entities.User.list();
+    const data = await api.entities.User.list();
     setUsers(data);
     setLoading(false);
 
@@ -76,7 +76,7 @@ export default function AdminUsers() {
           payload.hourly_rate = inv.hourly_rate ? parseFloat(inv.hourly_rate) : null;
         }
         if (inv.cockpitRole === "client") payload.company = inv.company || "";
-        try { await base44.entities.User.update(match.id, payload); } catch { /* ignore */ }
+        try { await api.entities.User.update(match.id, payload); } catch { /* ignore */ }
       } else if (!match) {
         remaining.push(inv);
       }
@@ -84,7 +84,7 @@ export default function AdminUsers() {
     if (remaining.length !== pendingList.length) {
       savePendingInvites(remaining);
       if (remaining.length < pendingList.length) {
-        const refreshed = await base44.entities.User.list();
+        const refreshed = await api.entities.User.list();
         setUsers(refreshed);
       }
     }
@@ -98,10 +98,10 @@ export default function AdminUsers() {
     setInviteError("");
     try {
       const authRole = inviteForm.cockpitRole === "admin" ? "admin" : "user";
-      await base44.users.inviteUser(inviteForm.email, authRole);
+      await api.users.inviteUser(inviteForm.email, authRole);
 
       // Try to find user immediately (Base44 may create them right away)
-      const updatedUsers = await base44.entities.User.list();
+      const updatedUsers = await api.entities.User.list();
       const newUser = updatedUsers.find(u => u.email === inviteForm.email);
       if (newUser) {
         const payload = { role: inviteForm.cockpitRole, status: "active", phone: inviteForm.phone || "" };
@@ -111,7 +111,7 @@ export default function AdminUsers() {
           payload.hourly_rate = inviteForm.hourly_rate ? parseFloat(inviteForm.hourly_rate) : null;
         }
         if (inviteForm.cockpitRole === "client") payload.company = inviteForm.company;
-        await base44.entities.User.update(newUser.id, payload);
+        await api.entities.User.update(newUser.id, payload);
       } else {
         // User not created yet — save to pending so we track it
         const pendingList = getPendingInvites();
@@ -172,7 +172,7 @@ export default function AdminUsers() {
       status: editForm.status,
       avatar_url: editForm.avatar_url || "",
     };
-    await base44.entities.User.update(editing.id, payload);
+    await api.entities.User.update(editing.id, payload);
     setEditing(null);
     load();
   };
@@ -180,7 +180,7 @@ export default function AdminUsers() {
   // --- Deactivate ---
   const handleDeactivate = async () => {
     if (!confirmDelete) return;
-    await base44.entities.User.update(confirmDelete.id, { status: "inactive" });
+    await api.entities.User.update(confirmDelete.id, { status: "inactive" });
     setConfirmDelete(null);
     load();
   };
@@ -188,7 +188,7 @@ export default function AdminUsers() {
   // --- Permanent delete ---
   const handlePermanentDelete = async () => {
     if (!confirmDelete) return;
-    await base44.entities.User.delete(confirmDelete.id);
+    await api.entities.User.delete(confirmDelete.id);
     setConfirmDelete(null);
     load();
   };
@@ -565,7 +565,7 @@ export default function AdminUsers() {
                           if (!file) return;
                           setUploadingLogo(true);
                           try {
-                            const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                            const { file_url } = await api.integrations.Core.UploadFile({ file });
                             setEditForm(f => ({ ...f, avatar_url: file_url }));
                           } catch { /* ignore */ }
                           setUploadingLogo(false);

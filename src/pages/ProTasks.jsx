@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useOutletContext } from "react-router-dom";
 import { Upload, Clock, CheckCircle2, Sparkles, ExternalLink, Link2, X, FileText, Film, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -36,13 +36,13 @@ export default function ProTasks() {
   }, [user]);
 
   const loadTasks = async () => {
-    const myTasks = await filterMyRecords(base44.entities.Task, "assigned_to", user, "assigned_to_name");
+    const myTasks = await filterMyRecords(api.entities.Task, "assigned_to", user, "assigned_to_name");
     setTasks(myTasks);
     setLoading(false);
   };
 
   const handleStatus = async (taskId, status) => {
-    await base44.entities.Task.update(taskId, { status });
+    await api.entities.Task.update(taskId, { status });
     loadTasks();
   };
 
@@ -52,7 +52,7 @@ export default function ProTasks() {
     setUploading(true);
     for (const file of files) {
       try {
-        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        const { file_url } = await api.integrations.Core.UploadFile({ file });
         const type = file.type.startsWith("video") ? "video" : file.type.startsWith("image") ? "image" : "file";
         setDeliverables(prev => [...prev, { url: file_url, name: file.name, type }]);
       } catch { /* ignore */ }
@@ -73,7 +73,7 @@ export default function ProTasks() {
     // Store first URL in deliverable_url, all URLs in description as links
     const deliverableLinks = allUrls.length > 1 ? `\n\n--- Deliverables ---\n${allUrls.map((u, i) => `${i + 1}. ${u}`).join("\n")}` : "";
     const noteText = note ? `\n\n[Note]: ${note}` : "";
-    await base44.entities.Task.update(uploadTask.id, {
+    await api.entities.Task.update(uploadTask.id, {
       deliverable_url: mainUrl,
       status: "review",
       description: (uploadTask.description || "") + deliverableLinks + noteText,

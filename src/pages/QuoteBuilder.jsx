@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useOutletContext } from "react-router-dom";
 import { Plus, Trash2, Copy, ExternalLink, CheckCircle2, X, FileText, Sparkles, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -227,7 +227,7 @@ export default function QuoteBuilder() {
     try {
       const blob = new Blob([JSON.stringify(quote)], { type: "application/json" });
       const file = new File([blob], `quote_${token}.json`, { type: "application/json" });
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await api.integrations.Core.UploadFile({ file });
       quote.data_url = file_url;
     } catch { /* ignore */ }
 
@@ -511,7 +511,7 @@ export default function QuoteBuilder() {
                             if (!file) return;
                             setUploadingImage(iIdx);
                             try {
-                              const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                              const { file_url } = await api.integrations.Core.UploadFile({ file });
                               updateItem(iIdx, "image_url", file_url);
                             } catch { /* ignore */ }
                             setUploadingImage(null);

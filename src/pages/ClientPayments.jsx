@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useOutletContext } from "react-router-dom";
 import { CreditCard } from "lucide-react";
 import { filterMyRecords } from "@/lib/entity-helpers";
@@ -14,7 +14,7 @@ export default function ClientPayments() {
 
   useEffect(() => {
     if (!user) return;
-    filterMyRecords(base44.entities.PaymentIncoming, "client_id", user, "client_name")
+    filterMyRecords(api.entities.PaymentIncoming, "client_id", user, "client_name")
       .then(p => { setPayments(p); setLoading(false); });
   }, [user]);
 

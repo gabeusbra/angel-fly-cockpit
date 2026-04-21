@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { Clock, DollarSign, FolderKanban, TrendingUp, Zap, Target, Sparkles, CheckCircle2 } from "lucide-react";
 import { filterMyRecords } from "@/lib/entity-helpers";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
@@ -33,8 +33,8 @@ export default function ProDashboard({ user }) {
   useEffect(() => {
     if (!user) return;
     Promise.all([
-      filterMyRecords(base44.entities.Task, "assigned_to", user, "assigned_to_name"),
-      filterMyRecords(base44.entities.PaymentOutgoing, "professional_id", user, "professional_name"),
+      filterMyRecords(api.entities.Task, "assigned_to", user, "assigned_to_name"),
+      filterMyRecords(api.entities.PaymentOutgoing, "professional_id", user, "professional_name"),
     ]).then(([t, p]) => { setTasks(t); setPayments(p); setLoading(false); });
   }, [user]);
 

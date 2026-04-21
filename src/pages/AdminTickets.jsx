@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { Search, Star, Plus, Sparkles, ListChecks, Clock, AlertTriangle, CheckCircle2, MessageSquare, User, ExternalLink, Paperclip, Copy } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,12 +34,12 @@ export default function AdminTickets() {
   useEffect(() => {
     const init = async () => {
       let t = [], u = [], p = [], tk = [];
-      try { t = await base44.entities.Ticket.list("-created_date"); } catch { try { t = await base44.entities.Ticket.list(); } catch { /* ignore */ } }
-      try { u = await base44.entities.User.list(); u = u.filter(usr => ["professional", "pm", "admin"].includes(usr.role) && usr.status !== "inactive"); } catch {
-        try { u = await base44.entities.User.filter({ status: "active" }); u = u.filter(usr => ["professional", "pm", "admin"].includes(usr.role)); } catch { /* ignore */ }
+      try { t = await api.entities.Ticket.list("-created_date"); } catch { try { t = await api.entities.Ticket.list(); } catch { /* ignore */ } }
+      try { u = await api.entities.User.list(); u = u.filter(usr => ["professional", "pm", "admin"].includes(usr.role) && usr.status !== "inactive"); } catch {
+        try { u = await api.entities.User.filter({ status: "active" }); u = u.filter(usr => ["professional", "pm", "admin"].includes(usr.role)); } catch { /* ignore */ }
       }
-      try { p = await base44.entities.Project.list(); } catch { /* ignore */ }
-      try { tk = await base44.entities.Task.list(); } catch { /* ignore */ }
+      try { p = await api.entities.Project.list(); } catch { /* ignore */ }
+      try { tk = await api.entities.Task.list(); } catch { /* ignore */ }
       // If no pros found from User entity, extract from task assignments
       if (u.length === 0 && tk.length > 0) {
         const proMap = {};
@@ -69,23 +69,23 @@ export default function AdminTickets() {
 
   const load = async () => {
     let t = [], tk = [];
-    try { t = await base44.entities.Ticket.list("-created_date"); } catch { try { t = await base44.entities.Ticket.list(); } catch { /* ignore */ } }
-    try { tk = await base44.entities.Task.list(); } catch { /* ignore */ }
+    try { t = await api.entities.Ticket.list("-created_date"); } catch { try { t = await api.entities.Ticket.list(); } catch { /* ignore */ } }
+    try { tk = await api.entities.Task.list(); } catch { /* ignore */ }
     setTickets(t.filter(x => x.category !== "client_record" && x.category !== "team_record")); setTasks(tk);
   };
 
   const handleAssign = async (ticket, userId) => {
     const pro = pros.find(u => u.id === userId);
-    await base44.entities.Ticket.update(ticket.id, {
+    await api.entities.Ticket.update(ticket.id, {
       assigned_to: userId, assigned_to_name: pro?.full_name || "",
       status: ticket.status === "open" ? "in_progress" : ticket.status,
     });
     const existing = tasks.find(t => t.title === `[Ticket] ${ticket.subject}` && t.project_id === ticket.project_id);
     if (existing) {
-      await base44.entities.Task.update(existing.id, { assigned_to: userId, assigned_to_name: pro?.full_name || "" });
+      await api.entities.Task.update(existing.id, { assigned_to: userId, assigned_to_name: pro?.full_name || "" });
     } else {
       const attachmentText = ticket.attachments?.length ? `\n\n--- Attachments ---\n${ticket.attachments.map((u, i) => `${i + 1}. ${u}`).join("\n")}` : "";
-      await base44.entities.Task.create({
+      await api.entities.Task.create({
         title: `[Ticket] ${ticket.subject}`, description: `${ticket.description || ""}\n\n--- Ticket | ${ticket.category} | ${ticket.priority} priority | Client: ${ticket.client_name}${attachmentText}`,
         project_id: ticket.project_id || "", project_name: ticket.project_name || "", client_name: ticket.client_name || "",
         assigned_to: userId, assigned_to_name: pro?.full_name || "", status: "assigned", priority: ticket.priority || "medium",
@@ -96,25 +96,25 @@ export default function AdminTickets() {
   };
 
   const handleStatus = async (ticketId, status) => {
-    await base44.entities.Ticket.update(ticketId, { status, ...(status === "resolved" ? { estimated_resolution: new Date().toISOString().split("T")[0] } : {}) });
+    await api.entities.Ticket.update(ticketId, { status, ...(status === "resolved" ? { estimated_resolution: new Date().toISOString().split("T")[0] } : {}) });
     const ticket = tickets.find(t => t.id === ticketId);
     if (ticket) {
       const lt = tasks.find(t => t.title === `[Ticket] ${ticket.subject}` && t.project_id === ticket.project_id);
-      if (lt) await base44.entities.Task.update(lt.id, { status: status === "resolved" || status === "closed" ? "done" : lt.status });
+      if (lt) await api.entities.Task.update(lt.id, { status: status === "resolved" || status === "closed" ? "done" : lt.status });
     }
     load();
   };
 
   const handleCreate = async () => {
     const proj = projects.find(p => p.id === form.project_id);
-    await base44.entities.Ticket.create({ ...form, project_name: proj?.name || "", client_name: form.client_name || proj?.client_name || "", status: "open" });
+    await api.entities.Ticket.create({ ...form, project_name: proj?.name || "", client_name: form.client_name || proj?.client_name || "", status: "open" });
     setShowCreate(false);
     setForm({ client_name: "", project_id: "", category: "question", subject: "", description: "", priority: "medium" });
     load();
   };
 
   const handleDuplicate = async (ticket) => {
-    await base44.entities.Ticket.create({
+    await api.entities.Ticket.create({
       subject: `${ticket.subject} (copy)`,
       description: ticket.description || "",
       category: ticket.category || "question",
@@ -139,13 +139,13 @@ export default function AdminTickets() {
     const pro = pros.find(u => u.id === convertForm.assigned_to);
     const proj = projects.find(p => p.id === convertForm.project_id);
     const attachmentText = convertTicket.attachments?.length ? `\n\n--- Attachments ---\n${convertTicket.attachments.map((u, i) => `${i + 1}. ${u}`).join("\n")}` : "";
-    await base44.entities.Task.create({
+    await api.entities.Task.create({
       title: `[Ticket] ${convertTicket.subject}`, description: `${convertTicket.description || ""}\n\n--- Ticket | ${convertTicket.category} | ${convertTicket.priority} priority | Client: ${convertTicket.client_name}${attachmentText}`,
       project_id: convertForm.project_id, project_name: proj?.name || convertTicket.project_name || "", client_name: convertTicket.client_name || proj?.client_name || "",
       assigned_to: convertForm.assigned_to, assigned_to_name: pro?.full_name || "", status: convertForm.assigned_to ? "assigned" : "backlog",
       priority: convertForm.priority, deadline: convertForm.deadline, milestone: convertForm.milestone, deliverable_url: convertTicket.attachments?.[0] || "", subtasks: "[]", comments: "[]",
     });
-    if (convertTicket.status === "open") await base44.entities.Ticket.update(convertTicket.id, { status: "in_progress", ...(convertForm.assigned_to ? { assigned_to: convertForm.assigned_to, assigned_to_name: pro?.full_name || "" } : {}) });
+    if (convertTicket.status === "open") await api.entities.Ticket.update(convertTicket.id, { status: "in_progress", ...(convertForm.assigned_to ? { assigned_to: convertForm.assigned_to, assigned_to_name: pro?.full_name || "" } : {}) });
     setConvertTicket(null); load();
   };
 

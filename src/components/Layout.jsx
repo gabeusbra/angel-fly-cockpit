@@ -1,6 +1,6 @@
 import { Outlet } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import Sidebar from "./Sidebar";
 import { ShieldX } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ function BlockedScreen({ title, message }) {
         </div>
         <h1 className="text-xl font-bold text-foreground mb-2">{title}</h1>
         <p className="text-sm text-muted-foreground mb-6">{message}</p>
-        <Button variant="outline" onClick={() => base44.auth.logout()}>Sign Out</Button>
+        <Button variant="outline" onClick={() => api.auth.logout()}>Sign Out</Button>
       </div>
     </div>
   );
@@ -28,8 +28,8 @@ async function resolveUser(authUser) {
 
   // Try to get entity data (works for admins, may fail for regular users)
   const attempts = [
-    () => base44.entities.User.list(),
-    () => base44.entities.User.filter({ email: authUser.email }),
+    () => api.entities.User.list(),
+    () => api.entities.User.filter({ email: authUser.email }),
   ];
 
   for (const attempt of attempts) {
@@ -58,7 +58,7 @@ export default function Layout() {
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    base44.auth.me().then(async (authUser) => {
+    api.auth.me().then(async (authUser) => {
       if (!authUser) { setUser(null); setChecked(true); return; }
 
       const finalUser = await resolveUser(authUser);

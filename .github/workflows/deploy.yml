@@ -17,17 +17,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20' # Recomendado para Vite/React
+          node-version: '20'
           cache: 'npm'
 
       - name: Install Dependencies
         run: npm ci || npm install
-
-      - name: Inject Environment Variables
-        run: |
-          echo "VITE_BASE44_APP_ID=${{ secrets.BASE44_APP_ID }}" >> .env
-          echo "VITE_BASE44_APP_BASE_URL=${{ secrets.BASE44_APP_BASE_URL }}" >> .env
-          echo "VITE_BASE44_FUNCTIONS_VERSION=${{ secrets.BASE44_FUNCTIONS_VERSION }}" >> .env
 
       - name: Build Project
         run: npm run build
@@ -38,8 +32,6 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          # O Vite gera os arquivos prontos para produção na pasta 'dist'
           local-dir: ./dist/
-          # O Hostinger geralmente já direciona esse acesso FTP direto para dentro da public_html
           server-dir: ./
           timeout: 100000

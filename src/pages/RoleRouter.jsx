@@ -1,7 +1,7 @@
 import { useOutletContext } from "react-router-dom";
 import { Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import AdminDashboard from "./AdminDashboard";
 import PMDashboard from "./PMDashboard";
 import ProDashboard from "./ProDashboard";
@@ -23,7 +23,7 @@ function PendingAccess({ user }) {
         <p className="text-xs text-muted-foreground mb-6">
           Please contact your administrator to get access to your portal.
         </p>
-        <Button variant="outline" onClick={() => base44.auth.logout()}>
+        <Button variant="outline" onClick={() => api.auth.logout()}>
           Sign Out
         </Button>
       </div>

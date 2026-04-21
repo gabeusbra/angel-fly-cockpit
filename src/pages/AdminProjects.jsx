@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { Link } from "react-router-dom";
 import { Search, FolderKanban, Clock, DollarSign, CheckCircle2, Users, ArrowRight, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -16,9 +16,9 @@ export default function AdminProjects() {
 
   useEffect(() => {
     Promise.all([
-      base44.entities.Project.list("-created_date"),
-      base44.entities.Task.list(),
-      base44.entities.PaymentIncoming.list(),
+      api.entities.Project.list("-created_date"),
+      api.entities.Task.list(),
+      api.entities.PaymentIncoming.list(),
     ]).then(([p, t, i]) => { setProjects(p); setTasks(t); setIncoming(i); setLoading(false); });
   }, []);
 

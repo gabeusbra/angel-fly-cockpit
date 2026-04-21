@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { FolderKanban, AlertTriangle, TicketCheck, Users } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import StatCard from "../components/StatCard";
@@ -15,9 +15,9 @@ export default function PMDashboard({ user }) {
   useEffect(() => {
     const load = async () => {
       let p = [], t = [], tk = [];
-      try { p = await base44.entities.Project.list(); } catch { /* ignore */ }
-      try { t = await base44.entities.Task.list(); } catch { /* ignore */ }
-      try { tk = await base44.entities.Ticket.list(); } catch { /* ignore */ }
+      try { p = await api.entities.Project.list(); } catch { /* ignore */ }
+      try { t = await api.entities.Task.list(); } catch { /* ignore */ }
+      try { tk = await api.entities.Ticket.list(); } catch { /* ignore */ }
       setProjects(p); setTasks(t); setTickets(tk); setLoading(false);
     };
     load();

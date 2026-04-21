@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useOutletContext, Link } from "react-router-dom";
 import { FolderKanban, Clock, CheckCircle2, ArrowRight } from "lucide-react";
 import { filterMyRecords, safeList } from "@/lib/entity-helpers";
@@ -14,11 +14,11 @@ export default function ProProjects() {
   useEffect(() => {
     if (!user) return;
     const loadData = async () => {
-      const myTasks = await filterMyRecords(base44.entities.Task, "assigned_to", user, "assigned_to_name");
+      const myTasks = await filterMyRecords(api.entities.Task, "assigned_to", user, "assigned_to_name");
       setTasks(myTasks);
       const projectIds = [...new Set(myTasks.map(t => t.project_id).filter(Boolean))];
       if (projectIds.length > 0) {
-        const allProjects = await safeList(base44.entities.Project);
+        const allProjects = await safeList(api.entities.Project);
         setProjects(allProjects.filter(p => projectIds.includes(p.id)));
       }
       setLoading(false);

@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight, LogOut, BarChart3,
   Moon, Sun
 } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 
 const navByRole = {
   admin: [
@@ -78,21 +78,21 @@ export default function Sidebar({ user, collapsed, onToggle }) {
         const counts = {};
         if (role === "admin") {
           const [out, inc, tickets] = await Promise.all([
-            base44.entities.PaymentOutgoing.list(),
-            base44.entities.PaymentIncoming.list(),
-            base44.entities.Ticket.list(),
+            api.entities.PaymentOutgoing.list(),
+            api.entities.PaymentIncoming.list(),
+            api.entities.Ticket.list(),
           ]);
           counts.pendingApprovals = out.filter(p => p.status === "requested").length;
           counts.overduePayments = inc.filter(p => p.status === "overdue").length;
           counts.openTickets = tickets.filter(t => t.status === "open").length;
         } else if (role === "pm") {
-          const tickets = await base44.entities.Ticket.list();
+          const tickets = await api.entities.Ticket.list();
           counts.openTickets = tickets.filter(t => t.status === "open").length;
         } else if (role === "professional") {
-          const tasks = await base44.entities.Task.filter({ assigned_to: user.id });
+          const tasks = await api.entities.Task.filter({ assigned_to: user.id });
           counts.assignedTasks = tasks.filter(t => t.status === "assigned").length;
         } else if (role === "client") {
-          const tasks = await base44.entities.Task.filter({ status: "client_approval" });
+          const tasks = await api.entities.Task.filter({ status: "client_approval" });
           counts.clientApprovals = tasks.length;
         }
         setBadges(counts);
@@ -179,7 +179,7 @@ export default function Sidebar({ user, collapsed, onToggle }) {
         </div>
         <div className="flex items-center gap-1">
           <button
-            onClick={() => base44.auth.logout()}
+            onClick={() => api.auth.logout()}
             className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex-1"
             style={{ color: "hsl(220,10%,45%)" }}
             onMouseEnter={e => { e.currentTarget.style.backgroundColor = "hsl(228,20%,15%)"; e.currentTarget.style.color = "white"; }}

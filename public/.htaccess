@@ -2,10 +2,16 @@
   RewriteEngine On
   RewriteBase /
 
-  RewriteRule ^api/(.*)$ api.php?request=$1 [QSA,L]
+  # Route /api/* to PHP API router
+  RewriteCond %{REQUEST_URI} ^/api/
+  RewriteRule ^api/(.*)$ api/index.php [QSA,L]
 
-  # Redirect routing for React/Vite SPA
+  # Serve uploaded files directly
+  RewriteCond %{REQUEST_URI} ^/uploads/
+  RewriteRule ^ - [L]
+
+  # SPA fallback: serve index.html for all non-file routes
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteRule ^ index.html [QSA,L]
+  RewriteRule ^ index.html [L]
 </IfModule>

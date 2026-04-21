@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { FolderKanban, TicketCheck, CheckSquare, CreditCard, Clock, ArrowRight, Sparkles } from "lucide-react";
 import { filterMyRecords, safeList } from "@/lib/entity-helpers";
 import StatusBadge from "../components/StatusBadge";
@@ -14,10 +14,10 @@ export default function ClientDashboard({ user }) {
   useEffect(() => {
     if (!user) return;
     Promise.all([
-      filterMyRecords(base44.entities.Project, "client_id", user, "client_name"),
-      filterMyRecords(base44.entities.Ticket, "client_id", user, "client_name"),
-      safeList(base44.entities.Task),
-      filterMyRecords(base44.entities.PaymentIncoming, "client_id", user, "client_name"),
+      filterMyRecords(api.entities.Project, "client_id", user, "client_name"),
+      filterMyRecords(api.entities.Ticket, "client_id", user, "client_name"),
+      safeList(api.entities.Task),
+      filterMyRecords(api.entities.PaymentIncoming, "client_id", user, "client_name"),
     ]).then(([p, t, allTasks, pay]) => {
       setProjects(p);
       setTickets(t);

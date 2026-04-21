@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { Plus, Search, Pencil, Trash2, Building2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,7 @@ export default function AdminClients() {
 
   useEffect(() => {
     syncLocalClients().then(() => getClients().then(setClients));
-    try { base44.entities.User.list().then(u => setUsers(u)); } catch { /* ignore */ }
+    try { api.entities.User.list().then(u => setUsers(u)); } catch { /* ignore */ }
   }, []);
 
   const reload = () => getClients().then(setClients);
@@ -66,7 +66,7 @@ export default function AdminClients() {
     if (!file) return;
     setUploading(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await api.integrations.Core.UploadFile({ file });
       setForm(f => ({ ...f, logo_url: file_url }));
     } catch { /* ignore */ }
     setUploading(false);

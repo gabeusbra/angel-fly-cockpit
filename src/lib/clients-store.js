@@ -1,4 +1,4 @@
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 
 const CLIENTS_KEY = "angel_fly_clients";
 const CATEGORY = "client_record";
@@ -30,7 +30,7 @@ function clientToTicket(data) {
 
 export async function getClients() {
   try {
-    const all = await base44.entities.Ticket.list();
+    const all = await api.entities.Ticket.list();
     const clients = all.filter(t => t.category === CATEGORY).map(ticketToClient);
     saveLocal(clients);
     return clients;
@@ -60,7 +60,7 @@ export async function getClientByEmail(email) {
 export async function createClient(data) {
   try {
     const ticket = clientToTicket(data);
-    await base44.entities.Ticket.create(ticket);
+    await api.entities.Ticket.create(ticket);
     return await getClients();
   } catch {
     const clients = getLocalClients();
@@ -79,7 +79,7 @@ export async function updateClient(id, data) {
     if (status !== undefined) update.status = status;
     update.description = JSON.stringify(rest);
     update.client_name = rest.contact_name || name || "";
-    await base44.entities.Ticket.update(id, update);
+    await api.entities.Ticket.update(id, update);
     await getClients();
   } catch {
     const clients = getLocalClients();
@@ -90,7 +90,7 @@ export async function updateClient(id, data) {
 
 export async function deleteClient(id) {
   try {
-    await base44.entities.Ticket.delete(id);
+    await api.entities.Ticket.delete(id);
     await getClients();
   } catch {
     const clients = getLocalClients().filter(c => c.id !== id);
@@ -104,12 +104,12 @@ export async function syncLocalClients() {
   const local = getLocalClients();
   if (local.length === 0) { localStorage.setItem(CLIENTS_KEY + "_v2_synced", "1"); return; }
   try {
-    const all = await base44.entities.Ticket.list();
+    const all = await api.entities.Ticket.list();
     const existing = all.filter(t => t.category === CATEGORY);
     const existingNames = new Set(existing.map(t => t.subject?.toLowerCase()));
     for (const c of local) {
       if (c.name && !existingNames.has(c.name.toLowerCase())) {
-        try { await base44.entities.Ticket.create(clientToTicket(c)); } catch { /* ignore */ }
+        try { await api.entities.Ticket.create(clientToTicket(c)); } catch { /* ignore */ }
       }
     }
     // Clear localStorage after successful sync — entity is now source of truth

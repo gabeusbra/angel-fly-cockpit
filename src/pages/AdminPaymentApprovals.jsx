@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,12 +19,12 @@ export default function AdminPaymentApprovals() {
   useEffect(() => { load(); }, []);
 
   const load = async () => {
-    const data = await base44.entities.PaymentOutgoing.list("-created_date");
+    const data = await api.entities.PaymentOutgoing.list("-created_date");
     setPayments(data); setLoading(false);
   };
 
   const handleApprove = async () => {
-    await base44.entities.PaymentOutgoing.update(dialog.payment.id, {
+    await api.entities.PaymentOutgoing.update(dialog.payment.id, {
       status: "approved",
       admin_notes: notes || undefined,
       approved_date: new Date().toISOString().split("T")[0],
@@ -35,7 +35,7 @@ export default function AdminPaymentApprovals() {
   };
 
   const handleReject = async () => {
-    await base44.entities.PaymentOutgoing.update(dialog.payment.id, { status: "rejected", admin_notes: notes });
+    await api.entities.PaymentOutgoing.update(dialog.payment.id, { status: "rejected", admin_notes: notes });
     closeDialog(); load();
   };
 

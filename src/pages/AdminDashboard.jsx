@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { DollarSign, TrendingUp, Clock, CheckSquare, AlertTriangle, CalendarClock } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 import StatCard from "../components/StatCard";
@@ -72,9 +72,9 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     Promise.all([
-      base44.entities.PaymentIncoming.list(),
-      base44.entities.PaymentOutgoing.list(),
-      base44.entities.Project.list(),
+      api.entities.PaymentIncoming.list(),
+      api.entities.PaymentOutgoing.list(),
+      api.entities.Project.list(),
     ]).then(([inc, out, proj]) => {
       setIncoming(inc); setOutgoing(out); setProjects(proj); setLoading(false);
     });

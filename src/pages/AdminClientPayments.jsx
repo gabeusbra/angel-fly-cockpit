@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,20 +20,20 @@ export default function AdminClientPayments() {
   useEffect(() => { load(); loadUsers(); }, []);
 
   const load = async () => {
-    const d = await base44.entities.PaymentIncoming.list("-created_date");
+    const d = await api.entities.PaymentIncoming.list("-created_date");
     setPayments(d); setLoading(false);
   };
 
   const loadUsers = async () => {
     try {
-      const [u, p] = await Promise.all([base44.entities.User.list(), base44.entities.Project.list()]);
+      const [u, p] = await Promise.all([api.entities.User.list(), api.entities.Project.list()]);
       setClients(u.filter(usr => usr.role === "client" && usr.status !== "inactive"));
       setProjects(p);
     } catch { /* ignore */ }
   };
 
   const handleCreate = async () => {
-    await base44.entities.PaymentIncoming.create({
+    await api.entities.PaymentIncoming.create({
       ...form,
       amount: parseFloat(form.amount),
       invoice_number: `INV-${Date.now().toString().slice(-6)}`,
@@ -44,7 +44,7 @@ export default function AdminClientPayments() {
   };
 
   const markPaid = async (id) => {
-    await base44.entities.PaymentIncoming.update(id, { status: "paid", paid_date: new Date().toISOString().split("T")[0] });
+    await api.entities.PaymentIncoming.update(id, { status: "paid", paid_date: new Date().toISOString().split("T")[0] });
     load();
   };
 

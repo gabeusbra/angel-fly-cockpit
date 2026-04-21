@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { ArrowLeft, CheckCircle2, AlertTriangle, Flame, TrendingUp, ListChecks, Calendar, Settings, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,12 +34,12 @@ export default function TeamMemberProfile() {
       const m = await getTeamMemberById(id);
       setMember(m);
       let t = [], tk = [];
-      try { t = await base44.entities.Task.list(); } catch { /* ignore */ }
-      try { tk = await base44.entities.Ticket.list(); } catch { /* ignore */ }
+      try { t = await api.entities.Task.list(); } catch { /* ignore */ }
+      try { tk = await api.entities.Ticket.list(); } catch { /* ignore */ }
       setTasks(t);
       setTickets(tk.filter(x => x.category !== "client_record" && x.category !== "team_record"));
       let u = [];
-      try { u = await base44.entities.User.list(); } catch { /* ignore */ }
+      try { u = await api.entities.User.list(); } catch { /* ignore */ }
       setUsers(u.filter(usr => usr.role !== "client" && usr.email));
       setLoading(false);
     };
@@ -403,7 +403,7 @@ export default function TeamMemberProfile() {
                 <input type="file" accept="image/*" className="hidden" disabled={uploadingAvatar} onChange={async (e) => {
                   const file = e.target.files?.[0]; if (!file) return;
                   setUploadingAvatar(true);
-                  try { const { file_url } = await base44.integrations.Core.UploadFile({ file }); setSettingsForm(f => ({ ...f, avatar_url: file_url })); } catch {}
+                  try { const { file_url } = await api.integrations.Core.UploadFile({ file }); setSettingsForm(f => ({ ...f, avatar_url: file_url })); } catch {}
                   setUploadingAvatar(false);
                 }} />
               </label>

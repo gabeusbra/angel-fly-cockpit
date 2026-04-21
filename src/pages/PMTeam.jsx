@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useLocation, Link } from "react-router-dom";
 import { Users, Search, AlertTriangle, Clock, TrendingUp, ListChecks, Sparkles, Plus, Pencil, Trash2, Upload, UserCircle, ChevronRight, CheckCircle2, Flame, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -42,9 +42,9 @@ export default function PMTeam() {
     syncLocalTeamMembers().then(() => getTeamMembers().then(setMembers));
     const loadData = async () => {
       let t = [], tk = [], u = [];
-      try { t = await base44.entities.Task.list(); } catch { /* ignore */ }
-      try { tk = await base44.entities.Ticket.list(); } catch { /* ignore */ }
-      try { u = await base44.entities.User.list(); } catch { /* ignore */ }
+      try { t = await api.entities.Task.list(); } catch { /* ignore */ }
+      try { tk = await api.entities.Ticket.list(); } catch { /* ignore */ }
+      try { u = await api.entities.User.list(); } catch { /* ignore */ }
       // Filter out storage records from tickets
       const realTickets = tk.filter(x => x.category !== "client_record" && x.category !== "team_record");
       // If User.list() failed, build user list from multiple sources
@@ -149,7 +149,7 @@ export default function PMTeam() {
   const handleAvatarUpload = async (e) => {
     const file = e.target.files?.[0]; if (!file) return;
     setUploadingAvatar(true);
-    try { const { file_url } = await base44.integrations.Core.UploadFile({ file }); setForm(f => ({ ...f, avatar_url: file_url })); } catch { /* ignore */ }
+    try { const { file_url } = await api.integrations.Core.UploadFile({ file }); setForm(f => ({ ...f, avatar_url: file_url })); } catch { /* ignore */ }
     setUploadingAvatar(false);
   };
 

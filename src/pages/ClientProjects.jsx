@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useOutletContext } from "react-router-dom";
 import { FolderKanban, Clock, CheckCircle2 } from "lucide-react";
 import { filterMyRecords, safeList } from "@/lib/entity-helpers";
@@ -14,8 +14,8 @@ export default function ClientProjects() {
   useEffect(() => {
     if (!user) return;
     Promise.all([
-      filterMyRecords(base44.entities.Project, "client_id", user, "client_name"),
-      safeList(base44.entities.Task),
+      filterMyRecords(api.entities.Project, "client_id", user, "client_name"),
+      safeList(api.entities.Task),
     ]).then(([p, t]) => { setProjects(p); setTasks(t); setLoading(false); });
   }, [user]);
 

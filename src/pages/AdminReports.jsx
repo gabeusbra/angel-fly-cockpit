@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,11 +20,11 @@ export default function AdminReports() {
 
   useEffect(() => {
     Promise.all([
-      base44.entities.Project.list(),
-      base44.entities.Task.list(),
-      base44.entities.PaymentIncoming.list(),
-      base44.entities.PaymentOutgoing.list(),
-      base44.entities.User.list(),
+      api.entities.Project.list(),
+      api.entities.Task.list(),
+      api.entities.PaymentIncoming.list(),
+      api.entities.PaymentOutgoing.list(),
+      api.entities.User.list(),
     ]).then(([p, t, inc, out, u]) => {
       setProjects(p); setTasks(t); setIncoming(inc); setOutgoing(out); setUsers(u); setLoading(false);
     });

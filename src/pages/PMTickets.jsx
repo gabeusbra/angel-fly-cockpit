@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { Search, Star } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,26 +17,26 @@ export default function PMTickets() {
   useEffect(() => {
     const init = async () => {
       let t = [], u = [];
-      try { t = await base44.entities.Ticket.list("-created_date"); } catch { try { t = await base44.entities.Ticket.list(); } catch { /* ignore */ } }
-      try { u = await base44.entities.User.filter({ role: "professional", status: "active" }); } catch { try { const all = await base44.entities.User.list(); u = all.filter(usr => usr.role === "professional"); } catch { /* ignore */ } }
+      try { t = await api.entities.Ticket.list("-created_date"); } catch { try { t = await api.entities.Ticket.list(); } catch { /* ignore */ } }
+      try { u = await api.entities.User.filter({ role: "professional", status: "active" }); } catch { try { const all = await api.entities.User.list(); u = all.filter(usr => usr.role === "professional"); } catch { /* ignore */ } }
       setTickets(t); setPros(u); setLoading(false);
     };
     init();
   }, []);
 
   const load = async () => {
-    const t = await base44.entities.Ticket.list("-created_date");
+    const t = await api.entities.Ticket.list("-created_date");
     setTickets(t);
   };
 
   const handleAssign = async (ticketId, userId) => {
     const pro = pros.find(u => u.id === userId);
-    await base44.entities.Ticket.update(ticketId, { assigned_to: userId, assigned_to_name: pro?.full_name || "", status: "in_progress" });
+    await api.entities.Ticket.update(ticketId, { assigned_to: userId, assigned_to_name: pro?.full_name || "", status: "in_progress" });
     load();
   };
 
   const handleStatus = async (ticketId, status) => {
-    await base44.entities.Ticket.update(ticketId, { status });
+    await api.entities.Ticket.update(ticketId, { status });
     load();
   };
 

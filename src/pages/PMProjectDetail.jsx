@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useParams, useNavigate, useLocation, useOutletContext } from "react-router-dom";
 import { Plus, ArrowLeft, Sparkles, Pencil, MessageSquare, CheckSquare, FileText, ExternalLink, Download, Globe, FileUp, Link2, Trash2, Eye, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -120,18 +120,18 @@ export default function PMProjectDetail() {
   const loadAll = async () => {
     // Try multiple approaches to load project (permissions vary by role)
     let proj = null;
-    try { const r = await base44.entities.Project.filter({ id }); proj = r[0] || null; } catch { /* ignore */ }
+    try { const r = await api.entities.Project.filter({ id }); proj = r[0] || null; } catch { /* ignore */ }
     if (!proj) {
-      try { const all = await base44.entities.Project.list(); proj = all.find(p => p.id === id) || null; } catch { /* ignore */ }
+      try { const all = await api.entities.Project.list(); proj = all.find(p => p.id === id) || null; } catch { /* ignore */ }
     }
 
     let t = [], at = [], u = [];
-    try { t = await base44.entities.Task.filter({ project_id: id }); } catch {
-      try { const allT = await base44.entities.Task.list(); t = allT.filter(tk => tk.project_id === id); } catch { /* ignore */ }
+    try { t = await api.entities.Task.filter({ project_id: id }); } catch {
+      try { const allT = await api.entities.Task.list(); t = allT.filter(tk => tk.project_id === id); } catch { /* ignore */ }
     }
-    try { at = await base44.entities.Task.list(); } catch { /* ignore */ }
-    try { u = await base44.entities.User.filter({ role: "professional", status: "active" }); } catch {
-      try { const allU = await base44.entities.User.list(); u = allU.filter(usr => usr.role === "professional" && usr.status === "active"); } catch { /* ignore */ }
+    try { at = await api.entities.Task.list(); } catch { /* ignore */ }
+    try { u = await api.entities.User.filter({ role: "professional", status: "active" }); } catch {
+      try { const allU = await api.entities.User.list(); u = allU.filter(usr => usr.role === "professional" && usr.status === "active"); } catch { /* ignore */ }
     }
 
     // For professionals: only show their tasks
@@ -139,7 +139,7 @@ export default function PMProjectDetail() {
       ? t.filter(tk => tk.assigned_to === user?.id || tk.assigned_to_name?.toLowerCase() === user?.full_name?.toLowerCase())
       : t;
     setProject(proj); setTasks(myTasks); setAllTasks(at); setPros(u); setLoading(false);
-    try { const allU = await base44.entities.User.list(); setClientUsers(allU.filter(usr => usr.role === "client" && usr.status !== "inactive")); } catch { /* ignore */ }
+    try { const allU = await api.entities.User.list(); setClientUsers(allU.filter(usr => usr.role === "client" && usr.status !== "inactive")); } catch { /* ignore */ }
 
     // Load docs after project is set
     if (proj) {
@@ -178,7 +178,7 @@ export default function PMProjectDetail() {
 
   const handleSaveProject = async () => {
     if (!project) return;
-    await base44.entities.Project.update(project.id, {
+    await api.entities.Project.update(project.id, {
       ...projectForm,
       total_budget: projectForm.total_budget ? parseFloat(projectForm.total_budget) : 0,
     });
@@ -188,8 +188,8 @@ export default function PMProjectDetail() {
 
   const reloadTasks = async () => {
     const [t, at] = await Promise.all([
-      base44.entities.Task.filter({ project_id: id }),
-      base44.entities.Task.list(),
+      api.entities.Task.filter({ project_id: id }),
+      api.entities.Task.list(),
     ]);
     setTasks(t); setAllTasks(at);
   };
@@ -197,7 +197,7 @@ export default function PMProjectDetail() {
   // --- Create ---
   const handleCreate = async () => {
     const pro = pros.find(u => u.id === form.assigned_to);
-    await base44.entities.Task.create({
+    await api.entities.Task.create({
       ...form,
       project_id: id, project_name: project?.name || "", client_name: project?.client_name || "",
       assigned_to_name: pro?.full_name || "",
@@ -225,7 +225,7 @@ export default function PMProjectDetail() {
   const handleEditSave = async () => {
     if (!activeTask) return;
     const pro = pros.find(u => u.id === editForm.assigned_to);
-    await base44.entities.Task.update(activeTask.id, {
+    await api.entities.Task.update(activeTask.id, {
       ...editForm,
       assigned_to_name: pro?.full_name || activeTask.assigned_to_name || "",
       estimated_hours: editForm.estimated_hours ? parseFloat(editForm.estimated_hours) : 0,
@@ -236,7 +236,7 @@ export default function PMProjectDetail() {
 
   const handleDeleteTask = async () => {
     if (!activeTask) return;
-    await base44.entities.Task.delete(activeTask.id);
+    await api.entities.Task.delete(activeTask.id);
     setActiveTask(null);
     reloadTasks();
   };
@@ -249,7 +249,7 @@ export default function PMProjectDetail() {
     if (!dragId) return;
     const task = tasks.find(t => t.id === dragId);
     if (!task || task.status === newStatus) { setDragId(null); setDragOver(null); return; }
-    await base44.entities.Task.update(dragId, { status: newStatus });
+    await api.entities.Task.update(dragId, { status: newStatus });
     setDragId(null);
     setDragOver(null);
     reloadTasks();
@@ -260,7 +260,7 @@ export default function PMProjectDetail() {
     if (!newSubtask || !activeTask) return;
     const subs = parseJson(activeTask.subtasks, []);
     subs.push({ text: newSubtask, done: false, created: new Date().toISOString() });
-    await base44.entities.Task.update(activeTask.id, { subtasks: JSON.stringify(subs) });
+    await api.entities.Task.update(activeTask.id, { subtasks: JSON.stringify(subs) });
     setNewSubtask("");
     const updated = { ...activeTask, subtasks: JSON.stringify(subs) };
     setActiveTask(updated);
@@ -271,7 +271,7 @@ export default function PMProjectDetail() {
     if (!activeTask) return;
     const subs = parseJson(activeTask.subtasks, []);
     subs[idx].done = !subs[idx].done;
-    await base44.entities.Task.update(activeTask.id, { subtasks: JSON.stringify(subs) });
+    await api.entities.Task.update(activeTask.id, { subtasks: JSON.stringify(subs) });
     setActiveTask({ ...activeTask, subtasks: JSON.stringify(subs) });
     reloadTasks();
   };
@@ -281,7 +281,7 @@ export default function PMProjectDetail() {
     if (!newComment || !activeTask) return;
     const cmts = parseJson(activeTask.comments, []);
     cmts.push({ text: newComment, at: new Date().toISOString(), by: "You" });
-    await base44.entities.Task.update(activeTask.id, { comments: JSON.stringify(cmts) });
+    await api.entities.Task.update(activeTask.id, { comments: JSON.stringify(cmts) });
     setNewComment("");
     setActiveTask({ ...activeTask, comments: JSON.stringify(cmts) });
   };
@@ -300,8 +300,8 @@ export default function PMProjectDetail() {
     try {
       const blob = new Blob([JSON.stringify(docsArray)], { type: "application/json" });
       const file = new File([blob], `project_${id}_docs.json`, { type: "application/json" });
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      await base44.entities.Project.update(project.id, { docs: file_url });
+      const { file_url } = await api.integrations.Core.UploadFile({ file });
+      await api.entities.Project.update(project.id, { docs: file_url });
       setProject(p => ({ ...p, docs: file_url }));
     } catch {
       // Entity update failed — localStorage is the backup
@@ -313,7 +313,7 @@ export default function PMProjectDetail() {
     if (!file) return;
     setUploadingDoc(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await api.integrations.Core.UploadFile({ file });
       setNewDoc(d => ({ ...d, url: file_url }));
     } catch { /* ignore */ }
     setUploadingDoc(false);
@@ -333,7 +333,7 @@ export default function PMProjectDetail() {
       try {
         const blob = new Blob([newDoc.content], { type: "text/html" });
         const file = new File([blob], `${newDoc.title.replace(/[^a-zA-Z0-9]/g, "_")}.html`, { type: "text/html" });
-        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        const { file_url } = await api.integrations.Core.UploadFile({ file });
         docUrl = file_url;
       } catch {
         setUploadingDoc(false);

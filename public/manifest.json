@@ -1,0 +1,10 @@
+{
+  "name": "Angel Fly Cockpit",
+  "short_name": "AF Cockpit",
+  "description": "Angel Fly Project Management Cockpit",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#FF4D35",
+  "icons": []
+}

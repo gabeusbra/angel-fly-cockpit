@@ -1,4 +1,4 @@
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 
 const TEAM_KEY = "angel_fly_team";
 const CATEGORY = "team_record";
@@ -30,7 +30,7 @@ function memberToTicket(data) {
 
 export async function getTeamMembers() {
   try {
-    const all = await base44.entities.Ticket.list();
+    const all = await api.entities.Ticket.list();
     const members = all.filter(t => t.category === CATEGORY).map(ticketToMember);
     saveLocal(members);
     return members;
@@ -66,7 +66,7 @@ export async function getTeamMemberByName(name) {
 export async function createTeamMember(data) {
   try {
     const ticket = memberToTicket(data);
-    await base44.entities.Ticket.create(ticket);
+    await api.entities.Ticket.create(ticket);
     return await getTeamMembers();
   } catch {
     const members = getLocalMembers();
@@ -85,7 +85,7 @@ export async function updateTeamMember(id, data) {
     if (status !== undefined) update.status = status;
     update.description = JSON.stringify(rest);
     update.client_name = rest.role || "professional";
-    await base44.entities.Ticket.update(id, update);
+    await api.entities.Ticket.update(id, update);
     await getTeamMembers();
   } catch {
     const members = getLocalMembers();
@@ -96,7 +96,7 @@ export async function updateTeamMember(id, data) {
 
 export async function deleteTeamMember(id) {
   try {
-    await base44.entities.Ticket.delete(id);
+    await api.entities.Ticket.delete(id);
     await getTeamMembers();
   } catch {
     const members = getLocalMembers().filter(m => m.id !== id);
@@ -115,12 +115,12 @@ export async function syncLocalTeamMembers() {
   const local = getLocalMembers();
   if (local.length === 0) { localStorage.setItem(TEAM_KEY + "_v2_synced", "1"); return; }
   try {
-    const all = await base44.entities.Ticket.list();
+    const all = await api.entities.Ticket.list();
     const existing = all.filter(t => t.category === CATEGORY);
     const existingNames = new Set(existing.map(t => t.subject?.toLowerCase()));
     for (const m of local) {
       if (m.name && !existingNames.has(m.name.toLowerCase())) {
-        try { await base44.entities.Ticket.create(memberToTicket(m)); } catch { /* ignore */ }
+        try { await api.entities.Ticket.create(memberToTicket(m)); } catch { /* ignore */ }
       }
     }
     localStorage.removeItem(TEAM_KEY);

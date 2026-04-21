@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useOutletContext } from "react-router-dom";
 import { Plus, Star, Upload, Link2, X, FileText, Film, Image, ExternalLink } from "lucide-react";
 import { filterMyRecords } from "@/lib/entity-helpers";
@@ -50,13 +50,13 @@ export default function ClientTickets() {
   useEffect(() => {
     if (!user) return;
     Promise.all([
-      filterMyRecords(base44.entities.Ticket, "client_id", user, "client_name"),
-      filterMyRecords(base44.entities.Project, "client_id", user, "client_name"),
+      filterMyRecords(api.entities.Ticket, "client_id", user, "client_name"),
+      filterMyRecords(api.entities.Project, "client_id", user, "client_name"),
     ]).then(([t, p]) => { setTickets(t); setProjects(p); setLoading(false); });
   }, [user]);
 
   const load = async () => {
-    const t = await filterMyRecords(base44.entities.Ticket, "client_id", user, "client_name");
+    const t = await filterMyRecords(api.entities.Ticket, "client_id", user, "client_name");
     setTickets(t);
   };
 
@@ -66,7 +66,7 @@ export default function ClientTickets() {
     setUploading(true);
     for (const file of files) {
       try {
-        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        const { file_url } = await api.integrations.Core.UploadFile({ file });
         const type = file.type.startsWith("video") ? "video" : file.type.startsWith("image") ? "image" : "file";
         setAttachments(prev => [...prev, { url: file_url, name: file.name, type }]);
       } catch { /* ignore */ }
@@ -85,7 +85,7 @@ export default function ClientTickets() {
 
   const handleCreate = async () => {
     const proj = projects.find(p => p.id === form.project_id);
-    await base44.entities.Ticket.create({
+    await api.entities.Ticket.create({
       ...form,
       client_id: user.id,
       client_name: user.full_name,
@@ -101,7 +101,7 @@ export default function ClientTickets() {
 
   const handleRate = async () => {
     if (!ratingTicket || !rating) return;
-    await base44.entities.Ticket.update(ratingTicket.id, { satisfaction_rating: rating });
+    await api.entities.Ticket.update(ratingTicket.id, { satisfaction_rating: rating });
     setRatingTicket(null);
     setRating(0);
     load();

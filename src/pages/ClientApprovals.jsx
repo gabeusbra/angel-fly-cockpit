@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { useOutletContext } from "react-router-dom";
 import { Check, X, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,20 +22,20 @@ export default function ClientApprovals() {
   }, [user]);
 
   const loadTasks = async () => {
-    const projects = await filterMyRecords(base44.entities.Project, "client_id", user, "client_name");
+    const projects = await filterMyRecords(api.entities.Project, "client_id", user, "client_name");
     const projectIds = new Set(projects.map(p => p.id));
-    const allApproval = await safeFilter(base44.entities.Task, { status: "client_approval" });
+    const allApproval = await safeFilter(api.entities.Task, { status: "client_approval" });
     setTasks(allApproval.filter(t => projectIds.has(t.project_id)));
     setLoading(false);
   };
 
   const handleApprove = async (task) => {
-    await base44.entities.Task.update(task.id, { status: "done" });
+    await api.entities.Task.update(task.id, { status: "done" });
     loadTasks();
   };
 
   const handleRequestChanges = async () => {
-    await base44.entities.Task.update(dialog.id, { status: "review", description: (dialog.description || "") + (comment ? `\n\n[Client feedback]: ${comment}` : "") });
+    await api.entities.Task.update(dialog.id, { status: "review", description: (dialog.description || "") + (comment ? `\n\n[Client feedback]: ${comment}` : "") });
     setDialog(null); setComment("");
     loadTasks();
   };

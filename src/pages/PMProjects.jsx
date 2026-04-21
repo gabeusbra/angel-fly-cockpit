@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { api } from "@/api/client";
 import { Link } from "react-router-dom";
 import { Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,9 +23,9 @@ export default function PMProjects() {
   useEffect(() => {
     const loadData = async () => {
       let p = [], t = [], u = [];
-      try { p = await base44.entities.Project.list("-created_date"); } catch { try { p = await base44.entities.Project.list(); } catch { /* ignore */ } }
-      try { t = await base44.entities.Task.list(); } catch { /* ignore */ }
-      try { u = await base44.entities.User.list(); } catch { /* ignore */ }
+      try { p = await api.entities.Project.list("-created_date"); } catch { try { p = await api.entities.Project.list(); } catch { /* ignore */ } }
+      try { t = await api.entities.Task.list(); } catch { /* ignore */ }
+      try { u = await api.entities.User.list(); } catch { /* ignore */ }
       setProjects(p);
       setTasks(t);
       // Load from Client store instead of User entity
@@ -37,14 +37,14 @@ export default function PMProjects() {
 
   const handleCreate = async () => {
     const client = clients.find(c => c.id === form.client_id);
-    await base44.entities.Project.create({
+    await api.entities.Project.create({
       ...form,
       client_name: client?.name || client?.contact_name || client?.full_name || form.client_name || "",
       total_budget: form.total_budget ? parseFloat(form.total_budget) : 0,
     });
     setShowCreate(false);
     setForm({ name: "", client_id: "", client_name: "", scope_description: "", status: "active", start_date: "", end_date: "", total_budget: "", payment_type: "one-time" });
-    const p = await base44.entities.Project.list("-created_date");
+    const p = await api.entities.Project.list("-created_date");
     setProjects(p);
   };
 
