@@ -49,6 +49,10 @@ try {
     elseif ($method === 'GET' && $path === 'health') {
         json_response(['status' => 'ok', 'timestamp' => date('c')]);
     }
+    // GET /api/migrate — Run schema migrations (requires Jarvis token)
+    elseif ($method === 'GET' && $path === 'migrate') {
+        require_once __DIR__ . '/migrate.php';
+    }
     // ── Entity CRUD ──
     elseif (count($segments) >= 1 && Entity::isValidTable($segments[0])) {
         $table = $segments[0];

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "@/api/client";
-import { Search, Star, Plus, Sparkles, ListChecks, Clock, AlertTriangle, CheckCircle2, MessageSquare, User, ExternalLink, Paperclip, Copy } from "lucide-react";
+import { Search, Star, Plus, Sparkles, ListChecks, Clock, AlertTriangle, CheckCircle2, MessageSquare, User, ExternalLink, Paperclip, Copy, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -105,6 +105,18 @@ export default function AdminTickets() {
       if (lt) await api.entities.Task.update(lt.id, { status: status === "resolved" || status === "closed" ? "done" : lt.status });
     }
     load();
+  };
+
+  const handleDeleteTicket = async (ticketId, e) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    if (!window.confirm("Delete this ticket? This cannot be undone.")) return;
+    try {
+      await api.entities.Ticket.delete(ticketId);
+      setDetail(null);
+      load();
+    } catch (err) {
+      alert("Error deleting ticket: " + (err?.message || "Unknown error"));
+    }
   };
 
   const handleCreate = async () => {
@@ -308,6 +320,13 @@ export default function AdminTickets() {
                       )}
                       {t.status === "in_progress" && <Button size="sm" className="h-9 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-700" onClick={() => handleStatus(t.id, "resolved")}>Resolve</Button>}
                       {t.status === "resolved" && <Button size="sm" variant="outline" className="h-9 text-xs rounded-lg" onClick={() => handleStatus(t.id, "closed")}>Close</Button>}
+                      <button
+                        onClick={(e) => handleDeleteTicket(t.id, e)}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                        title="Delete ticket"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -393,6 +412,7 @@ export default function AdminTickets() {
                     {detail.status === "in_progress" && <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => { handleStatus(detail.id, "resolved"); setDetail(null); }}>Resolve</Button>}
                     {detail.status === "resolved" && <Button size="sm" onClick={() => { handleStatus(detail.id, "closed"); setDetail(null); }}>Close</Button>}
                     <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={() => { handleDuplicate(detail); setDetail(null); }}><Copy className="w-3 h-3" /> Duplicate</Button>
+                    <Button variant="ghost" size="sm" className="gap-1 text-xs text-red-600 hover:text-red-700 hover:bg-red-50" onClick={(e) => handleDeleteTicket(detail.id, e)}><Trash2 className="w-3 h-3" /> Delete</Button>
                     <Button variant="outline" size="sm" onClick={() => setDetail(null)}>Done</Button>
                   </div>
                 </div>

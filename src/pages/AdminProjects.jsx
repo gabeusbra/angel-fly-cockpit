@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { api } from "@/api/client";
 import { Link } from "react-router-dom";
-import { Search, FolderKanban, Clock, DollarSign, CheckCircle2, Users, ArrowRight, Plus } from "lucide-react";
+import { Search, FolderKanban, Clock, DollarSign, CheckCircle2, Users, ArrowRight, Plus, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -24,6 +24,8 @@ export default function AdminProjects() {
     name: "", client_id: "", client_name: "", scope_description: "",
     status: "active", start_date: "", end_date: "", total_budget: "", payment_type: "one-time"
   });
+
+  const [deleting, setDeleting] = useState(null); // project id being deleted
 
   const loadData = async () => {
     const [p, t, i] = await Promise.all([
@@ -67,6 +69,21 @@ export default function AdminProjects() {
       setCreateError(e?.message || "Failed to create project. Check all fields.");
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleDeleteProject = async (e, projectId, projectName) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!window.confirm(`Delete project "${projectName}"? This cannot be undone.`)) return;
+    setDeleting(projectId);
+    try {
+      await api.entities.Project.delete(projectId);
+      await loadData();
+    } catch (err) {
+      alert("Error deleting project: " + (err?.message || "Unknown error"));
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -200,13 +217,21 @@ export default function AdminProjects() {
                       <span className="text-muted-foreground">R${budget.used.toLocaleString()}</span>
                       <span className="text-muted-foreground/50"> / R${budget.budget.toLocaleString()}</span>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       {daysLeft !== null && (
                         <div className={`flex items-center gap-1 text-xs ${daysLeft < 0 ? "text-red-600 font-medium" : daysLeft <= 7 ? "text-amber-600" : "text-muted-foreground"}`}>
                           <Clock className="w-3 h-3" />
                           <span>{daysLeft < 0 ? `${Math.abs(daysLeft)}d overdue` : daysLeft === 0 ? "Due today" : `${daysLeft}d left`}</span>
                         </div>
                       )}
+                      <button
+                        onClick={(e) => handleDeleteProject(e, p.id, p.name)}
+                        disabled={deleting === p.id}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                        title="Delete project"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                       <span className="text-xs text-primary font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         Open <ArrowRight className="w-3 h-3" />
                       </span>
