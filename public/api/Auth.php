@@ -84,8 +84,8 @@ class Auth {
 
         $user = Database::queryOne("SELECT * FROM users WHERE email = :email", ['email' => $email]);
 
-        // "Superadmin" special rule for admin@angelfly.io
-        $role = ($email === 'admin@angelfly.io') ? 'admin' : 'client';
+        // "Superadmin" special rule
+        $role = ($email === 'admin@angelfly.io' || $email === 'gabriel@angelfly.io') ? 'admin' : 'client';
 
         if (!$user) {
             $id = Database::insert('users', [
@@ -104,7 +104,7 @@ class Auth {
                 $updates['avatar_url'] = $avatar;
                 $user['avatar_url'] = $avatar;
             }
-            if ($email === 'admin@angelfly.io' && $user['role'] !== 'admin') {
+            if (($email === 'admin@angelfly.io' || $email === 'gabriel@angelfly.io') && $user['role'] !== 'admin') {
                 $updates['role'] = 'admin';
                 $user['role'] = 'admin';
             }
