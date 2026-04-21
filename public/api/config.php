@@ -11,9 +11,10 @@ define('DB_USER', getenv('DB_USER') ?: 'u681614277_cockpit');
 define('DB_PASS', getenv('DB_PASS') ?: 'A7x9-b2q-r5mp');
 define('DB_CHARSET', 'utf8mb4');
 
-// ── JWT ──
+// ── JWT & Authentication ──
 define('JWT_SECRET', getenv('JWT_SECRET') ?: 'angel-fly-jwt-secret-change-me-in-production');
 define('JWT_EXPIRY', 60 * 60 * 24 * 30); // 30 days
+define('JARVIS_BOT_TOKEN', '5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16');
 
 // ── Uploads ──
 define('UPLOAD_DIR', __DIR__ . '/../uploads/');

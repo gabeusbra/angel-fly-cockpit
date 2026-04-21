@@ -31,7 +31,15 @@ class Auth {
     public static function getCurrentUser(): ?array {
         $header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
         if (!preg_match('/^Bearer\s+(.+)$/i', $header, $m)) return null;
-        $payload = self::verifyToken($m[1]);
+        
+        $token = $m[1];
+        
+        if (defined('JARVIS_BOT_TOKEN') && $token === JARVIS_BOT_TOKEN) {
+            // Retrieve jarvis bot user from DB
+            return Database::queryOne("SELECT * FROM users WHERE email = 'jarvis@angelfly.io'") ?: null;
+        }
+
+        $payload = self::verifyToken($token);
         if (!$payload || !isset($payload['user_id'])) return null;
         return Database::queryOne("SELECT * FROM users WHERE id = :id", ['id' => $payload['user_id']]);
     }
