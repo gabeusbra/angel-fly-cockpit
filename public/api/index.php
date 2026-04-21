@@ -25,6 +25,10 @@ try {
     if ($method === 'POST' && $path === 'auth/login') {
         Auth::handleLogin();
     }
+    // POST /api/auth/google
+    elseif ($method === 'POST' && $path === 'auth/google') {
+        Auth::handleGoogleLogin();
+    }
     // POST /api/auth/register
     elseif ($method === 'POST' && $path === 'auth/register') {
         Auth::handleRegister();

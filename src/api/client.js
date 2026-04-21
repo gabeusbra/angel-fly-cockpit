@@ -80,6 +80,7 @@ async function uploadFile({ file }) {
 export const api = {
   auth: {
     login: (email, password) => request('POST', '/auth/login', { email, password }),
+    google: (token) => request('POST', '/auth/google', { token }),
     register: (data) => request('POST', '/auth/register', data),
     me: () => request('GET', '/auth/me'),
     invite: (email, role) => request('POST', '/auth/invite', { email, role }),

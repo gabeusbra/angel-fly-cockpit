@@ -63,6 +63,65 @@ class Auth {
         json_response(['token' => $token, 'user' => $user]);
     }
 
+    public static function handleGoogleLogin(): void {
+        $body = get_json_body();
+        $token = $body['token'] ?? '';
+        if (!$token) json_error('Google token is required');
+
+        // Verify token via Google API
+        $url = 'https://oauth2.googleapis.com/tokeninfo?id_token=' . urlencode($token);
+        $context = stream_context_create(['http' => ['ignore_errors' => true]]);
+        $response = @file_get_contents($url, false, $context);
+        $googleData = $response ? json_decode($response, true) : null;
+
+        if (!$googleData || isset($googleData['error']) || empty($googleData['email'])) {
+            json_error('Invalid Google token', 401);
+        }
+
+        $email = strtolower(trim($googleData['email']));
+        $fullName = $googleData['name'] ?? '';
+        $avatar = $googleData['picture'] ?? null;
+
+        $user = Database::queryOne("SELECT * FROM users WHERE email = :email", ['email' => $email]);
+
+        // "Superadmin" special rule for admin@angelfly.io
+        $role = ($email === 'admin@angelfly.io') ? 'admin' : 'client';
+
+        if (!$user) {
+            $id = Database::insert('users', [
+                'email' => $email,
+                'password_hash' => password_hash(bin2hex(random_bytes(16)), PASSWORD_BCRYPT),
+                'full_name' => $fullName,
+                'avatar_url' => $avatar,
+                'role' => $role,
+                'status' => 'active',
+            ]);
+            $user = Database::queryOne("SELECT * FROM users WHERE id = :id", ['id' => $id]);
+        } else {
+            // Elevate to admin automatically if admin@angelfly.io
+            $updates = [];
+            if ($avatar && empty($user['avatar_url'])) {
+                $updates['avatar_url'] = $avatar;
+                $user['avatar_url'] = $avatar;
+            }
+            if ($email === 'admin@angelfly.io' && $user['role'] !== 'admin') {
+                $updates['role'] = 'admin';
+                $user['role'] = 'admin';
+            }
+            if (!empty($updates)) {
+                Database::update('users', $user['id'], $updates);
+            }
+        }
+
+        if ($user['status'] === 'inactive') {
+            json_error('Account is deactivated', 403);
+        }
+
+        $afToken = self::createToken(['user_id' => $user['id'], 'email' => $user['email'], 'role' => $user['role']]);
+        unset($user['password_hash']);
+        json_response(['token' => $afToken, 'user' => $user]);
+    }
+
     public static function handleRegister(): void {
         $body = get_json_body();
         $email = strtolower(trim($body['email'] ?? ''));

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api, setToken } from "@/api/client";
+import { GoogleLogin } from '@react-oauth/google';
 
 export default function Login() {
   const [mode, setMode] = useState("login"); // login | register
@@ -94,6 +95,37 @@ export default function Login() {
                 {m === "login" ? "Sign In" : "Create Account"}
               </button>
             ))}
+          </div>
+
+          <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'center' }}>
+            <GoogleLogin
+              onSuccess={async (credentialResponse) => {
+                setError("");
+                setLoading(true);
+                try {
+                  const result = await api.auth.google(credentialResponse.credential);
+                  setToken(result.token);
+                  const returnUrl = localStorage.getItem("af_return_url") || "/";
+                  localStorage.removeItem("af_return_url");
+                  window.location.href = returnUrl;
+                } catch (err) {
+                  setError(err.message || "Google login failed");
+                  setLoading(false);
+                }
+              }}
+              onError={() => {
+                setError("Google login failed");
+              }}
+              theme="filled_black"
+              shape="pill"
+              text="continue_with"
+            />
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", marginBottom: 24 }}>
+            <div style={{ flex: 1, height: 1, background: "rgba(148, 163, 184, 0.15)" }} />
+            <span style={{ padding: "0 12px", fontSize: 12, color: "#94a3b8", fontWeight: 500 }}>or use email</span>
+            <div style={{ flex: 1, height: 1, background: "rgba(148, 163, 184, 0.15)" }} />
           </div>
 
           <form onSubmit={handleSubmit}>
