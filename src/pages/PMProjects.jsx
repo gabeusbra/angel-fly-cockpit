@@ -37,8 +37,9 @@ export default function PMProjects() {
 
   const handleCreate = async () => {
     const client = clients.find(c => c.id === form.client_id);
+    const { client_id, ...formPayload } = form;
     await api.entities.Project.create({
-      ...form,
+      ...formPayload,
       client_name: client?.name || client?.contact_name || client?.full_name || form.client_name || "",
       total_budget: form.total_budget ? parseFloat(form.total_budget) : 0,
     });

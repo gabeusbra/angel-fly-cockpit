@@ -53,8 +53,10 @@ export default function AdminProjects() {
     setCreateError("");
     try {
       const client = clients.find(c => String(c.id) === String(form.client_id));
+      // Do NOT send client_id — it references users.id (FK), but clients-store uses a different ID
+      const { client_id, ...formPayload } = form;
       await api.entities.Project.create({
-        ...form,
+        ...formPayload,
         client_name: client?.name || client?.contact_name || client?.full_name || form.client_name || "",
         total_budget: form.total_budget ? parseFloat(form.total_budget) : 0,
       });

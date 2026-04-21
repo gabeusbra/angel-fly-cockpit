@@ -99,6 +99,14 @@ class Entity {
             unset($body['password']);
         }
 
+        // Convert empty string FK fields to NULL (prevents FK constraint violations)
+        foreach ($body as $key => &$value) {
+            if ((str_ends_with($key, '_id') || $key === 'id') && $value === '') {
+                $value = null;
+            }
+        }
+        unset($value);
+
         // Convert arrays/objects to JSON strings for JSON columns
         foreach ($body as $key => &$value) {
             if (is_array($value) || is_object($value)) {
@@ -127,6 +135,13 @@ class Entity {
         // Remove protected fields
         unset($body['id'], $body['created_date']);
 
+        // Convert empty string FK fields to NULL
+        foreach ($body as $key => &$value) {
+            if (str_ends_with($key, '_id') && $value === '') {
+                $value = null;
+            }
+        }
+        unset($value);
         // Hash password if updating
         if ($table === 'users' && isset($body['password'])) {
             $body['password_hash'] = password_hash($body['password'], PASSWORD_BCRYPT);

@@ -28,6 +28,8 @@ export default function AdminTickets() {
   const [detail, setDetail] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ client_name: "", project_id: "", category: "question", subject: "", description: "", priority: "medium" });
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
   const [convertTicket, setConvertTicket] = useState(null);
   const [convertForm, setConvertForm] = useState({ project_id: "", assigned_to: "", priority: "medium", milestone: "", deadline: "" });
 
@@ -106,11 +108,29 @@ export default function AdminTickets() {
   };
 
   const handleCreate = async () => {
-    const proj = projects.find(p => p.id === form.project_id);
-    await api.entities.Ticket.create({ ...form, project_name: proj?.name || "", client_name: form.client_name || proj?.client_name || "", status: "open" });
-    setShowCreate(false);
-    setForm({ client_name: "", project_id: "", category: "question", subject: "", description: "", priority: "medium" });
-    load();
+    if (!form.subject) return;
+    setCreating(true);
+    setCreateError("");
+    try {
+      const proj = projects.find(p => String(p.id) === String(form.project_id));
+      await api.entities.Ticket.create({
+        subject: form.subject,
+        description: form.description,
+        category: form.category,
+        priority: form.priority,
+        status: "open",
+        client_name: form.client_name || proj?.client_name || "",
+        project_id: form.project_id || null,
+        project_name: proj?.name || "",
+      });
+      setShowCreate(false);
+      setForm({ client_name: "", project_id: "", category: "question", subject: "", description: "", priority: "medium" });
+      load();
+    } catch (e) {
+      setCreateError(e?.message || "Failed to create ticket. Please try again.");
+    } finally {
+      setCreating(false);
+    }
   };
 
   const handleDuplicate = async (ticket) => {
@@ -417,9 +437,10 @@ export default function AdminTickets() {
               </div>
             </div>
             <Textarea placeholder="Describe the issue..." value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={3} />
+            {createError && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{createError}</p>}
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
-              <Button onClick={handleCreate} disabled={!form.subject}>Create</Button>
+              <Button variant="outline" onClick={() => setShowCreate(false)} disabled={creating}>Cancel</Button>
+              <Button onClick={handleCreate} disabled={!form.subject || creating}>{creating ? "Creating…" : "Create"}</Button>
             </div>
           </div>
         </DialogContent>
