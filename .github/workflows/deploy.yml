@@ -37,10 +37,56 @@ jobs:
             exit 1
           fi
 
+      - name: Normalize FTP host/port
+        id: ftp_target
+        shell: bash
+        run: |
+          raw="$DEPLOY_FTP_SERVER"
+          raw="${raw//$'\r'/}"
+          raw="${raw//$'\n'/}"
+          raw="${raw#"${raw%%[![:space:]]*}"}"
+          raw="${raw%"${raw##*[![:space:]]}"}"
+          raw="${raw#ftp://}"
+          raw="${raw#ftps://}"
+          raw="${raw#sftp://}"
+          raw="${raw%%/*}"
+
+          host="$raw"
+          port="21"
+
+          if [[ "$raw" =~ ^\[([0-9a-fA-F:]+)\]:(.+)$ ]]; then
+            host="${BASH_REMATCH[1]}"
+            port="${BASH_REMATCH[2]}"
+          elif [[ "$raw" == *:* ]]; then
+            maybe_port="${raw##*:}"
+            if [[ "$maybe_port" =~ ^[0-9]+$ ]]; then
+              host="${raw%:*}"
+              port="$maybe_port"
+            fi
+          fi
+
+          if [ -z "$host" ]; then
+            echo "::error title=Invalid FTP_SERVER::Could not parse FTP host from secret value."
+            exit 1
+          fi
+
+          echo "server=$host" >> "$GITHUB_OUTPUT"
+          echo "port=$port" >> "$GITHUB_OUTPUT"
+
+      - name: Validate FTP DNS
+        shell: bash
+        run: |
+          host="${{ steps.ftp_target.outputs.server }}"
+          if ! getent hosts "$host" >/dev/null 2>&1; then
+            echo "::error title=FTP host DNS failed::Host '$host' could not be resolved. Check FTP_SERVER secret value."
+            exit 1
+          fi
+
       - name: Upload to Hostinger via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
-          server: ${{ env.DEPLOY_FTP_SERVER }}
+          server: ${{ steps.ftp_target.outputs.server }}
+          port: ${{ steps.ftp_target.outputs.port }}
           username: ${{ env.DEPLOY_FTP_USERNAME }}
           password: ${{ env.DEPLOY_FTP_PASSWORD }}
           local-dir: ./dist/
@@ -50,7 +96,8 @@ jobs:
       - name: Upload API (PHP) to Hostinger via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
-          server: ${{ env.DEPLOY_FTP_SERVER }}
+          server: ${{ steps.ftp_target.outputs.server }}
+          port: ${{ steps.ftp_target.outputs.port }}
           username: ${{ env.DEPLOY_FTP_USERNAME }}
           password: ${{ env.DEPLOY_FTP_PASSWORD }}
           local-dir: ./public/api/
