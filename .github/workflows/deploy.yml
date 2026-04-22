@@ -9,6 +9,10 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      DEPLOY_FTP_SERVER: ${{ secrets.FTP_SERVER || secrets.HOSTINGER_FTP_SERVER || secrets.HOSTINGER_SERVER || secrets.FTP_HOST || secrets.HOSTINGER_HOST || secrets.SERVER }}
+      DEPLOY_FTP_USERNAME: ${{ secrets.FTP_USERNAME || secrets.HOSTINGER_FTP_USERNAME || secrets.HOSTINGER_USERNAME || secrets.FTP_USER || secrets.HOSTINGER_USER || secrets.USERNAME }}
+      DEPLOY_FTP_PASSWORD: ${{ secrets.FTP_PASSWORD || secrets.HOSTINGER_FTP_PASSWORD || secrets.HOSTINGER_PASSWORD || secrets.FTP_PASS || secrets.HOSTINGER_PASS || secrets.PASSWORD }}
 
     steps:
       - name: Checkout Code
@@ -26,12 +30,19 @@ jobs:
       - name: Build Project
         run: npm run build
 
+      - name: Validate FTP credentials
+        run: |
+          if [ -z "$DEPLOY_FTP_SERVER" ] || [ -z "$DEPLOY_FTP_USERNAME" ] || [ -z "$DEPLOY_FTP_PASSWORD" ]; then
+            echo "::error title=Missing FTP secrets::Set FTP_SERVER/FTP_USERNAME/FTP_PASSWORD (or one of the HOSTINGER/FTP alias names used in deploy.yml)."
+            exit 1
+          fi
+
       - name: Upload to Hostinger via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
+          server: ${{ env.DEPLOY_FTP_SERVER }}
+          username: ${{ env.DEPLOY_FTP_USERNAME }}
+          password: ${{ env.DEPLOY_FTP_PASSWORD }}
           local-dir: ./dist/
           server-dir: ./
           timeout: 100000
@@ -39,9 +50,9 @@ jobs:
       - name: Upload API (PHP) to Hostinger via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
+          server: ${{ env.DEPLOY_FTP_SERVER }}
+          username: ${{ env.DEPLOY_FTP_USERNAME }}
+          password: ${{ env.DEPLOY_FTP_PASSWORD }}
           local-dir: ./public/api/
           server-dir: ./api/
           timeout: 100000
