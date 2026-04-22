@@ -820,6 +820,102 @@
         3200,
         660
       ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-node-if-report-intent",
+              "leftValue": "={{ $json.intent }}",
+              "rightValue": "fetch_report",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if-report-intent",
+      "name": "Is Report Intent?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2200,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-node-if-ticket-intent",
+              "leftValue": "={{ $json.intent }}",
+              "rightValue": "create_ticket",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if-ticket-intent",
+      "name": "Is Ticket Intent?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2440,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-node-if-task-intent",
+              "leftValue": "={{ $json.intent }}",
+              "rightValue": "create_task",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-if-task-intent",
+      "name": "Is Task Intent?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2680,
+        560
+      ]
     }
   ],
   "connections": {
@@ -887,20 +983,8 @@
     },
     "Route by Intent": {
       "main": [
-        [
-          {
-            "node": "Create Task in Cockpit",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Create Ticket in Cockpit",
-            "type": "main",
-            "index": 0
-          }
-        ],
+        [],
+        [],
         [
           {
             "node": "Create Project in Cockpit",
@@ -922,13 +1006,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Fetch Tasks in Cockpit",
-            "type": "main",
-            "index": 0
-          }
-        ],
+        [],
         [
           {
             "node": "Reply on WhatsApp (Uzapi)",
@@ -1043,7 +1121,7 @@
       "main": [
         [
           {
-            "node": "Route by Intent",
+            "node": "Is Report Intent?",
             "type": "main",
             "index": 0
           }
@@ -1193,6 +1271,60 @@
         [
           {
             "node": "Respond to Uzapi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Report Intent?": {
+      "main": [
+        [
+          {
+            "node": "Fetch Tasks in Cockpit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Ticket Intent?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Ticket Intent?": {
+      "main": [
+        [
+          {
+            "node": "Create Ticket in Cockpit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Task Intent?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Task Intent?": {
+      "main": [
+        [
+          {
+            "node": "Create Task in Cockpit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route by Intent",
             "type": "main",
             "index": 0
           }
