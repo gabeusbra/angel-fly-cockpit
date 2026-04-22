@@ -35,3 +35,13 @@ jobs:
           local-dir: ./dist/
           server-dir: ./
           timeout: 100000
+
+      - name: Upload API (PHP) to Hostinger via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./public/api/
+          server-dir: ./api/
+          timeout: 100000
