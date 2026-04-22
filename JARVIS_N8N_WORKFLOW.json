@@ -154,7 +154,7 @@
                 },
                 "conditions": [
                   {
-                    "leftValue": "={{ $json.intent }}",
+                    "leftValue": "={{ (() => { const raw = ($json.cleanMessage || $('Check Personality Command').first().json.cleanMessage || $('Check Personality Command').first().json.rawMessage || ''); const m = String(raw).toLowerCase(); if (/(orcamento|orçamento|quote|budget|cotacao|cotação)/.test(m)) return 'create_quote'; return $json.intent; })() }}",
                     "rightValue": "create_task",
                     "operator": {
                       "type": "string",
@@ -268,7 +268,7 @@
                 },
                 "conditions": [
                   {
-                    "leftValue": "={{ $json.intent }}",
+                    "leftValue": "={{ (() => { const raw = ($json.cleanMessage || $('Check Personality Command').first().json.cleanMessage || $('Check Personality Command').first().json.rawMessage || ''); const m = String(raw).toLowerCase(); if (/(orcamento|orçamento|quote|budget|cotacao|cotação)/.test(m)) return 'create_quote'; return $json.intent; })() }}",
                     "rightValue": "create_quote",
                     "operator": {
                       "type": "string",
