@@ -98,6 +98,7 @@ export const api = {
     Project:         crudEntity('projects'),
     Task:            crudEntity('tasks'),
     Ticket:          crudEntity('tickets'),
+    Quote:           crudEntity('quotes'),
     PaymentIncoming: crudEntity('payments_incoming'),
     PaymentOutgoing: crudEntity('payments_outgoing'),
   },

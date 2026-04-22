@@ -9,8 +9,60 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const QUOTES_KEY = "angel_fly_quotes";
-function getQuotes() { try { return JSON.parse(localStorage.getItem(QUOTES_KEY) || "[]"); } catch { return []; } }
-function saveQuotes(q) { localStorage.setItem(QUOTES_KEY, JSON.stringify(q)); }
+function getLocalQuotes() { try { return JSON.parse(localStorage.getItem(QUOTES_KEY) || "[]"); } catch { return []; } }
+function saveLocalQuotes(q) { localStorage.setItem(QUOTES_KEY, JSON.stringify(q)); }
+
+function parseJson(value, fallback = null) {
+  if (value == null) return fallback;
+  if (typeof value === "object") return value;
+  if (typeof value !== "string") return fallback;
+  try { return JSON.parse(value); } catch { return fallback; }
+}
+
+function quoteTotal(q) {
+  if (Array.isArray(q?.items) && q.items.length > 0) {
+    return q.items.reduce((sum, item) => {
+      const opts = Array.isArray(item?.pricing) ? item.pricing : [];
+      const best = opts.reduce((mx, opt) => Math.max(mx, parseFloat(opt?.price) || 0), 0);
+      return sum + best;
+    }, 0);
+  }
+  return parseFloat(q?.amount) || 0;
+}
+
+function normalizeApiQuote(row) {
+  const metadata = parseJson(row?.metadata, {}) || {};
+  const embedded = (metadata?.quote && typeof metadata.quote === "object") ? metadata.quote : metadata;
+  return {
+    id: `api-${row.id}`,
+    api_id: row.id,
+    _source: "api",
+    title: row.title || embedded.title || "Quote",
+    description: row.description || embedded.description || "",
+    client_name: row.client_name || embedded.client_name || "",
+    client_company: embedded.client_company || row.client_name || "",
+    client_email: embedded.client_email || "",
+    client_logo: embedded.client_logo || "",
+    notes: embedded.notes || "",
+    valid_until: row.valid_until || embedded.valid_until || "",
+    status: row.status || embedded.status || "pending",
+    amount: parseFloat(row.amount) || parseFloat(embedded.amount) || 0,
+    items: Array.isArray(embedded.items) ? embedded.items : [],
+    created_at: row.created_date || row.created_at || embedded.created_at || new Date().toISOString(),
+    metadata,
+  };
+}
+
+function normalizeLocalQuote(q) {
+  return {
+    ...q,
+    _source: "local",
+    api_id: null,
+    created_at: q.created_at || new Date().toISOString(),
+    items: Array.isArray(q.items) ? q.items : [],
+    amount: parseFloat(q.amount) || quoteTotal(q),
+  };
+}
 
 export default function QuoteBuilder() {
   const { user } = useOutletContext();
@@ -33,7 +85,27 @@ export default function QuoteBuilder() {
   });
 
   useEffect(() => {
-    setQuotes(getQuotes());
+    const loadQuotes = async () => {
+      const local = getLocalQuotes().map(normalizeLocalQuote);
+      let remote = [];
+      try {
+        const rows = await api.entities.Quote.list("-created_date");
+        if (Array.isArray(rows)) remote = rows.map(normalizeApiQuote);
+      } catch {
+        // no-op (fallback to local storage only)
+      }
+
+      const merged = [...remote];
+      const seen = new Set(remote.map(q => q.id));
+      for (const q of local) {
+        if (!seen.has(q.id)) merged.push(q);
+      }
+
+      merged.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+      setQuotes(merged);
+    };
+
+    loadQuotes();
     // Load clients from Client store (not User entity)
     import("@/lib/clients-store").then(async ({ getClients }) => {
       const all = await getClients();
@@ -231,10 +303,33 @@ export default function QuoteBuilder() {
       quote.data_url = file_url;
     } catch { /* ignore */ }
 
-    const all = getQuotes();
-    all.unshift(quote);
-    saveQuotes(all);
-    setQuotes(all);
+    let created = false;
+    try {
+      const payload = {
+        title: quote.title || "Quote",
+        description: quote.notes || quote.description || "",
+        amount: quoteTotal(quote),
+        status: "pending",
+        valid_until: quote.valid_until || null,
+        client_name: quote.client_company || quote.client_name || "",
+        project_id: quote.project_id || null,
+        project_name: quote.project_name || "",
+        metadata: { quote },
+      };
+      const row = await api.entities.Quote.create(payload);
+      setQuotes(prev => [normalizeApiQuote(row), ...prev]);
+      created = true;
+    } catch {
+      // fallback to local-only
+    }
+
+    if (!created) {
+      const all = getLocalQuotes();
+      all.unshift(quote);
+      saveLocalQuotes(all);
+      setQuotes(all.map(normalizeLocalQuote));
+    }
+
     setShowCreate(false);
     setForm({
       client_name: "", client_company: "", client_email: "", client_logo: "",
@@ -243,7 +338,11 @@ export default function QuoteBuilder() {
     });
   };
 
-  const getQuoteUrl = (q) => q.is_html && q.html_url ? q.html_url : `${window.location.origin}/quote/${q.id}`;
+  const getQuoteUrl = (q) => {
+    if (q.is_html && q.html_url) return q.html_url;
+    if (q._source === "api" && q.api_id != null) return `${window.location.origin}/quote/api-${q.api_id}`;
+    return `${window.location.origin}/quote/${q.id}`;
+  };
 
   const copyLink = (q) => {
     navigator.clipboard.writeText(getQuoteUrl(q));
@@ -251,10 +350,23 @@ export default function QuoteBuilder() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const deleteQuote = (id) => {
-    const updated = quotes.filter(q => q.id !== id);
-    saveQuotes(updated);
-    setQuotes(updated);
+  const deleteQuote = async (id) => {
+    const target = quotes.find(q => q.id === id);
+    if (!target) return;
+
+    if (target._source === "api" && target.api_id != null) {
+      try {
+        await api.entities.Quote.delete(target.api_id);
+        setQuotes(prev => prev.filter(q => q.id !== id));
+      } catch {
+        // keep item if API delete fails
+      }
+      return;
+    }
+
+    const local = getLocalQuotes().filter(q => q.id !== id);
+    saveLocalQuotes(local);
+    setQuotes(prev => prev.filter(q => q.id !== id));
   };
 
   // Import HTML as a quote
@@ -414,7 +526,7 @@ export default function QuoteBuilder() {
                 </Button>
                 <div className="flex-1" />
                 <p className="text-xs text-muted-foreground">
-                  Total: R${q.items?.reduce((s, i) => s + Math.max(...(i.pricing?.map(p => parseFloat(p.price) || 0) || [0])), 0).toLocaleString()}
+                  Total: R${quoteTotal(q).toLocaleString()}
                 </p>
               </div>
             </div>

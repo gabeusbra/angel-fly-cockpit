@@ -35,6 +35,32 @@ $columns = [
     ['projects','total_budget',         'DECIMAL(12,2) DEFAULT 0'],
 ];
 
+// Create quotes table if missing
+$createQuotesSql = "
+CREATE TABLE IF NOT EXISTS `quotes` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `project_id` INT DEFAULT NULL,
+  `project_name` VARCHAR(255) DEFAULT '',
+  `client_name` VARCHAR(255) DEFAULT '',
+  `title` VARCHAR(255) DEFAULT '',
+  `description` TEXT,
+  `amount` DECIMAL(12,2) DEFAULT 0,
+  `status` VARCHAR(50) DEFAULT 'pending',
+  `valid_until` DATE DEFAULT NULL,
+  `metadata` JSON,
+  `created_date` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_date` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`project_id`) REFERENCES `projects`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+";
+
+try {
+    $pdo->exec($createQuotesSql);
+    $results[] = ['ok' => true, 'msg' => "Ensured table quotes exists"];
+} catch (PDOException $e) {
+    $results[] = ['ok' => false, 'msg' => "Failed creating quotes table: " . $e->getMessage()];
+}
+
 foreach ($columns as [$table, $col, $def]) {
     // Check if column already exists via INFORMATION_SCHEMA
     $stmt = $pdo->prepare(

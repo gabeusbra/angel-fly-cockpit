@@ -105,6 +105,22 @@ CREATE TABLE IF NOT EXISTS `payments_outgoing` (
   FOREIGN KEY (`task_id`) REFERENCES `tasks`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS `quotes` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `project_id` INT DEFAULT NULL,
+  `project_name` VARCHAR(255) DEFAULT '',
+  `client_name` VARCHAR(255) DEFAULT '',
+  `title` VARCHAR(255) DEFAULT '',
+  `description` TEXT,
+  `amount` DECIMAL(12,2) DEFAULT 0,
+  `status` VARCHAR(50) DEFAULT 'pending',
+  `valid_until` DATE DEFAULT NULL,
+  `metadata` JSON,
+  `created_date` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_date` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`project_id`) REFERENCES `projects`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Create default admin user (password: admin123 — CHANGE IMMEDIATELY)
 INSERT IGNORE INTO `users` (`email`, `password_hash`, `full_name`, `role`, `status`)
 VALUES ('admin@angelfly.io', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin', 'admin', 'active');

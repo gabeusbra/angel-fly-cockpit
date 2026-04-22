@@ -1,10 +1,41 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
+import { api } from "@/api/client";
 import { CheckCircle2, X, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
 const QUOTES_KEY = "angel_fly_quotes";
+
+function parseJson(value, fallback = null) {
+  if (value == null) return fallback;
+  if (typeof value === "object") return value;
+  if (typeof value !== "string") return fallback;
+  try { return JSON.parse(value); } catch { return fallback; }
+}
+
+function normalizeApiQuote(row) {
+  const metadata = parseJson(row?.metadata, {}) || {};
+  const embedded = (metadata?.quote && typeof metadata.quote === "object") ? metadata.quote : metadata;
+  return {
+    id: `api-${row.id}`,
+    api_id: row.id,
+    _source: "api",
+    title: row.title || embedded.title || "Quote",
+    description: row.description || embedded.description || "",
+    client_name: row.client_name || embedded.client_name || "",
+    client_company: embedded.client_company || row.client_name || "",
+    client_email: embedded.client_email || "",
+    client_logo: embedded.client_logo || "",
+    notes: embedded.notes || "",
+    valid_until: row.valid_until || embedded.valid_until || "",
+    status: row.status || embedded.status || "pending",
+    amount: parseFloat(row.amount) || parseFloat(embedded.amount) || 0,
+    items: Array.isArray(embedded.items) ? embedded.items : [],
+    created_at: row.created_date || row.created_at || embedded.created_at || new Date().toISOString(),
+    metadata,
+  };
+}
 
 export default function QuoteView() {
   const { token } = useParams();
@@ -16,18 +47,45 @@ export default function QuoteView() {
   const [selections, setSelections] = useState({});
 
   useEffect(() => {
-    const all = JSON.parse(localStorage.getItem(QUOTES_KEY) || "[]");
-    const found = all.find(q => q.id === token);
-    if (found) { setQuote(found); setLoading(false); return; }
-    const tryFetch = async () => {
-      for (const q of all) {
-        if (q.data_url && q.id === token) {
-          try { const res = await fetch(q.data_url); const data = await res.json(); setQuote(data); setLoading(false); return; } catch {}
+    const tryLoadQuote = async () => {
+      const all = JSON.parse(localStorage.getItem(QUOTES_KEY) || "[]");
+      const isApiToken = /^api-\d+$/i.test(token || "");
+      const apiId = isApiToken ? parseInt(String(token).replace(/^api-/i, ""), 10) : null;
+
+      if (!isApiToken) {
+        const found = all.find(q => q.id === token);
+        if (found) { setQuote({ ...found, _source: "local" }); setLoading(false); return; }
+
+        for (const q of all) {
+          if (q.data_url && q.id === token) {
+            try {
+              const res = await fetch(q.data_url);
+              const data = await res.json();
+              setQuote({ ...data, _source: "local" });
+              setLoading(false);
+              return;
+            } catch {
+              // no-op
+            }
+          }
         }
       }
+
+      if (apiId) {
+        try {
+          const row = await api.entities.Quote.get(apiId);
+          setQuote(normalizeApiQuote(row));
+          setLoading(false);
+          return;
+        } catch {
+          // no-op
+        }
+      }
+
       setLoading(false);
     };
-    tryFetch();
+
+    tryLoadQuote();
   }, [token]);
 
   // Auto-select best value or last tier
@@ -42,8 +100,24 @@ export default function QuoteView() {
     setSelections(defaults);
   }, [quote]);
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
     setApproved("approved"); setSubmitted(true);
+    if (quote?._source === "api" && quote?.api_id != null) {
+      try {
+        const selected_options = Object.entries(selections).map(([iIdx, pIdx]) => ({
+          item: quote.items?.[iIdx]?.name,
+          qty: quote.items?.[iIdx]?.pricing?.[pIdx]?.qty,
+          label: quote.items?.[iIdx]?.pricing?.[pIdx]?.label,
+          price: quote.items?.[iIdx]?.pricing?.[pIdx]?.price,
+        }));
+        const metadata = { ...(quote.metadata || {}), selected_options, approved_at: new Date().toISOString() };
+        await api.entities.Quote.update(quote.api_id, { status: "approved", metadata });
+      } catch {
+        // no-op
+      }
+      return;
+    }
+
     const all = JSON.parse(localStorage.getItem(QUOTES_KEY) || "[]");
     const idx = all.findIndex(q => q.id === token);
     if (idx >= 0) {
@@ -56,8 +130,18 @@ export default function QuoteView() {
     }
   };
 
-  const handleReject = () => {
+  const handleReject = async () => {
     setApproved("rejected"); setSubmitted(true);
+    if (quote?._source === "api" && quote?.api_id != null) {
+      try {
+        const metadata = { ...(quote.metadata || {}), rejection_reason: feedback, rejected_at: new Date().toISOString() };
+        await api.entities.Quote.update(quote.api_id, { status: "rejected", metadata });
+      } catch {
+        // no-op
+      }
+      return;
+    }
+
     const all = JSON.parse(localStorage.getItem(QUOTES_KEY) || "[]");
     const idx = all.findIndex(q => q.id === token);
     if (idx >= 0) { all[idx].status = "rejected"; all[idx].rejected_at = new Date().toISOString(); all[idx].rejection_reason = feedback; localStorage.setItem(QUOTES_KEY, JSON.stringify(all)); }

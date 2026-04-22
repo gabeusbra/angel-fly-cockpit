@@ -8,7 +8,7 @@ class Entity {
     // Allowed tables (whitelist to prevent SQL injection)
     private const TABLES = [
         'users', 'projects', 'tasks', 'tickets',
-        'payments_incoming', 'payments_outgoing',
+        'payments_incoming', 'payments_outgoing', 'quotes',
     ];
 
     // Fields to never expose
