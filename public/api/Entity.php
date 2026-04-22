@@ -19,11 +19,42 @@ class Entity {
     }
 
     /**
+     * Ensure quotes table exists in production before any quote operation.
+     * This prevents runtime 500 when /api/quotes is called before migrate.
+     */
+    private static function ensureQuotesTable(): void {
+        static $checked = false;
+        if ($checked) return;
+        $checked = true;
+
+        $sql = "
+            CREATE TABLE IF NOT EXISTS `quotes` (
+              `id` INT AUTO_INCREMENT PRIMARY KEY,
+              `project_id` INT DEFAULT NULL,
+              `project_name` VARCHAR(255) DEFAULT '',
+              `client_name` VARCHAR(255) DEFAULT '',
+              `title` VARCHAR(255) DEFAULT '',
+              `description` TEXT,
+              `amount` DECIMAL(12,2) DEFAULT 0,
+              `status` VARCHAR(50) DEFAULT 'pending',
+              `valid_until` DATE DEFAULT NULL,
+              `metadata` JSON,
+              `created_date` DATETIME DEFAULT CURRENT_TIMESTAMP,
+              `updated_date` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              FOREIGN KEY (`project_id`) REFERENCES `projects`(`id`) ON DELETE SET NULL
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ";
+
+        Database::get()->exec($sql);
+    }
+
+    /**
      * GET /api/{entity} — List all or filter
      * Query params: filter[field]=value, sort=-field (desc) or field (asc), limit=N
      */
     public static function handleList(string $table): void {
         Auth::requireAuth();
+        if ($table === 'quotes') self::ensureQuotesTable();
 
         $where = [];
         $params = [];
@@ -76,6 +107,7 @@ class Entity {
      */
     public static function handleGet(string $table, int $id): void {
         Auth::requireAuth();
+        if ($table === 'quotes') self::ensureQuotesTable();
         $row = Database::queryOne("SELECT * FROM `$table` WHERE id = :id", ['id' => $id]);
         if (!$row) json_error('Not found', 404);
         foreach (self::HIDDEN as $h) unset($row[$h]);
@@ -87,6 +119,7 @@ class Entity {
      */
     public static function handleCreate(string $table): void {
         Auth::requireAuth();
+        if ($table === 'quotes') self::ensureQuotesTable();
         $body = get_json_body();
         if (empty($body)) json_error('Request body is empty');
 
@@ -129,6 +162,7 @@ class Entity {
      */
     public static function handleUpdate(string $table, int $id): void {
         Auth::requireAuth();
+        if ($table === 'quotes') self::ensureQuotesTable();
         $body = get_json_body();
         if (empty($body)) json_error('Request body is empty');
 
@@ -171,6 +205,7 @@ class Entity {
      */
     public static function handleDelete(string $table, int $id): void {
         Auth::requireAuth();
+        if ($table === 'quotes') self::ensureQuotesTable();
         $affected = Database::delete($table, $id);
         if ($affected === 0) json_error('Not found', 404);
         json_response(['message' => 'Deleted', 'id' => $id]);
