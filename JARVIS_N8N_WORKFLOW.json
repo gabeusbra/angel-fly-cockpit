@@ -154,7 +154,7 @@
                 },
                 "conditions": [
                   {
-                    "leftValue": "={{ (() => { const raw = ($json.cleanMessage || $('Check Personality Command').first().json.cleanMessage || $('Check Personality Command').first().json.rawMessage || ''); const m = String(raw).toLowerCase(); if (/(orcamento|orçamento|quote|budget|cotacao|cotação)/.test(m)) return 'create_quote'; return $json.intent; })() }}",
+                    "leftValue": "={{ $json.intent }}",
                     "rightValue": "create_task",
                     "operator": {
                       "type": "string",
@@ -268,7 +268,7 @@
                 },
                 "conditions": [
                   {
-                    "leftValue": "={{ (() => { const raw = ($json.cleanMessage || $('Check Personality Command').first().json.cleanMessage || $('Check Personality Command').first().json.rawMessage || ''); const m = String(raw).toLowerCase(); if (/(orcamento|orçamento|quote|budget|cotacao|cotação)/.test(m)) return 'create_quote'; return $json.intent; })() }}",
+                    "leftValue": "={{ $json.intent }}",
                     "rightValue": "create_quote",
                     "operator": {
                       "type": "string",
@@ -317,7 +317,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://cockpit.angelfly.io/api/tasks",
+        "url": "={{ $json.intent === 'create_quote' ? 'https://cockpit.angelfly.io/api/quotes' : ($json.intent === 'create_ticket' ? 'https://cockpit.angelfly.io/api/tickets' : 'https://cockpit.angelfly.io/api/tasks') }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -333,7 +333,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ title: $json.title, description: $json.description || \"\", priority: $json.priority || \"medium\", status: \"assigned\", project_id: $json.project_id || null, project_name: $json.project_name || \"\", client_name: $json.client_name || \"\" }) }}",
+        "jsonBody": "={{ (() => {\n  const intent = $json.intent || 'create_task';\n  if (intent === 'create_quote') {\n    return {\n      title: $json.title || $json.subject || 'Quote',\n      description: $json.description || '',\n      amount: ($json.entity?.amount || $json.amount || 0),\n      status: 'pending',\n      valid_until: ($json.entity?.valid_until || $json.valid_until || null),\n      client_name: ($json.entity?.client_name || $json.client_name || ''),\n      project_id: ($json.project_id || $json.entity?.project_id || null),\n      project_name: ($json.project_name || $json.entity?.project_name || ''),\n      metadata: { source: 'whatsapp_jarvis', payload: ($json.entity || {}) }\n    };\n  }\n  if (intent === 'create_ticket') {\n    return {\n      subject: $json.subject || $json.title || 'Ticket',\n      description: $json.description || '',\n      priority: $json.priority || 'medium',\n      status: 'open',\n      category: (($json.category || 'question') + '').toLowerCase(),\n      client_name: $json.client_name || '',\n      project_id: $json.project_id || null,\n      project_name: $json.project_name || ''\n    };\n  }\n  return {\n    title: $json.title || 'Task',\n    description: $json.description || '',\n    priority: $json.priority || 'medium',\n    status: 'assigned',\n    project_id: $json.project_id || null,\n    project_name: $json.project_name || '',\n    client_name: $json.client_name || ''\n  };\n})() }}",
         "options": {}
       },
       "id": "node-task",
