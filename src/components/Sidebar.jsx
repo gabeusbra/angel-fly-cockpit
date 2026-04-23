@@ -52,7 +52,7 @@ const roleLabels = {
   client: "Client",
 };
 
-export default function Sidebar({ user, collapsed, onToggle }) {
+export default function Sidebar({ user, collapsed, onToggle, mobileMenuOpen, setMobileMenuOpen }) {
   const location = useLocation();
   const role = user?.role || "client";
   const items = navByRole[role] || navByRole.client;
@@ -106,17 +106,30 @@ export default function Sidebar({ user, collapsed, onToggle }) {
   }, [user, role]);
 
   return (
-    <aside
-      className={`fixed top-0 left-0 h-screen z-40 flex flex-col transition-all duration-300 ${collapsed ? "w-[68px]" : "w-[260px]"}`}
-      style={{ backgroundColor: "hsl(228, 25%, 10%)" }}
-    >
+    <>
+      {/* Mobile Overlay */}
+      {mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+      
+      <aside
+        className={`fixed top-0 left-0 h-screen z-50 flex flex-col transition-all duration-300 ${
+          collapsed ? "md:w-[68px]" : "md:w-[260px]"
+        } w-[260px] ${
+          mobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        }`}
+        style={{ backgroundColor: "hsl(228, 25%, 10%)" }}
+      >
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 h-16 shrink-0" style={{ borderBottom: "1px solid hsl(228, 20%, 16%)" }}>
         <div className="w-9 h-9 rounded-xl shrink-0 flex items-center justify-center font-extrabold text-white text-xs tracking-tight brand-gradient shadow-lg shadow-primary/20">
           AF
         </div>
-        {!collapsed && (
-          <div className="overflow-hidden">
+        {(!collapsed || mobileMenuOpen) && (
+          <div className="overflow-hidden flex-1">
             <h1 className="text-sm font-extrabold text-white truncate leading-tight tracking-tight">Angel Fly</h1>
             <p className="text-[10px] font-medium truncate" style={{ color: "hsl(220,10%,50%)" }}>Marketing Cockpit</p>
           </div>
@@ -124,7 +137,7 @@ export default function Sidebar({ user, collapsed, onToggle }) {
       </div>
 
       {/* Role label */}
-      {!collapsed && (
+      {(!collapsed || mobileMenuOpen) && (
         <div className="px-4 pt-4 pb-2">
           <p className="text-[9px] font-bold uppercase tracking-[0.15em]" style={{ color: "hsl(220,10%,40%)" }}>{roleLabels[role]}</p>
         </div>
@@ -149,11 +162,16 @@ export default function Sidebar({ user, collapsed, onToggle }) {
                 ? { background: "linear-gradient(135deg, hsl(8,100%,60%), hsl(20,90%,62%))", boxShadow: "0 4px 16px rgba(255,77,53,0.35)" }
                 : { color: "hsl(220,10%,55%)", backgroundColor: "transparent" }
               }
+              onClick={() => {
+                if (window.innerWidth < 768) {
+                  setMobileMenuOpen(false);
+                }
+              }}
               onMouseEnter={e => { if (!isActive) e.currentTarget.style.backgroundColor = "hsl(228,20%,15%)"; }}
               onMouseLeave={e => { if (!isActive) e.currentTarget.style.backgroundColor = "transparent"; }}
             >
               <Icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? "" : "opacity-70"}`} />
-              {!collapsed && <span className="truncate flex-1">{item.label}</span>}
+              {(!collapsed || mobileMenuOpen) && <span className="truncate flex-1">{item.label}</span>}
               {badgeCount > 0 && (
                 <span className={`${collapsed ? "absolute top-1 right-1" : ""} min-w-[18px] h-[18px] flex items-center justify-center rounded-full text-[10px] font-bold text-white bg-red-500 shadow-sm shadow-red-500/30`}>
                   {badgeCount > 9 ? "9+" : badgeCount}
@@ -170,7 +188,7 @@ export default function Sidebar({ user, collapsed, onToggle }) {
           <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-[10px] font-bold text-white" style={{ backgroundColor: "hsl(228,20%,18%)" }}>
             {(user?.full_name || "U").split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
           </div>
-          {!collapsed && (
+          {(!collapsed || mobileMenuOpen) && (
             <div className="overflow-hidden flex-1 min-w-0">
               <p className="text-xs font-semibold text-white truncate">{user?.full_name || "User"}</p>
               <p className="text-[10px] truncate" style={{ color: "hsl(220,10%,45%)" }}>{user?.email || ""}</p>
@@ -186,7 +204,7 @@ export default function Sidebar({ user, collapsed, onToggle }) {
             onMouseLeave={e => { e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.color = "hsl(220,10%,45%)"; }}
           >
             <LogOut className="w-3.5 h-3.5" />
-            {!collapsed && "Sign out"}
+            {(!collapsed || mobileMenuOpen) && "Sign out"}
           </button>
           <button
             onClick={() => setDark(d => !d)}
@@ -210,5 +228,6 @@ export default function Sidebar({ user, collapsed, onToggle }) {
         </div>
       </div>
     </aside>
+    </>
   );
 }

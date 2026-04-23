@@ -2,7 +2,7 @@ import { Outlet } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { api } from "@/api/client";
 import Sidebar from "./Sidebar";
-import { ShieldX } from "lucide-react";
+import { Menu, ShieldX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const COCKPIT_ROLES = ["admin", "pm", "professional", "client"];
@@ -54,6 +54,7 @@ async function resolveUser(authUser) {
 export default function Layout() {
   const [user, setUser] = useState(null);
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [checked, setChecked] = useState(false);
 
@@ -106,10 +107,34 @@ export default function Layout() {
   }
 
   return (
-    <div className="min-h-screen bg-background" style={{ fontFamily: "var(--font-inter)" }}>
-      <Sidebar user={user} collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
-      <main className={`transition-all duration-300 min-h-screen ${collapsed ? "ml-[68px]" : "ml-[260px]"}`}>
-        <div className="p-6 lg:p-8">
+    <div className="min-h-screen bg-background flex flex-col md:flex-row" style={{ fontFamily: "var(--font-inter)" }}>
+      {/* Mobile Top Bar */}
+      <div className="md:hidden flex items-center justify-between px-4 h-16 bg-[#131624] border-b border-white/5 sticky top-0 z-30">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center font-extrabold text-white text-[10px] tracking-tight brand-gradient shadow-lg shadow-primary/20">
+            AF
+          </div>
+          <span className="font-extrabold text-sm text-white tracking-tight">Angel Fly</span>
+        </div>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => setMobileMenuOpen(true)}
+          className="text-white hover:bg-white/10"
+        >
+          <Menu className="w-5 h-5" />
+        </Button>
+      </div>
+
+      <Sidebar 
+        user={user} 
+        collapsed={collapsed} 
+        onToggle={() => setCollapsed(!collapsed)} 
+        mobileMenuOpen={mobileMenuOpen}
+        setMobileMenuOpen={setMobileMenuOpen}
+      />
+      <main className={`transition-all duration-300 min-h-screen flex-1 ${collapsed ? "md:ml-[68px]" : "md:ml-[260px]"} w-full md:w-auto`}>
+        <div className="p-4 sm:p-6 lg:p-8">
           <Outlet context={{ user }} />
         </div>
       </main>
