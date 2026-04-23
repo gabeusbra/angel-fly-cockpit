@@ -333,7 +333,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ (() => {\n  if (($json.intent || '') !== 'create_task') {\n    throw new Error('Intent mismatch in Create Task node: ' + ($json.intent || 'none'));\n  }\n  const title = String($json.entity?.title || $json.title || '').trim() || 'Task via WhatsApp';\n  const assignedToId = $json.entity?.assigned_to_id || $json.assigned_to_id || null;\n  const assignedToName = String($json.entity?.assigned_to_name || $json.assigned_to_name || '').trim();\n  const deadline = String($json.entity?.deadline || $json.deadline || '').trim() || null;\n  return JSON.stringify({\n    title,\n    description: $json.description || $json.entity?.description || '',\n    priority: $json.entity?.priority || $json.priority || 'medium',\n    status: 'assigned',\n    project_id: $json.project_id || $json.entity?.project_id || null,\n    project_name: $json.project_name || $json.entity?.project_name || '',\n    client_name: $json.client_name || $json.entity?.client_name || '',\n    assigned_to: assignedToId,\n    assigned_to_name: assignedToName,\n    deadline: deadline\n  });\n})() }}",
+        "jsonBody": "={{ JSON.stringify({ title: ($json.entity && $json.entity.title) || $json.title || \"Task via WhatsApp\", description: ($json.entity && $json.entity.description) || $json.description || \"\", priority: ($json.entity && $json.entity.priority) || $json.priority || \"medium\", status: \"assigned\", project_id: ($json.entity && $json.entity.project_id) || $json.project_id || null, project_name: ($json.entity && $json.entity.project_name) || $json.project_name || \"\", client_name: ($json.entity && $json.entity.client_name) || $json.client_name || \"\", assigned_to: $json.assigned_to_id || null, assigned_to_name: $json.assigned_to_name || \"\", deadline: $json.deadline || null }) }}",
         "options": {}
       },
       "id": "node-task",
@@ -365,7 +365,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ (() => {\n  const ent = $json.entity || {};\n  const subject = String(ent.subject || ent.title || $json.subject || $json.title || 'Ticket via WhatsApp').trim();\n  const validCategories = ['bug','change_request','complaint','question'];\n  const rawCat = String(ent.category || $json.category || 'question').toLowerCase().trim();\n  const category = validCategories.includes(rawCat) ? rawCat : 'question';\n  return JSON.stringify({\n    subject,\n    description: ent.description || $json.description || '',\n    priority: ent.priority || $json.priority || 'medium',\n    status: 'open',\n    category,\n    client_name: ent.client_name || $json.client_name || '',\n    project_id: ent.project_id || $json.project_id || null,\n    project_name: ent.project_name || $json.project_name || ''\n  });\n})() }}",
+        "jsonBody": "={{ JSON.stringify({ subject: ($json.entity && $json.entity.subject) || ($json.entity && $json.entity.title) || $json.subject || $json.title || \"Ticket via WhatsApp\", description: ($json.entity && $json.entity.description) || $json.description || \"\", priority: ($json.entity && $json.entity.priority) || $json.priority || \"medium\", status: \"open\", category: ($json.entity && $json.entity.category) || $json.category || \"question\", client_name: ($json.entity && $json.entity.client_name) || $json.client_name || \"\", project_id: ($json.entity && $json.entity.project_id) || $json.project_id || null, project_name: ($json.entity && $json.entity.project_name) || $json.project_name || \"\" }) }}",
         "options": {}
       },
       "id": "node-ticket",
@@ -709,7 +709,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ (() => {\n  const current = $json || {};\n  const source = $('Check Personality Command').isExecuted ? ($('Check Personality Command').first().json || {}) : {};\n  const number = current.waChatId || current.chatId || source.waChatId || source.chatId || '120363426390515923@g.us';\n  let errMsg = '';\n  if (current.error && current.error.message) errMsg = current.error.message;\n  else if (current.message) errMsg = current.message;\n  else if (current.body && typeof current.body === 'string') {\n    try { const b = JSON.parse(current.body); errMsg = b.message || b.error || JSON.stringify(b); } catch(e) { errMsg = current.body.slice(0,200); }\n  }\n  if (!errMsg) errMsg = 'Falha na API do Cockpit. Status: ' + (current.statusCode || '???');\n  return { number, text: '⚠️ *Jarvis:* ação não pôde ser concluída.\\n\\nErro: ' + errMsg };\n})() }}",
+        "jsonBody": "={{ JSON.stringify({ number: $json.waChatId || $json.chatId || \"120363426390515923@g.us\", text: \"⚠️ *Jarvis:* ação não pôde ser concluída.\\n\\nErro: \" + ($json.error && $json.error.message ? $json.error.message : ($json.message || \"Falha na API do Cockpit. Status: \" + ($json.statusCode || \"???\"))) }) }}",
         "options": {}
       },
       "id": "node-error-notify",
@@ -981,7 +981,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ (() => {\n  if (($json.intent || '') !== 'create_quote') {\n    throw new Error('Intent mismatch in Create Quote node: ' + ($json.intent || 'none'));\n  }\n  const clientName = String($json.entity?.client_name || $json.client_name || '').trim();\n  const amount = Number($json.entity?.amount || $json.amount || 0);\n  const validUntil = String($json.entity?.valid_until || $json.valid_until || '').trim();\n  if (!clientName) throw new Error('Quote client_name is required');\n  if (!Number.isFinite(amount) || amount <= 0) throw new Error('Quote amount must be > 0');\n  if (!validUntil) throw new Error('Quote valid_until is required');\n  return JSON.stringify({\n    title: ($json.title || $json.subject || 'Quote'),\n    description: ($json.description || ''),\n    amount,\n    status: 'pending',\n    valid_until: validUntil,\n    client_name: clientName,\n    project_id: ($json.project_id || $json.entity?.project_id || null),\n    project_name: ($json.project_name || $json.entity?.project_name || ''),\n    metadata: { source: 'whatsapp_jarvis', payload: ($json.entity || {}) }\n  });\n})() }}",
+        "jsonBody": "={{ JSON.stringify({ title: ($json.entity && $json.entity.title) || $json.title || \"Orçamento via WhatsApp\", description: ($json.entity && $json.entity.description) || $json.description || \"\", client_name: ($json.entity && $json.entity.client_name) || $json.client_name || \"\", amount: ($json.entity && $json.entity.amount) || $json.amount || 0, status: \"pending\", valid_until: ($json.entity && $json.entity.valid_until) || \"\", project_id: ($json.entity && $json.entity.project_id) || $json.project_id || null, project_name: ($json.entity && $json.entity.project_name) || $json.project_name || \"\" }) }}",
         "options": {}
       },
       "id": "node-quote",
