@@ -1,5 +1,5 @@
 {
-  "name": "Jarvis — WhatsApp PM Bot",
+  "name": "Jarvis v16 — 23-Abr 17h50",
   "nodes": [
     {
       "parameters": {
@@ -1022,6 +1022,21 @@
       "position": [
         1100,
         460
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## ✅ VERSÃO v16 — 23/Abr 17:50 BRT\n\nSe você está vendo esta nota, o workflow foi importado corretamente.\n\n**Correções nesta versão:**\n- Ticket: body ultra-simples (sem IIFE)\n- Task: assignee + deadline extraídos\n- Fetch Users: nó novo\n- Report: fluxo corrigido",
+        "width": 400,
+        "height": 200
+      },
+      "id": "node-version-note",
+      "name": "Version Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        60,
+        60
       ]
     }
   ],
