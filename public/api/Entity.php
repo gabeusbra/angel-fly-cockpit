@@ -13,9 +13,22 @@ class Entity {
 
     // Fields to never expose
     private const HIDDEN = ['password_hash'];
+    private static array $columnsCache = [];
 
     public static function isValidTable(string $table): bool {
         return in_array($table, self::TABLES);
+    }
+
+    /**
+     * Return current table columns from database (cached).
+     */
+    private static function getTableColumns(string $table): array {
+        if (isset(self::$columnsCache[$table])) return self::$columnsCache[$table];
+        $rows = Database::query("SHOW COLUMNS FROM `$table`");
+        $cols = array_map(fn($r) => $r['Field'] ?? '', $rows);
+        $cols = array_values(array_filter($cols));
+        self::$columnsCache[$table] = $cols;
+        return $cols;
     }
 
     /**
@@ -132,6 +145,11 @@ class Entity {
             unset($body['password']);
         }
 
+        // Keep only real columns from current table schema (prevents unknown-column 500s)
+        $allowedCols = array_flip(self::getTableColumns($table));
+        $body = array_intersect_key($body, $allowedCols);
+        if (empty($body)) json_error('No valid fields provided for this entity', 400);
+
         // Convert empty string FK fields to NULL (prevents FK constraint violations)
         foreach ($body as $key => &$value) {
             if ((str_ends_with($key, '_id') || $key === 'id') && $value === '') {
@@ -181,6 +199,11 @@ class Entity {
             $body['password_hash'] = password_hash($body['password'], PASSWORD_BCRYPT);
             unset($body['password']);
         }
+
+        // Keep only real columns from current table schema (prevents unknown-column 500s)
+        $allowedCols = array_flip(self::getTableColumns($table));
+        $body = array_intersect_key($body, $allowedCols);
+        if (empty($body)) json_error('No valid fields provided for update', 400);
 
         // Convert arrays/objects to JSON
         foreach ($body as $key => &$value) {
