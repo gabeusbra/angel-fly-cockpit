@@ -303,6 +303,7 @@ export default function AdminTickets() {
                           </div>
                         )}
                       </div>
+                      </div>
                     </div>
 
                     {/* Actions */}
