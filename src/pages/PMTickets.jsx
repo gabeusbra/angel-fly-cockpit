@@ -108,7 +108,7 @@ export default function PMTickets() {
         <div className="space-y-3">
           {filtered.map(t => (
             <div key={t.id} className="bg-card rounded-xl border border-border p-5 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <h3 className="text-sm font-semibold">{t.subject}</h3>
@@ -119,7 +119,7 @@ export default function PMTickets() {
                   <p className="text-xs text-muted-foreground">{t.client_name} · {t.project_name} · {new Date(t.created_date).toLocaleDateString()}</p>
                   {t.description && <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{t.description}</p>}
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex flex-wrap items-center gap-2 shrink-0 mt-2 lg:mt-0">
                   {t.satisfaction_rating && (
                     <div className="flex items-center gap-0.5 mr-2">
                       <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />

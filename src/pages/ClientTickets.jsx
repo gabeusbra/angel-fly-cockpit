@@ -139,7 +139,7 @@ export default function ClientTickets() {
         <div className="space-y-3">
           {tickets.map(t => (
             <div key={t.id} className="bg-card rounded-xl border border-border p-5 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <h3 className="text-sm font-semibold">{t.subject}</h3>
@@ -159,13 +159,13 @@ export default function ClientTickets() {
                     </div>
                   )}
                 </div>
-                <div className="text-right shrink-0">
+                <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-3 sm:gap-0 mt-2 sm:mt-0 shrink-0">
                   <StatusBadge status={t.category} size="xs" />
                   {t.estimated_resolution && (
-                    <p className="text-xs text-muted-foreground mt-1">Est: {new Date(t.estimated_resolution).toLocaleDateString()}</p>
+                    <p className="text-xs text-muted-foreground sm:mt-1">Est: {new Date(t.estimated_resolution).toLocaleDateString()}</p>
                   )}
                   {t.satisfaction_rating && (
-                    <div className="mt-1.5">
+                    <div className="sm:mt-1.5">
                       <StarRating value={t.satisfaction_rating} readonly />
                     </div>
                   )}

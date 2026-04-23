@@ -253,14 +253,15 @@ export default function AdminTickets() {
             return (
               <div key={t.id} className="bg-card rounded-xl border border-border hover:shadow-lg hover:shadow-black/5 transition-all cursor-pointer group" onClick={() => setDetail(t)}>
                 <div className="p-5">
-                  <div className="flex items-start gap-4">
-                    {/* Category icon */}
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 border ${cat.bg}`}>
-                      {cat.emoji}
-                    </div>
+                  <div className="flex flex-col lg:flex-row lg:items-start gap-4">
+                    <div className="flex items-start gap-4 flex-1 min-w-0">
+                      {/* Category icon */}
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 border ${cat.bg}`}>
+                        {cat.emoji}
+                      </div>
 
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <h3 className="text-sm font-bold">{t.subject}</h3>
                         <div className={`w-2 h-2 rounded-full ${PRIORITY_DOT[t.priority] || PRIORITY_DOT.medium}`} title={t.priority} />
@@ -305,7 +306,7 @@ export default function AdminTickets() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                    <div className="flex flex-wrap items-center gap-2 shrink-0 mt-2 lg:mt-0" onClick={e => e.stopPropagation()}>
                       {(t.status === "open" || t.status === "in_progress") && (
                         <select value={t.assigned_to || ""} onChange={e => handleAssign(t, e.target.value)}
                           className="h-9 w-[130px] rounded-lg border border-input bg-transparent px-2 text-xs shadow-sm focus:outline-none focus:ring-1 focus:ring-ring">
