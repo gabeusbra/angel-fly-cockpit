@@ -1,0 +1,118 @@
+{
+  "name": "Jarvis — Daily Morning Briefing",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 11 * * *"
+            }
+          ]
+        }
+      },
+      "id": "node-cron",
+      "name": "Schedule: 8h BRT (11h UTC)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [100, 300],
+      "notes": "8h Brasília = 11h UTC (UTC-3)"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://cockpit.angelfly.io/api/tasks",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "Authorization", "value": "Bearer 5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16"}
+          ]
+        },
+        "options": {"response": {"response": {"neverError": true}}}
+      },
+      "id": "node-fetch-tasks",
+      "name": "Fetch All Tasks",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [340, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://cockpit.angelfly.io/api/tickets",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "Authorization", "value": "Bearer 5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16"}
+          ]
+        },
+        "options": {"response": {"response": {"neverError": true}}}
+      },
+      "id": "node-fetch-tickets",
+      "name": "Fetch All Tickets",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [340, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const GROUP_MAP = {\n  '120363426390515923@g.us': { context: 'angelfly', label: 'Angel Fly' },\n  '120363420996892188@g.us': { context: 'garlic', label: 'Garlic N Lemon' },\n  '120363422948599063@g.us': { context: 'ernesto', label: 'Ernesto' }\n};\n\nconst normalize = (v) => String(v || '').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9\\s]/g, ' ').trim();\n\n// Get today in BRT (UTC-3)\nconst now = new Date();\nconst brt = new Date(now.getTime() - 3 * 3600000);\nconst today = brt.toISOString().slice(0, 10);\n\n// Collect tasks & tickets\nconst collectRecords = (items) => {\n  const all = [];\n  for (const item of items) {\n    const j = item.json;\n    if (Array.isArray(j)) { for (const r of j) { if (r && r.id) all.push(r); } }\n    else if (j && j.id) all.push(j);\n    else if (Array.isArray(j?.data)) { for (const r of j.data) { if (r && r.id) all.push(r); } }\n  }\n  return all;\n};\n\nconst tasks = collectRecords($('Fetch All Tasks').all());\nconst tickets = collectRecords($('Fetch All Tickets').all());\n\nconst isOpen = (s) => !['closed','completed','cancelled','resolved','done'].includes(normalize(s));\nconst dateOf = (obj) => (obj?.deadline || obj?.due_date || obj?.created_date || '').slice(0, 10);\n\nconst todayTasks = tasks.filter(t => isOpen(t.status) && dateOf(t) === today);\nconst openTasks = tasks.filter(t => isOpen(t.status));\nconst todayTickets = tickets.filter(t => isOpen(t.status) && dateOf(t) === today);\nconst openTickets = tickets.filter(t => isOpen(t.status));\n\nconst formatItem = (x, field) => {\n  const name = x[field] || x.title || x.subject || '(sem título)';\n  const assignee = x.assigned_to_name || '';\n  const dl = x.deadline || x.due_date || '';\n  const pr = x.priority || '';\n  let line = '• ' + name;\n  if (pr) line += ' [' + pr + ']';\n  if (assignee) line += ' 👤 ' + assignee;\n  if (dl) line += ' 📅 ' + dl;\n  return line;\n};\n\nconst groupMatch = (obj, ctx) => {\n  const pn = normalize(obj?.project_name || '');\n  const cn = normalize(obj?.client_name || '');\n  const combined = pn + ' ' + cn;\n  if (ctx === 'garlic') return /garlic|gnl/.test(combined);\n  if (ctx === 'ernesto') return /ernesto/.test(combined);\n  if (ctx === 'angelfly') return /angel\\s*fly|cockpit/.test(combined);\n  return true;\n};\n\nconst results = [];\n\nfor (const [chatId, group] of Object.entries(GROUP_MAP)) {\n  const gTodayTasks = todayTasks.filter(t => groupMatch(t, group.context));\n  const gOpenTasks = openTasks.filter(t => groupMatch(t, group.context));\n  const gTodayTickets = todayTickets.filter(t => groupMatch(t, group.context));\n  const gOpenTickets = openTickets.filter(t => groupMatch(t, group.context));\n\n  let msg = '☀️ *Bom dia, equipe ' + group.label + '!*\\nVamos retomar as atividades. Segue o que temos para hoje:\\n';\n\n  if (gTodayTasks.length > 0) {\n    msg += '\\n🧩 *Tasks de Hoje (' + gTodayTasks.length + '):*\\n';\n    msg += gTodayTasks.map(t => formatItem(t, 'title')).join('\\n');\n  }\n\n  if (gTodayTickets.length > 0) {\n    msg += '\\n\\n🎫 *Tickets de Hoje (' + gTodayTickets.length + '):*\\n';\n    msg += gTodayTickets.map(t => formatItem(t, 'subject')).join('\\n');\n  }\n\n  if (gTodayTasks.length === 0 && gTodayTickets.length === 0) {\n    msg += '\\n✨ Nenhuma task ou ticket programado especificamente para hoje.';\n  }\n\n  msg += '\\n\\n📊 *Resumo Geral:*';\n  msg += '\\n• Tasks abertas: ' + gOpenTasks.length;\n  msg += '\\n• Tickets abertos: ' + gOpenTickets.length;\n  msg += '\\n\\nBom trabalho! 💪';\n\n  results.push({ json: { number: chatId, text: msg, groupLabel: group.label } });\n}\n\nreturn results;"
+      },
+      "id": "node-build-morning",
+      "name": "Build Morning Messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [580, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://angelfly.uazapi.com/send/text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "token", "value": "a232b655-1733-46c1-b872-1f82782b9cbe"},
+            {"name": "Content-Type", "value": "application/json"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { number: $json.number, text: $json.text } }}",
+        "options": {}
+      },
+      "id": "node-send-morning",
+      "name": "Send Morning Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [820, 300]
+    }
+  ],
+  "connections": {
+    "Schedule: 8h BRT (11h UTC)": {
+      "main": [
+        [
+          {"node": "Fetch All Tasks", "type": "main", "index": 0},
+          {"node": "Fetch All Tickets", "type": "main", "index": 0}
+        ]
+      ]
+    },
+    "Fetch All Tasks": {
+      "main": [[{"node": "Build Morning Messages", "type": "main", "index": 0}]]
+    },
+    "Fetch All Tickets": {
+      "main": [[{"node": "Build Morning Messages", "type": "main", "index": 0}]]
+    },
+    "Build Morning Messages": {
+      "main": [[{"node": "Send Morning Message", "type": "main", "index": 0}]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo"
+  },
+  "meta": {
+    "instanceId": "jarvis-daily-v1"
+  }
+}

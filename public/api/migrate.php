@@ -86,6 +86,23 @@ foreach ($columns as [$table, $col, $def]) {
     }
 }
 
+// ── Ensure Jarvis bot user exists ──
+try {
+    $jarvisExists = $pdo->prepare("SELECT COUNT(*) FROM users WHERE email = 'jarvis@angelfly.io'");
+    $jarvisExists->execute();
+    if ((int)$jarvisExists->fetchColumn() === 0) {
+        $pdo->prepare("
+            INSERT INTO users (email, password_hash, full_name, role, status)
+            VALUES ('jarvis@angelfly.io', :hash, 'Jarvis Bot', 'admin', 'active')
+        ")->execute([':hash' => password_hash(bin2hex(random_bytes(16)), PASSWORD_BCRYPT)]);
+        $results[] = ['ok' => true, 'msg' => 'Created jarvis@angelfly.io bot user'];
+    } else {
+        $results[] = ['ok' => true, 'skip' => true, 'msg' => 'jarvis@angelfly.io already exists'];
+    }
+} catch (PDOException $e) {
+    $results[] = ['ok' => false, 'msg' => 'Failed creating Jarvis user: ' . $e->getMessage()];
+}
+
 http_response_code(200);
 header('Content-Type: application/json');
 echo json_encode(['migrations' => $results, 'done' => true], JSON_PRETTY_PRINT);
