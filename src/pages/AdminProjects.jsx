@@ -98,10 +98,12 @@ export default function AdminProjects() {
   };
 
   const getBudget = (pid) => {
-    const used = incoming.filter(p => p.project_id === pid && p.status === "paid").reduce((s, p) => s + (p.amount || 0), 0);
+    const used = incoming.filter(p => p.project_id === pid && p.status === "paid").reduce((s, p) => s + Number(p.amount || 0), 0);
     const proj = projects.find(p => p.id === pid);
-    return { budget: proj?.total_budget || 0, used };
+    return { budget: Number(proj?.total_budget || 0), used };
   };
+
+  const fmtBRL = (n) => Number(n || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const filtered = projects.filter(p => {
     const q = search.toLowerCase();
@@ -109,7 +111,7 @@ export default function AdminProjects() {
       && (statusFilter === "all" || p.status === statusFilter);
   });
 
-  const totalBudget = projects.reduce((s, p) => s + (p.total_budget || 0), 0);
+  const totalBudget = projects.reduce((s, p) => s + Number(p.total_budget || 0), 0);
   const activeCount = projects.filter(p => p.status === "active").length;
   const totalTasks = tasks.length;
   const doneTasks = tasks.filter(t => t.status === "done").length;
@@ -119,7 +121,7 @@ export default function AdminProjects() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
-          <p className="text-sm text-muted-foreground mt-1">{projects.length} projects · R${totalBudget.toLocaleString()} total budget</p>
+          <p className="text-sm text-muted-foreground mt-1">{projects.length} projects · R$ {fmtBRL(totalBudget)} total budget</p>
         </div>
         <Button onClick={() => { setCreateError(""); setShowCreate(true); }} className="gap-2">
           <Plus className="w-4 h-4" /> New Project
@@ -139,7 +141,7 @@ export default function AdminProjects() {
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center gap-2 mb-2"><DollarSign className="w-4 h-4 text-emerald-500" /></div>
-          <p className="text-2xl font-bold">R${totalBudget.toLocaleString()}</p>
+          <p className="text-2xl font-bold">R$ {fmtBRL(totalBudget)}</p>
           <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Total Budget</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
@@ -214,8 +216,8 @@ export default function AdminProjects() {
                   </div>
                   <div className="flex items-center justify-between pt-3 border-t border-border">
                     <div className="text-xs">
-                      <span className="text-muted-foreground">R${budget.used.toLocaleString()}</span>
-                      <span className="text-muted-foreground/50"> / R${budget.budget.toLocaleString()}</span>
+                      <span className="text-muted-foreground">R$ {fmtBRL(budget.used)}</span>
+                      <span className="text-muted-foreground/50"> / R$ {fmtBRL(budget.budget)}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       {daysLeft !== null && (
