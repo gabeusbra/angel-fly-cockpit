@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, setToken } from "@/api/client";
 import { GoogleLogin } from '@react-oauth/google';
 
@@ -9,6 +9,18 @@ export default function Login() {
   const [fullName, setFullName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const googleWrapRef = useRef(null);
+  const [googleWidth, setGoogleWidth] = useState(320);
+
+  useEffect(() => {
+    const updateWidth = () => {
+      const w = googleWrapRef.current?.clientWidth || 320;
+      setGoogleWidth(Math.max(200, Math.floor(w)));
+    };
+    updateWidth();
+    window.addEventListener("resize", updateWidth);
+    return () => window.removeEventListener("resize", updateWidth);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -50,15 +62,18 @@ export default function Login() {
         <div style={{ textAlign: "center", marginBottom: 40 }}>
           <div style={{
             width: 56, height: 56,
-            borderRadius: 16,
-            background: "linear-gradient(135deg, #FF4D35 0%, #FFB74D 100%)",
-            display: "flex", alignItems: "center", justifyContent: "center",
+            borderRadius: 12,
+            background: "rgba(255,255,255,0.9)",
+            border: "1px solid rgba(0,0,0,0.1)",
+            display: "flex", alignItems: "center", justifyContent: "center", padding: 10,
             margin: "0 auto 16px",
-            boxShadow: "0 8px 32px rgba(255, 77, 53, 0.3)",
+            boxShadow: "0 8px 32px rgba(15, 23, 42, 0.25)",
           }}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" />
-            </svg>
+            <img
+              src="/branding/icon.svg"
+              alt="Angel Fly"
+              style={{ width: 36, height: 36, objectFit: "contain" }}
+            />
           </div>
           <h1 style={{
             fontSize: 24, fontWeight: 700, color: "#f8fafc",
@@ -97,29 +112,32 @@ export default function Login() {
             ))}
           </div>
 
-          <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'center' }}>
-            <GoogleLogin
-              onSuccess={async (credentialResponse) => {
-                setError("");
-                setLoading(true);
-                try {
-                  const result = await api.auth.google(credentialResponse.credential);
-                  setToken(result.token);
-                  const returnUrl = localStorage.getItem("af_return_url") || "/";
-                  localStorage.removeItem("af_return_url");
-                  window.location.href = returnUrl;
-                } catch (err) {
-                  setError(err.message || "Google login failed");
-                  setLoading(false);
-                }
-              }}
-              onError={() => {
-                setError("Google login failed");
-              }}
-              theme="filled_black"
-              shape="pill"
-              text="continue_with"
-            />
+          <div ref={googleWrapRef} style={{ marginBottom: 24, width: "100%" }}>
+            <div style={{ width: "100%", overflow: "hidden", borderRadius: 6 }}>
+              <GoogleLogin
+                onSuccess={async (credentialResponse) => {
+                  setError("");
+                  setLoading(true);
+                  try {
+                    const result = await api.auth.google(credentialResponse.credential);
+                    setToken(result.token);
+                    const returnUrl = localStorage.getItem("af_return_url") || "/";
+                    localStorage.removeItem("af_return_url");
+                    window.location.href = returnUrl;
+                  } catch (err) {
+                    setError(err.message || "Google login failed");
+                    setLoading(false);
+                  }
+                }}
+                onError={() => {
+                  setError("Google login failed");
+                }}
+                theme="outline"
+                shape="rectangular"
+                text="continue_with"
+                width={googleWidth}
+              />
+            </div>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", marginBottom: 24 }}>

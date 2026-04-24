@@ -112,7 +112,7 @@ export default function Layout() {
       <div className="md:hidden flex items-center justify-between px-4 h-16 bg-white/85 dark:bg-[#0d111d]/85 border-b border-black/10 dark:border-white/10 sticky top-0 z-30 glass">
         <div className="flex items-center gap-3">
           <img
-            src="/branding/logo-angelfly.png"
+            src="/branding/icon.svg"
             alt="Angel Fly"
             className="w-8 h-8 rounded-md object-cover border border-black/10 dark:border-white/10"
           />
