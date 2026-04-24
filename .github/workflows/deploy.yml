@@ -1,10 +1,8 @@
-name: Deploy to Hostinger VPS
+name: Deploy to Hostinger FTP
 
 on:
   push:
-    branches:
-      - main
-      - master
+    branches: [main]
 
 jobs:
   build-and-deploy:
@@ -15,25 +13,25 @@ jobs:
       DEPLOY_FTP_PASSWORD: ${{ secrets.FTP_PASSWORD || secrets.HOSTINGER_FTP_PASSWORD || secrets.HOSTINGER_PASSWORD || secrets.FTP_PASS || secrets.HOSTINGER_PASS || secrets.PASSWORD }}
 
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: npm ci || npm install
 
-      - name: Build Project
+      - name: Build
         run: npm run build
 
       - name: Validate FTP credentials
         run: |
           if [ -z "$DEPLOY_FTP_SERVER" ] || [ -z "$DEPLOY_FTP_USERNAME" ] || [ -z "$DEPLOY_FTP_PASSWORD" ]; then
-            echo "::error title=Missing FTP secrets::Set FTP_SERVER/FTP_USERNAME/FTP_PASSWORD (or one of the HOSTINGER/FTP alias names used in deploy.yml)."
+            echo "::error title=Missing FTP secrets::Set FTP_SERVER/FTP_USERNAME/FTP_PASSWORD (or one of the alias names in deploy.yml)."
             exit 1
           fi
 
@@ -48,7 +46,6 @@ jobs:
           raw="${raw%"${raw##*[![:space:]]}"}"
           raw="${raw#ftp://}"
           raw="${raw#ftps://}"
-          raw="${raw#sftp://}"
           raw="${raw%%/*}"
           raw="${raw%\"}"
           raw="${raw#\"}"
@@ -77,7 +74,7 @@ jobs:
           echo "server=$host" >> "$GITHUB_OUTPUT"
           echo "port=$port" >> "$GITHUB_OUTPUT"
 
-      - name: Validate FTP DNS
+      - name: Validate FTP DNS (skip when IP is used)
         shell: bash
         run: |
           host="${{ steps.ftp_target.outputs.server }}"
@@ -85,7 +82,7 @@ jobs:
           is_ipv6='^[0-9a-fA-F:]+$'
 
           if [[ "$host" =~ $is_ipv4 ]] || [[ "$host" =~ $is_ipv6 ]]; then
-            echo "Using IP host: $host"
+            echo "Using FTP IP host: $host"
             exit 0
           fi
 
@@ -94,8 +91,8 @@ jobs:
             exit 1
           fi
 
-      - name: Upload to Hostinger via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      - name: Upload frontend dist to FTP root
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ steps.ftp_target.outputs.server }}
           port: ${{ steps.ftp_target.outputs.port }}
@@ -103,10 +100,10 @@ jobs:
           password: ${{ env.DEPLOY_FTP_PASSWORD }}
           local-dir: ./dist/
           server-dir: ./
-          timeout: 100000
+          timeout: 120000
 
-      - name: Upload API (PHP) to Hostinger via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      - name: Upload PHP API to /api
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ steps.ftp_target.outputs.server }}
           port: ${{ steps.ftp_target.outputs.port }}
@@ -114,4 +111,4 @@ jobs:
           password: ${{ env.DEPLOY_FTP_PASSWORD }}
           local-dir: ./public/api/
           server-dir: ./api/
-          timeout: 100000
+          timeout: 120000
