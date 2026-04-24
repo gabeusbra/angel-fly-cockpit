@@ -163,7 +163,7 @@ export default function Sidebar({ user, collapsed, onToggle, mobileMenuOpen, set
             </div>
           )}
 
-          <nav className={`flex-1 px-2.5 overflow-y-auto ${isCollapsedDesktop ? "pt-3 space-y-2" : "pt-2 space-y-2"}`}>
+          <nav className={`flex-1 px-2.5 overflow-y-auto ${isCollapsedDesktop ? "pt-2.5 space-y-1.5" : "pt-2 space-y-2"}`}>
             {items.map((item) => {
               const isActive = location.pathname === item.path;
               const Icon = item.icon;
@@ -174,7 +174,7 @@ export default function Sidebar({ user, collapsed, onToggle, mobileMenuOpen, set
                   key={item.path}
                   to={item.path}
                   className={`group flex items-center gap-3 py-2 rounded-md text-[13px] font-semibold transition-all duration-200 relative ${
-                    isCollapsedDesktop ? "justify-center px-2 py-2" : "px-2.5"
+                    isCollapsedDesktop ? "justify-center px-2 py-1.5" : "px-2.5"
                   } ${
                     isActive
                       ? "text-[#ff5b3a] bg-black/[0.04] dark:bg-white/[0.06]"
@@ -202,7 +202,7 @@ export default function Sidebar({ user, collapsed, onToggle, mobileMenuOpen, set
             })}
           </nav>
 
-          <div className={`p-3 border-t border-black/10 dark:border-white/10 ${isCollapsedDesktop ? "space-y-2.5" : "space-y-2"}`}>
+          <div className={`border-t border-black/10 dark:border-white/10 ${isCollapsedDesktop ? "px-2.5 pt-2 pb-3.5 space-y-2" : "p-3 space-y-2"}`}>
             <div className={`px-1 ${isCollapsedDesktop ? "flex justify-center" : "flex items-center gap-2.5"}`}>
               <div className="w-9 h-9 rounded-md flex items-center justify-center shrink-0 text-[10px] font-semibold text-sidebar-foreground bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10">
                 {getInitials(user?.full_name)}

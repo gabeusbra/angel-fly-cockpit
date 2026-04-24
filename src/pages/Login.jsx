@@ -63,16 +63,16 @@ export default function Login() {
         padding: "0 24px",
       }}>
         {/* Logo / Brand */}
-        <div style={{ textAlign: "center", marginBottom: 28 }}>
+        <div style={{ textAlign: "center", marginBottom: 20 }}>
           <div style={{
-            width: 52, height: 52,
+            width: 88, height: 88,
             display: "flex", alignItems: "center", justifyContent: "center", padding: 10,
             margin: "0 auto",
           }}>
             <img
               src="/branding/icon.svg"
               alt="Angel Fly"
-              style={{ width: 40, height: 40, objectFit: "contain" }}
+              style={{ width: 72, height: 72, objectFit: "contain" }}
             />
           </div>
         </div>
