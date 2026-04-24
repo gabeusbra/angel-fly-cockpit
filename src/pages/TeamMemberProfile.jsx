@@ -1,14 +1,14 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { api } from "@/api/client";
-import { ArrowLeft, CheckCircle2, AlertTriangle, Flame, TrendingUp, ListChecks, Calendar, Settings, Upload } from "lucide-react";
+import { ArrowLeft, CheckCircle2, AlertTriangle, Flame, TrendingUp, ListChecks, Calendar, Settings, Upload, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { getTeamMemberById, updateTeamMember } from "@/lib/team-store";
+import { getTeamMemberById, updateTeamMember, deleteTeamMember } from "@/lib/team-store";
 import StatusBadge from "../components/StatusBadge";
 
 const STATUS_COLORS = { backlog: "#94a3b8", assigned: "#60a5fa", in_progress: "#fbbf24", review: "#a78bfa", client_approval: "#fb923c", done: "#34d399" };
@@ -28,6 +28,7 @@ export default function TeamMemberProfile() {
   const [showSettings, setShowSettings] = useState(false);
   const [settingsForm, setSettingsForm] = useState({});
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -56,6 +57,12 @@ export default function TeamMemberProfile() {
     const updated = await getTeamMemberById(id);
     setMember(updated);
     setShowSettings(false);
+  };
+
+  const handleDeleteMember = async () => {
+    await deleteTeamMember(id);
+    setConfirmDelete(false);
+    navigate(backPath);
   };
 
   // Match tasks to this member
@@ -147,6 +154,9 @@ export default function TeamMemberProfile() {
               {member.email && <p className="text-xs text-muted-foreground mt-0.5">{member.email}</p>}
             </div>
             <Button variant="ghost" size="sm" onClick={openSettings} className="shrink-0 gap-1.5"><Settings className="w-4 h-4" /> Settings</Button>
+            <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(true)} className="shrink-0 gap-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20">
+              <Trash2 className="w-4 h-4" /> Remove
+            </Button>
             <div className="flex items-center gap-4 text-center">
               <div>
                 <p className={`text-2xl font-bold ${active.length >= capacity ? "text-red-600" : "text-foreground"}`}>{active.length}</p>
@@ -458,6 +468,17 @@ export default function TeamMemberProfile() {
               <Button variant="outline" onClick={() => setShowSettings(false)}>Cancel</Button>
               <Button onClick={handleSaveSettings}>Save</Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Remove Team Member</DialogTitle></DialogHeader>
+          <p className="text-sm">Remove <strong>{member?.name}</strong> from Team?</p>
+          <div className="flex gap-2 justify-end mt-4">
+            <Button variant="outline" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteMember}>Remove</Button>
           </div>
         </DialogContent>
       </Dialog>

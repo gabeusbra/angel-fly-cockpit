@@ -117,8 +117,8 @@ export default function Sidebar({ user, collapsed, onToggle, mobileMenuOpen, set
 
       <aside
         className={`fixed top-0 left-0 h-screen z-50 flex flex-col transition-all duration-300 ${
-          collapsed ? "md:w-[72px]" : "md:w-[264px]"
-        } w-[264px] ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
+          collapsed ? "md:w-[80px]" : "md:w-[272px]"
+        } w-[272px] ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
       >
         <div className="h-full m-2 rounded-xl bg-sidebar/80 dark:bg-sidebar/85 border border-black/10 dark:border-white/10 glass shadow-xl shadow-black/5 overflow-hidden">
           <div className="flex items-center gap-3 px-4 h-16 shrink-0 border-b border-black/10 dark:border-white/10">

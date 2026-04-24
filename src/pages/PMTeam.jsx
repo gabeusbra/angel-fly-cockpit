@@ -248,7 +248,21 @@ export default function PMTeam() {
                     <p className="text-xs text-muted-foreground truncate">{m.specialty || m.email || "No specialty"}</p>
                     {m.hourly_rate && <p className="text-[10px] text-muted-foreground">R${m.hourly_rate}/hr</p>}
                   </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setConfirmDelete(m);
+                      }}
+                      className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                      title="Remove team member"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                 </div>
 
                 {/* Currently working on */}

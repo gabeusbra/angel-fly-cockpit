@@ -135,7 +135,7 @@ export default function Layout() {
         mobileMenuOpen={mobileMenuOpen}
         setMobileMenuOpen={setMobileMenuOpen}
       />
-      <main className={`transition-all duration-300 min-h-screen flex-1 ${collapsed ? "md:ml-[68px]" : "md:ml-[260px]"} w-full md:w-auto`}>
+      <main className={`transition-all duration-300 min-h-screen flex-1 min-w-0 ${collapsed ? "md:ml-[80px]" : "md:ml-[272px]"}`}>
         <div className="p-4 sm:p-6 lg:p-8">
           <Outlet context={{ user }} />
         </div>

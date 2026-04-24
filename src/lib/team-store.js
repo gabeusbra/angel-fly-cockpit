@@ -99,8 +99,14 @@ export async function deleteTeamMember(id) {
     await api.entities.Ticket.delete(id);
     await getTeamMembers();
   } catch {
-    const members = getLocalMembers().filter(m => String(m.id) !== String(id));
-    saveLocal(members);
+    try {
+      // Fallback for environments where delete is blocked by permissions.
+      await api.entities.Ticket.update(id, { status: "inactive" });
+      await getTeamMembers();
+    } catch {
+      const members = getLocalMembers().filter(m => String(m.id) !== String(id));
+      saveLocal(members);
+    }
   }
 }
 
