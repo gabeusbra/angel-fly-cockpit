@@ -117,7 +117,7 @@ export default function Sidebar({ user, collapsed, onToggle, mobileMenuOpen, set
 
       <aside
         className={`fixed top-0 left-0 h-screen z-50 flex flex-col transition-all duration-300 ${
-          collapsed ? "md:w-[80px]" : "md:w-[272px]"
+          collapsed ? "md:w-[96px]" : "md:w-[272px]"
         } w-[272px] ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
       >
         <div className="h-full m-2 rounded-xl bg-sidebar/80 dark:bg-sidebar/85 border border-black/10 dark:border-white/10 glass shadow-xl shadow-black/5 overflow-hidden">
@@ -151,7 +151,9 @@ export default function Sidebar({ user, collapsed, onToggle, mobileMenuOpen, set
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`group flex items-center gap-3 px-3 py-2 rounded-md text-[13px] font-semibold transition-all duration-200 relative ${
+                  className={`group flex items-center gap-3 py-2 rounded-md text-[13px] font-semibold transition-all duration-200 relative ${
+                    collapsed && !mobileMenuOpen ? "justify-center px-2" : "px-3"
+                  } ${
                     isActive
                       ? "text-white shadow-md"
                       : "text-sidebar-foreground hover:bg-sidebar-accent hover:translate-x-[2px]"
@@ -171,7 +173,7 @@ export default function Sidebar({ user, collapsed, onToggle, mobileMenuOpen, set
                     <Icon className={`w-[16px] h-[16px] transition-colors ${isActive ? "text-white" : "text-muted-foreground group-hover:text-white"}`} />
                   </span>
                   {(!collapsed || mobileMenuOpen) && <span className="truncate flex-1">{item.label}</span>}
-                  {badgeCount > 0 && (
+                  {badgeCount > 0 && (!collapsed || mobileMenuOpen) && (
                     <span className={`${collapsed ? "absolute top-1 right-1" : ""} min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full text-[10px] font-bold text-white bg-red-500`}>
                       {badgeCount > 9 ? "9+" : badgeCount}
                     </span>
@@ -210,7 +212,7 @@ export default function Sidebar({ user, collapsed, onToggle, mobileMenuOpen, set
               </button>
               <button
                 onClick={onToggle}
-                className="p-1.5 rounded-md text-muted-foreground transition-colors hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10"
+                className="hidden md:inline-flex p-1.5 rounded-md text-muted-foreground transition-colors hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10"
               >
                 {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
               </button>
