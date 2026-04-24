@@ -1,5 +1,5 @@
 {
-  "name": "Jarvis v16 — 23-Abr 17h50",
+  "name": "Jarvis v17 — 23-Abr 18h05",
   "nodes": [
     {
       "parameters": {
@@ -493,7 +493,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ (() => {\n  const current = $json || {};\n  const source = $('Check Personality Command').isExecuted ? ($('Check Personality Command').first().json || {}) : {};\n  const parsed = $('Parse AI Response').isExecuted ? ($('Parse AI Response').first().json || {}) : {};\n\n  const fromTask = $('Create Task in Cockpit').isExecuted;\n  const fromTicket = $('Create Ticket in Cockpit').isExecuted;\n  const fromProject = $('Create Project in Cockpit').isExecuted;\n  const fromPaymentIn = $('Create Payment Incoming').isExecuted;\n  const fromPaymentOut = $('Create Payment Outgoing').isExecuted;\n  const fromQuote = $('Create Quote in Cockpit').isExecuted;\n\n  let intent = current.intent || parsed.intent || 'none';\n  if (intent === 'none') {\n    if (fromQuote) intent = 'create_quote';\n    else if (fromTicket) intent = 'create_ticket';\n    else if (fromTask) intent = 'create_task';\n    else if (fromProject) intent = 'create_project';\n    else if (fromPaymentIn) intent = 'create_payment_incoming';\n    else if (fromPaymentOut) intent = 'create_payment_outgoing';\n  }\n\n  const number = current.waChatId || current.chatId || parsed.waChatId || parsed.chatId || source.waChatId || source.chatId;\n  let text = current.reply || parsed.reply || 'Entendido!';\n\n  const hasError = !!current.error;\n  const errMsg = (current.error && (current.error.message || String(current.error))) || current.message || '';\n  const createdId = current.id || (current.data && current.data.id);\n  const projectName = current.project_name || parsed.project_name || parsed?.entity?.project_name || 'selecionado';\n  const clientName = current.client_name || parsed.client_name || parsed?.entity?.client_name || 'cliente';\n\n  if (hasError) {\n    text = '⚠️ *Jarvis:* ação não pôde ser concluída.\\n\\nErro: ' + (errMsg || 'Falha na API do Cockpit.');\n  } else if (createdId) {\n    if (intent === 'create_task') text = '✅ Tarefa criada com sucesso no projeto \"' + projectName + '\".';\n    else if (intent === 'create_ticket') text = '🎫 Ticket registrado com sucesso para ' + clientName + '.';\n    else if (intent === 'create_project') text = '🚀 Projeto criado com sucesso: \"' + (current.name || projectName || 'novo projeto') + '\".';\n    else if (intent === 'create_quote') text = '🧾 Orçamento criado com sucesso para ' + clientName + '.';\n    else if (intent === 'create_payment_incoming') text = '💰 Pagamento de entrada registrado com sucesso.';\n    else if (intent === 'create_payment_outgoing') text = '💸 Pagamento de saída registrado com sucesso.';\n    else text = '✅ Ação concluída com sucesso no Cockpit.';\n  }\n\n  return { number, text };\n})() }}",
+        "jsonBody": "={{ (() => {\n  const current = $json || {};\n  const source = $('Check Personality Command').isExecuted ? ($('Check Personality Command').first().json || {}) : {};\n  const parsed = $('Parse AI Response').isExecuted ? ($('Parse AI Response').first().json || {}) : {};\n\n  const fromTask = $('Create Task in Cockpit').isExecuted;\n  const fromTicket = $('Create Ticket in Cockpit').isExecuted;\n  const fromProject = $('Create Project in Cockpit').isExecuted;\n  const fromPaymentIn = $('Create Payment Incoming').isExecuted;\n  const fromPaymentOut = $('Create Payment Outgoing').isExecuted;\n  const fromQuote = $('Create Quote in Cockpit').isExecuted;\n  const fromReport = $('Build Cockpit Report').isExecuted;\n\n  let intent = current.intent || parsed.intent || 'none';\n  if (intent === 'none') {\n    if (fromQuote) intent = 'create_quote';\n    else if (fromTicket) intent = 'create_ticket';\n    else if (fromTask) intent = 'create_task';\n    else if (fromProject) intent = 'create_project';\n    else if (fromPaymentIn) intent = 'create_payment_incoming';\n    else if (fromPaymentOut) intent = 'create_payment_outgoing';\n  }\n\n  const number = current.waChatId || current.chatId || parsed.waChatId || parsed.chatId || source.waChatId || source.chatId;\n  let text = fromReport ? (current.reply || 'Relatório não disponível.') : (parsed.reply || 'Entendido!');\n\n  const hasError = !!current.error;\n  const errMsg = (current.error && (current.error.message || String(current.error))) || current.message || '';\n  const createdId = current.id || (current.data && current.data.id);\n  const projectName = current.project_name || parsed.project_name || parsed?.entity?.project_name || 'selecionado';\n  const clientName = current.client_name || parsed.client_name || parsed?.entity?.client_name || 'cliente';\n\n  if (hasError) {\n    text = '⚠️ *Jarvis:* ação não pôde ser concluída.\\n\\nErro: ' + (errMsg || 'Falha na API do Cockpit.');\n  } else if (createdId) {\n    if (intent === 'create_task') text = '✅ Tarefa criada com sucesso no projeto \"' + projectName + '\".';\n    else if (intent === 'create_ticket') text = '🎫 Ticket registrado com sucesso para ' + clientName + '.';\n    else if (intent === 'create_project') text = '🚀 Projeto criado com sucesso: \"' + (current.name || projectName || 'novo projeto') + '\".';\n    else if (intent === 'create_quote') text = '🧾 Orçamento criado com sucesso para ' + clientName + '.';\n    else if (intent === 'create_payment_incoming') text = '💰 Pagamento de entrada registrado com sucesso.';\n    else if (intent === 'create_payment_outgoing') text = '💸 Pagamento de saída registrado com sucesso.';\n    else text = '✅ Ação concluída com sucesso no Cockpit.';\n  }\n\n  return { number, text };\n})() }}",
         "options": {}
       },
       "id": "node-reply",
@@ -1026,7 +1026,7 @@
     },
     {
       "parameters": {
-        "content": "## ✅ VERSÃO v16 — 23/Abr 17:50 BRT\n\nSe você está vendo esta nota, o workflow foi importado corretamente.\n\n**Correções nesta versão:**\n- Ticket: body ultra-simples (sem IIFE)\n- Task: assignee + deadline extraídos\n- Fetch Users: nó novo\n- Report: fluxo corrigido",
+        "content": "## ✅ VERSÃO v17 — 23/Abr 18:05 BRT\n\nFixes:\n- Duplicate msgs: webhook responde 200 imediato\n- Ticket vs Task: detecção simplificada\n- Report: reply do Build Report priorizado\n- Deadline + Assignee: regex melhorada",
         "width": 400,
         "height": 200
       },
@@ -1057,6 +1057,11 @@
         [
           {
             "node": "Filter: Group & @Jarvis?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respond to Uzapi",
             "type": "main",
             "index": 0
           }
@@ -1255,13 +1260,7 @@
     },
     "Reply on WhatsApp (Uzapi)": {
       "main": [
-        [
-          {
-            "node": "Respond to Uzapi",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Has Action Intent?": {
