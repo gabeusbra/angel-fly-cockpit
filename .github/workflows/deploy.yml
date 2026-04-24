@@ -11,6 +11,7 @@ jobs:
       DEPLOY_FTP_SERVER: ${{ secrets.FTP_SERVER || secrets.HOSTINGER_FTP_SERVER || secrets.HOSTINGER_SERVER || secrets.FTP_HOST || secrets.HOSTINGER_HOST || secrets.SERVER }}
       DEPLOY_FTP_USERNAME: ${{ secrets.FTP_USERNAME || secrets.HOSTINGER_FTP_USERNAME || secrets.HOSTINGER_USERNAME || secrets.FTP_USER || secrets.HOSTINGER_USER || secrets.USERNAME }}
       DEPLOY_FTP_PASSWORD: ${{ secrets.FTP_PASSWORD || secrets.HOSTINGER_FTP_PASSWORD || secrets.HOSTINGER_PASSWORD || secrets.FTP_PASS || secrets.HOSTINGER_PASS || secrets.PASSWORD }}
+      DEPLOY_FTP_TARGET_DIR: ${{ secrets.FTP_TARGET_DIR || secrets.HOSTINGER_TARGET_DIR || secrets.FTP_SERVER_DIR || secrets.DEPLOY_PATH || 'public_html' }}
 
     steps:
       - name: Checkout code
@@ -74,6 +75,38 @@ jobs:
           echo "server=$host" >> "$GITHUB_OUTPUT"
           echo "port=$port" >> "$GITHUB_OUTPUT"
 
+      - name: Normalize FTP target directory
+        id: ftp_dir
+        shell: bash
+        run: |
+          raw="$DEPLOY_FTP_TARGET_DIR"
+          raw="${raw//$'\r'/}"
+          raw="${raw//$'\n'/}"
+          raw="${raw#"${raw%%[![:space:]]*}"}"
+          raw="${raw%"${raw##*[![:space:]]}"}"
+          raw="${raw%\"}"
+          raw="${raw#\"}"
+          raw="${raw%\'}"
+          raw="${raw#\'}"
+
+          [ -z "$raw" ] && raw="public_html"
+
+          if [ "$raw" = "." ] || [ "$raw" = "./" ] || [ "$raw" = "/" ]; then
+            dist_dir="./"
+            api_dir="./api/"
+          else
+            raw="${raw#./}"
+            raw="${raw#/}"
+            raw="${raw%/}"
+            dist_dir="./$raw/"
+            api_dir="./$raw/api/"
+          fi
+
+          echo "dist_dir=$dist_dir" >> "$GITHUB_OUTPUT"
+          echo "api_dir=$api_dir" >> "$GITHUB_OUTPUT"
+          echo "Deploy target dist dir: $dist_dir"
+          echo "Deploy target api dir: $api_dir"
+
       - name: Validate FTP DNS (skip when IP is used)
         shell: bash
         run: |
@@ -99,7 +132,7 @@ jobs:
           username: ${{ env.DEPLOY_FTP_USERNAME }}
           password: ${{ env.DEPLOY_FTP_PASSWORD }}
           local-dir: ./dist/
-          server-dir: ./
+          server-dir: ${{ steps.ftp_dir.outputs.dist_dir }}
           timeout: 120000
 
       - name: Upload PHP API to /api
@@ -110,5 +143,5 @@ jobs:
           username: ${{ env.DEPLOY_FTP_USERNAME }}
           password: ${{ env.DEPLOY_FTP_PASSWORD }}
           local-dir: ./public/api/
-          server-dir: ./api/
+          server-dir: ${{ steps.ftp_dir.outputs.api_dir }}
           timeout: 120000
