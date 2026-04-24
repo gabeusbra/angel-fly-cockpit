@@ -1,5 +1,5 @@
 {
-  "name": "Jarvis v21 — 24-Abr 10h30",
+  "name": "Jarvis v22 — 24-Abr 10h45",
   "nodes": [
     {
       "parameters": {
@@ -477,7 +477,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ (() => {\n  const current = $json || {};\n  const parsed = $('Parse AI Response').isExecuted ? ($('Parse AI Response').first().json || {}) : {};\n  const source = $('Check Personality Command').isExecuted ? ($('Check Personality Command').first().json || {}) : {};\n\n  const fromTask = $('Create Task in Cockpit').isExecuted;\n  const fromTicket = $('Create Ticket in Cockpit').isExecuted;\n  const fromProject = $('Create Project in Cockpit').isExecuted;\n  const fromQuote = $('Create Quote in Cockpit').isExecuted;\n  const fromReport = $('Build Cockpit Report').isExecuted;\n  const fromPersonality = $('Adjust Personality').isExecuted;\n\n  const number = current.waChatId || current.chatId || parsed.waChatId || parsed.chatId || source.waChatId || source.chatId;\n  const aiReply = parsed.reply || '';\n  const hasError = !!current.error;\n  const createdId = current.id || (current.data && current.data.id);\n  const entity = parsed.entity || {};\n  const projectName = current.project_name || entity.project_name || '';\n  const clientName = current.client_name || entity.client_name || '';\n  const assignee = current.assigned_to_name || entity.assigned_to_name || '';\n  const deadline = current.deadline || entity.deadline || '';\n  const debug = parsed._debug || '';\n\n  let text = '';\n\n  if (fromReport) {\n    text = current.reply || 'Nenhum item encontrado para esse filtro.';\n  } else if (fromPersonality) {\n    text = current.reply || aiReply || 'Personalidade ajustada!';\n  } else if (hasError) {\n    const errMsg = (current.error && current.error.message) || current.message || 'Falha na API.';\n    text = '⚠️ *Jarvis:* Ops, tive um problema.\\n_Erro: ' + errMsg + '_';\n  } else if (createdId && fromTicket) {\n    text = '🎫 *Ticket registrado!*';\n    if (clientName) text += ' para _' + clientName + '_';\n    if (projectName) text += ' no projeto _' + projectName + '_';\n    text += '\\n\\nJá tá no radar! 🔍';\n  } else if (createdId && fromTask) {\n    text = '✅ *Tarefa criada!*';\n    if (projectName) text += ' no projeto _' + projectName + '_';\n    if (assignee) text += '\\n👤 Atribuída para: *' + assignee + '*';\n    if (deadline) text += '\\n📅 Prazo: *' + deadline + '*';\n    text += '\\n\\nTudo certo, bora pra cima! 💪';\n  } else if (createdId && fromProject) {\n    text = '🚀 *Projeto criado:* _' + (current.name || projectName) + '_\\n\\nBora! 🎯';\n  } else if (createdId && fromQuote) {\n    text = '🧾 *Orçamento criado* para _' + clientName + '_\\nPronto pra revisão! 📋';\n  } else {\n    // Conversational reply - use AI response, filter out \"Processando...\"\n    const cleanReply = (aiReply && !aiReply.includes('Processando') && !aiReply.includes('Consultando') && aiReply.length > 5)\n      ? aiReply : 'Entendido! 👍';\n    text = cleanReply;\n  }\n\n  // Temporary debug (remove later)\n  if (debug) text += '\\n\\n_[debug: ' + debug + ']_';\n\n  return JSON.stringify({ number, text });\n})() }}",
+        "jsonBody": "={{ (() => {\n  const current = $json || {};\n  const parsed = $('Intent Override').isExecuted ? ($('Intent Override').first().json || {}) : ($('Parse AI Response').isExecuted ? ($('Parse AI Response').first().json || {}) : {});\n  const source = $('Check Personality Command').isExecuted ? ($('Check Personality Command').first().json || {}) : {};\n\n  const fromTask = $('Create Task in Cockpit').isExecuted;\n  const fromTicket = $('Create Ticket in Cockpit').isExecuted;\n  const fromProject = $('Create Project in Cockpit').isExecuted;\n  const fromQuote = $('Create Quote in Cockpit').isExecuted;\n  const fromReport = $('Build Cockpit Report').isExecuted;\n  const fromPersonality = $('Adjust Personality').isExecuted;\n\n  const number = current.waChatId || current.chatId || parsed.waChatId || parsed.chatId || source.waChatId || source.chatId;\n  const entity = parsed.entity || {};\n  const projectName = current.project_name || entity.project_name || '';\n  const clientName = current.client_name || entity.client_name || '';\n  const assignee = current.assigned_to_name || entity.assigned_to_name || '';\n  const deadline = current.deadline || entity.deadline || '';\n  const debug = parsed._debug || '';\n\n  let text = '';\n\n  if (fromReport) {\n    text = current.reply || 'Nenhum item encontrado.';\n  } else if (fromPersonality) {\n    text = current.reply || 'Personalidade ajustada!';\n  } else if (current.error) {\n    text = '⚠️ *Jarvis:* Ops! ' + ((current.error && current.error.message) || current.message || 'Falha na API.');\n  } else if (current.id && fromTicket) {\n    text = '🎫 *Ticket #' + current.id + ' criado!*';\n    if (clientName) text += '\\n📋 Cliente: _' + clientName + '_';\n    if (projectName) text += '\\n📂 Projeto: _' + projectName + '_';\n  } else if (current.id && fromTask) {\n    text = '✅ *Tarefa criada com sucesso!*';\n    if (projectName) text += '\\n📂 Projeto: _' + projectName + '_';\n    if (assignee) text += '\\n👤 Para: *' + assignee + '*';\n    if (deadline) text += '\\n📅 Prazo: *' + deadline + '*';\n  } else if (current.id && fromProject) {\n    text = '🚀 *Projeto criado:* _' + (current.name || projectName) + '_';\n  } else if (current.id && fromQuote) {\n    text = '🧾 *Orçamento criado* para _' + clientName + '_';\n  } else {\n    text = parsed.reply || 'Entendido! 👍';\n  }\n\n  if (debug) text += '\\n\\n_[' + debug + ']_';\n\n  return JSON.stringify({ number, text });\n})() }}",
         "options": {}
       },
       "id": "node-reply",
@@ -995,7 +995,7 @@
     },
     {
       "parameters": {
-        "content": "## v21 — 24/Abr 10:30 BRT\n\nFixes: assignee no-number, default user, debug, report, ticket priority",
+        "content": "## v22 — 24/Abr 10:45 BRT\n\nNEW: Intent Override node (keyword-based)\nBypasses Parse AI intent bugs entirely",
         "width": 400,
         "height": 200
       },
@@ -1006,6 +1006,20 @@
       "position": [
         60,
         60
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Intent Override: simple keyword check that ALWAYS wins\nconst item = $input.first().json;\nconst msg = (item.currentMessage || item.originalMessage || '').toLowerCase()\n  .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\n\nlet intent = item.intent || 'none';\n\n// --- REPORT: must be checked FIRST ---\nconst reportWords = /(quais|qual|listar|lista|resumo|relatorio|status|ativos|ativas|abertos|abertas|quantas|quantos|temos|mande|mostre|mostra|pendentes)/.test(msg);\nconst reportTargets = /(task|tasks|tarefa|tarefas|ticket|tickets|chamado|chamados|cockpit)/.test(msg);\nconst hasCreateVerb = /(^|\\s)(cria|crie|criar|gera|gerar|adiciona|adicione|registra|registre|abre|abrir|novo|nova)($|\\s)/.test(msg);\n\nif (reportWords && reportTargets && !hasCreateVerb) {\n  intent = 'fetch_report';\n}\n\n// --- TICKET: \"ticket\" or \"chamado\" WITH a create verb ---\nif ((msg.includes('ticket') || msg.includes('chamado')) && hasCreateVerb) {\n  intent = 'create_ticket';\n}\n\n// --- TASK: only if explicitly creating a task, NOT listing ---\nif ((msg.includes('tarefa') || (msg.includes('task') && !msg.includes('ticket'))) && hasCreateVerb && !reportWords) {\n  intent = 'create_task';\n}\n\n// Build reply based on OpenAI's original reply\nlet reply = item.reply || '';\nif (reply.includes('Processando') || reply.includes('Consultando') || reply.length < 5) {\n  if (intent === 'fetch_report') reply = '';\n  else if (intent === 'create_ticket') reply = '';\n  else if (intent === 'create_task') reply = '';\n  else reply = 'Entendido!';\n}\n\nreturn [{ json: {\n  ...item,\n  intent,\n  reply,\n  _debug: 'override: intent=' + intent + ' | report=' + (reportWords && reportTargets && !hasCreateVerb) + ' | ticket=' + ((msg.includes('ticket') || msg.includes('chamado')) && hasCreateVerb) + ' | task=' + ((msg.includes('tarefa') || msg.includes('task')) && hasCreateVerb && !reportWords) + ' | msg=' + msg.substring(0, 60)\n}}];\n",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "node-intent-override",
+      "name": "Intent Override",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        560
       ]
     }
   ],
@@ -1065,7 +1079,7 @@
       "main": [
         [
           {
-            "node": "Has Action Intent?",
+            "node": "Intent Override",
             "type": "main",
             "index": 0
           }
@@ -1399,6 +1413,17 @@
         [
           {
             "node": "Build Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intent Override": {
+      "main": [
+        [
+          {
+            "node": "Has Action Intent?",
             "type": "main",
             "index": 0
           }
