@@ -1,5 +1,5 @@
 {
-  "name": "Jarvis v18.4 — 23-Abr 22h58",
+  "name": "Jarvis v19 — 23-Abr 23h25",
   "nodes": [
     {
       "parameters": {
@@ -995,7 +995,7 @@
     },
     {
       "parameters": {
-        "content": "## v18.4 — 23/Abr 22:58 BRT\n\nDedup por texto+chatId com janela 15s",
+        "content": "## v19 — 23/Abr 23:25 BRT\n\nFIX RAIZ: Fetch Projects/Users agora serial\n(era paralelo, causava Build Context 2x = tudo duplicado)",
         "width": 400,
         "height": 200
       },
@@ -1311,7 +1311,7 @@
       "main": [
         [
           {
-            "node": "Build Context",
+            "node": "Fetch Users",
             "type": "main",
             "index": 0
           }
@@ -1323,11 +1323,6 @@
         [
           {
             "node": "Fetch Projects",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Fetch Users",
             "type": "main",
             "index": 0
           }
