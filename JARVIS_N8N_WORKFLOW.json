@@ -1,11 +1,10 @@
 {
-  "name": "Jarvis v18 — 23-Abr 22h00",
+  "name": "Jarvis v18.2 — 23-Abr 22h45",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
         "path": "jarvis-webhook",
-        "responseMode": "onReceived",
         "options": {}
       },
       "id": "node-webhook",
@@ -78,21 +77,6 @@
       "position": [
         580,
         300
-      ]
-    },
-    {
-      "parameters": {
-        "respondWith": "text",
-        "responseBody": "ok",
-        "options": {}
-      },
-      "id": "node-ignore",
-      "name": "Ignore (Wrong Group or No Mention)",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [
-        840,
-        500
       ]
     },
     {
@@ -1011,7 +995,7 @@
     },
     {
       "parameters": {
-        "content": "## v18 — 23/Abr 22:00 BRT\n\nFixes: dedup, ticket detect, report detect, deadline override, webhook 200",
+        "content": "## v18.2 — 23/Abr 22:45 BRT\n\nWebhook limpo, sem Respond node",
         "width": 400,
         "height": 200
       },
