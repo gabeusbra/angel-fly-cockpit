@@ -145,3 +145,28 @@ jobs:
           local-dir: ./public/api/
           server-dir: ${{ steps.ftp_dir.outputs.api_dir }}
           timeout: 120000
+
+      # Fallback to root in case FTP user is already chrooted at public_html.
+      - name: Fallback upload frontend dist to FTP root
+        if: ${{ steps.ftp_dir.outputs.dist_dir != './' }}
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ steps.ftp_target.outputs.server }}
+          port: ${{ steps.ftp_target.outputs.port }}
+          username: ${{ env.DEPLOY_FTP_USERNAME }}
+          password: ${{ env.DEPLOY_FTP_PASSWORD }}
+          local-dir: ./dist/
+          server-dir: ./
+          timeout: 120000
+
+      - name: Fallback upload PHP API to root /api
+        if: ${{ steps.ftp_dir.outputs.api_dir != './api/' }}
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ steps.ftp_target.outputs.server }}
+          port: ${{ steps.ftp_target.outputs.port }}
+          username: ${{ env.DEPLOY_FTP_USERNAME }}
+          password: ${{ env.DEPLOY_FTP_PASSWORD }}
+          local-dir: ./public/api/
+          server-dir: ./api/
+          timeout: 120000
