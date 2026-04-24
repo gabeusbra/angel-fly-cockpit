@@ -118,7 +118,7 @@ export default function Sidebar({ user, collapsed, onToggle, mobileMenuOpen, set
 
       <aside
         className={`fixed top-0 left-0 h-screen z-50 flex flex-col transition-all duration-300 ${
-          collapsed ? "md:w-[96px]" : "md:w-[272px]"
+          collapsed ? "md:w-[112px]" : "md:w-[272px]"
         } w-[272px] ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
       >
         <div className="h-full m-2 rounded-xl bg-sidebar/80 dark:bg-sidebar/85 border border-black/10 dark:border-white/10 glass shadow-xl shadow-black/5 overflow-hidden">
@@ -126,7 +126,7 @@ export default function Sidebar({ user, collapsed, onToggle, mobileMenuOpen, set
             <img
               src="/branding/icon.svg"
               alt="Angel Fly"
-              className="w-9 h-9 rounded-md shrink-0 object-cover border border-black/10 dark:border-white/10"
+              className="w-9 h-9 shrink-0 object-contain"
             />
             {(!collapsed || mobileMenuOpen) && (
               <div className="overflow-hidden flex-1">
@@ -142,7 +142,7 @@ export default function Sidebar({ user, collapsed, onToggle, mobileMenuOpen, set
             </div>
           )}
 
-          <nav className="flex-1 px-3 space-y-2 overflow-y-auto">
+          <nav className={`flex-1 px-2.5 overflow-y-auto ${isCollapsedDesktop ? "pt-4 space-y-2.5" : "pt-2 space-y-2"}`}>
             {items.map((item) => {
               const isActive = location.pathname === item.path;
               const Icon = item.icon;
@@ -153,7 +153,7 @@ export default function Sidebar({ user, collapsed, onToggle, mobileMenuOpen, set
                   key={item.path}
                   to={item.path}
                   className={`group flex items-center gap-3 py-2 rounded-md text-[13px] font-semibold transition-all duration-200 relative ${
-                    isCollapsedDesktop ? "justify-center px-2" : "px-3"
+                    isCollapsedDesktop ? "justify-center px-2 py-2.5" : "px-2.5"
                   } ${
                     isActive
                       ? "text-white shadow-md"
@@ -166,14 +166,14 @@ export default function Sidebar({ user, collapsed, onToggle, mobileMenuOpen, set
                 >
                   <span
                     className={`rounded-md flex items-center justify-center transition-all duration-200 ${
-                      isCollapsedDesktop ? "w-8 h-8" : "w-7 h-7"
+                      isCollapsedDesktop ? "w-10 h-10" : "w-8 h-8"
                     } ${
                       isActive
                         ? "bg-white/20"
                         : "bg-black/5 dark:bg-white/10 group-hover:rotate-[8deg] group-hover:scale-105 group-hover:bg-gradient-to-br group-hover:from-[#ff3932] group-hover:to-[#ff8348]"
                     }`}
                   >
-                    <Icon className={`w-[16px] h-[16px] transition-colors ${isActive ? "text-white" : "text-muted-foreground group-hover:text-white"}`} />
+                    <Icon className={`w-[18px] h-[18px] transition-colors ${isActive ? "text-white" : "text-muted-foreground group-hover:text-white"}`} />
                   </span>
                   {!isCollapsedDesktop && <span className="truncate flex-1">{item.label}</span>}
                   {badgeCount > 0 && !isCollapsedDesktop && (
@@ -186,9 +186,9 @@ export default function Sidebar({ user, collapsed, onToggle, mobileMenuOpen, set
             })}
           </nav>
 
-          <div className={`p-3 border-t border-black/10 dark:border-white/10 ${isCollapsedDesktop ? "space-y-3" : "space-y-2"}`}>
+          <div className={`p-3 border-t border-black/10 dark:border-white/10 ${isCollapsedDesktop ? "space-y-3.5" : "space-y-2"}`}>
             <div className={`px-1 ${isCollapsedDesktop ? "flex justify-center" : "flex items-center gap-2.5"}`}>
-              <div className="w-8 h-8 rounded-md flex items-center justify-center shrink-0 text-[10px] font-semibold text-sidebar-foreground bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10">
+              <div className="w-9 h-9 rounded-md flex items-center justify-center shrink-0 text-[10px] font-semibold text-sidebar-foreground bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10">
                 {getInitials(user?.full_name)}
               </div>
               {!isCollapsedDesktop && (
@@ -198,34 +198,34 @@ export default function Sidebar({ user, collapsed, onToggle, mobileMenuOpen, set
                 </div>
               )}
             </div>
-            <div className={`flex ${isCollapsedDesktop ? "justify-center gap-1.5" : "items-center gap-1"}`}>
+            <div className={`flex ${isCollapsedDesktop ? "flex-col items-center gap-2" : "items-center gap-1"}`}>
               <button
                 onClick={() => api.auth.logout()}
                 className={`rounded-md text-xs font-medium transition-colors text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 ${
-                  isCollapsedDesktop ? "h-8 w-8 inline-flex items-center justify-center" : "flex items-center gap-2 px-2 py-1.5 flex-1"
+                  isCollapsedDesktop ? "h-10 w-10 inline-flex items-center justify-center" : "flex items-center gap-2 px-2 py-1.5 flex-1"
                 }`}
                 title="Sign out"
               >
-                <LogOut className="w-3.5 h-3.5" />
+                <LogOut className={`${isCollapsedDesktop ? "w-[18px] h-[18px]" : "w-3.5 h-3.5"}`} />
                 {!isCollapsedDesktop && "Sign out"}
               </button>
               <button
                 onClick={() => setDark((d) => !d)}
                 className={`rounded-md text-muted-foreground transition-colors hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 ${
-                  isCollapsedDesktop ? "h-8 w-8 inline-flex items-center justify-center p-0" : "p-1.5"
+                  isCollapsedDesktop ? "h-10 w-10 inline-flex items-center justify-center p-0" : "p-1.5"
                 }`}
                 title={dark ? "Light mode" : "Dark mode"}
               >
-                {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                {dark ? <Sun className={`${isCollapsedDesktop ? "w-[18px] h-[18px]" : "w-4 h-4"}`} /> : <Moon className={`${isCollapsedDesktop ? "w-[18px] h-[18px]" : "w-4 h-4"}`} />}
               </button>
               <button
                 onClick={onToggle}
                 className={`hidden md:inline-flex rounded-md text-muted-foreground transition-colors hover:text-foreground hover:bg-black/5 dark:hover:bg-white/10 ${
-                  isCollapsedDesktop ? "h-8 w-8 items-center justify-center p-0" : "p-1.5"
+                  isCollapsedDesktop ? "h-10 w-10 items-center justify-center p-0" : "p-1.5"
                 }`}
                 title={collapsed ? "Expand menu" : "Collapse menu"}
               >
-                {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+                {collapsed ? <ChevronRight className={`${isCollapsedDesktop ? "w-[18px] h-[18px]" : "w-4 h-4"}`} /> : <ChevronLeft className={`${isCollapsedDesktop ? "w-[18px] h-[18px]" : "w-4 h-4"}`} />}
               </button>
             </div>
           </div>

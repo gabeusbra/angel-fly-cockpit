@@ -114,9 +114,8 @@ export default function Layout() {
           <img
             src="/branding/icon.svg"
             alt="Angel Fly"
-            className="w-8 h-8 rounded-md object-cover border border-black/10 dark:border-white/10"
+            className="w-8 h-8 object-contain"
           />
-          <span className="font-bold text-sm text-foreground tracking-tight">Angel Fly</span>
         </div>
         <Button 
           variant="ghost" 
@@ -135,7 +134,7 @@ export default function Layout() {
         mobileMenuOpen={mobileMenuOpen}
         setMobileMenuOpen={setMobileMenuOpen}
       />
-      <main className={`transition-all duration-300 min-h-screen flex-1 min-w-0 ${collapsed ? "md:ml-[96px]" : "md:ml-[272px]"}`}>
+      <main className={`transition-all duration-300 min-h-screen flex-1 min-w-0 ${collapsed ? "md:ml-[112px]" : "md:ml-[272px]"}`}>
         <div className="p-4 sm:p-6 lg:p-8">
           <Outlet context={{ user }} />
         </div>

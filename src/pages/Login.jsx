@@ -50,7 +50,11 @@ export default function Login() {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      background: "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)",
+      background: `
+        radial-gradient(circle at 16% 14%, rgba(255, 131, 72, 0.14), transparent 38%),
+        radial-gradient(circle at 86% 6%, rgba(255, 57, 50, 0.1), transparent 34%),
+        linear-gradient(160deg, #f6f5f2 0%, #f4f1ea 52%, #f6f4ef 100%)
+      `,
       fontFamily: "'Work Sans', system-ui, -apple-system, sans-serif",
     }}>
       <div style={{
@@ -59,43 +63,35 @@ export default function Login() {
         padding: "0 24px",
       }}>
         {/* Logo / Brand */}
-        <div style={{ textAlign: "center", marginBottom: 40 }}>
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
           <div style={{
-            width: 56, height: 56,
-            borderRadius: 12,
-            background: "rgba(255,255,255,0.9)",
-            border: "1px solid rgba(0,0,0,0.1)",
+            width: 52, height: 52,
             display: "flex", alignItems: "center", justifyContent: "center", padding: 10,
-            margin: "0 auto 16px",
-            boxShadow: "0 8px 32px rgba(15, 23, 42, 0.25)",
+            margin: "0 auto",
           }}>
             <img
               src="/branding/icon.svg"
               alt="Angel Fly"
-              style={{ width: 36, height: 36, objectFit: "contain" }}
+              style={{ width: 40, height: 40, objectFit: "contain" }}
             />
           </div>
-          <h1 style={{
-            fontSize: 24, fontWeight: 700, color: "#f8fafc",
-            margin: "0 0 4px", letterSpacing: "-0.5px",
-          }}>Angel Fly</h1>
-          <p style={{ fontSize: 14, color: "#94a3b8", margin: 0 }}>Cockpit</p>
         </div>
 
         {/* Card */}
         <div style={{
-          background: "rgba(30, 41, 59, 0.8)",
-          backdropFilter: "blur(20px)",
-          borderRadius: 20,
-          border: "1px solid rgba(148, 163, 184, 0.1)",
+          background: "rgba(255, 255, 255, 0.72)",
+          backdropFilter: "blur(18px)",
+          borderRadius: 16,
+          border: "1px solid rgba(0, 0, 0, 0.1)",
           padding: 32,
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+          boxShadow: "0 20px 56px -28px rgba(0, 0, 0, 0.28)",
         }}>
           {/* Tabs */}
           <div style={{
             display: "flex", gap: 4,
-            background: "rgba(15, 23, 42, 0.5)",
-            borderRadius: 12, padding: 4, marginBottom: 28,
+            background: "rgba(255, 255, 255, 0.62)",
+            borderRadius: 10, padding: 4, marginBottom: 24,
+            border: "1px solid rgba(0,0,0,0.08)",
           }}>
             {["login", "register"].map(m => (
               <button key={m} onClick={() => { setMode(m); setError(""); }}
@@ -103,8 +99,8 @@ export default function Login() {
                   flex: 1, padding: "10px 0",
                   borderRadius: 10, border: "none", cursor: "pointer",
                   fontSize: 13, fontWeight: 600, letterSpacing: "0.3px",
-                  background: mode === m ? "rgba(255, 77, 53, 0.15)" : "transparent",
-                  color: mode === m ? "#FF4D35" : "#64748b",
+                  background: mode === m ? "linear-gradient(135deg, rgba(255,57,50,0.14), rgba(255,131,72,0.14))" : "transparent",
+                  color: mode === m ? "#c13a22" : "#6b7280",
                   transition: "all 0.2s",
                 }}>
                 {m === "login" ? "Sign In" : "Create Account"}
@@ -142,14 +138,14 @@ export default function Login() {
 
           <div style={{ display: "flex", alignItems: "center", marginBottom: 24 }}>
             <div style={{ flex: 1, height: 1, background: "rgba(148, 163, 184, 0.15)" }} />
-            <span style={{ padding: "0 12px", fontSize: 12, color: "#94a3b8", fontWeight: 500 }}>or use email</span>
+            <span style={{ padding: "0 12px", fontSize: 12, color: "#6b7280", fontWeight: 500 }}>or use email</span>
             <div style={{ flex: 1, height: 1, background: "rgba(148, 163, 184, 0.15)" }} />
           </div>
 
           <form onSubmit={handleSubmit}>
             {mode === "register" && (
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#94a3b8", marginBottom: 6 }}>
+                <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#6b7280", marginBottom: 6 }}>
                   Full Name
                 </label>
                 <input
@@ -159,8 +155,8 @@ export default function Login() {
                   required
                   style={{
                     width: "100%", padding: "12px 14px",
-                    borderRadius: 12, border: "1px solid rgba(148, 163, 184, 0.15)",
-                    background: "rgba(15, 23, 42, 0.5)", color: "#f8fafc",
+                    borderRadius: 10, border: "1px solid rgba(0, 0, 0, 0.1)",
+                    background: "rgba(255,255,255,0.72)", color: "#171717",
                     fontSize: 14, outline: "none",
                     transition: "border-color 0.2s",
                     boxSizing: "border-box",
@@ -170,7 +166,7 @@ export default function Login() {
             )}
 
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#94a3b8", marginBottom: 6 }}>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#6b7280", marginBottom: 6 }}>
                 Email
               </label>
               <input
@@ -180,8 +176,8 @@ export default function Login() {
                 required
                 style={{
                   width: "100%", padding: "12px 14px",
-                  borderRadius: 12, border: "1px solid rgba(148, 163, 184, 0.15)",
-                  background: "rgba(15, 23, 42, 0.5)", color: "#f8fafc",
+                  borderRadius: 10, border: "1px solid rgba(0, 0, 0, 0.1)",
+                  background: "rgba(255,255,255,0.72)", color: "#171717",
                   fontSize: 14, outline: "none",
                   transition: "border-color 0.2s",
                   boxSizing: "border-box",
@@ -190,7 +186,7 @@ export default function Login() {
             </div>
 
             <div style={{ marginBottom: 24 }}>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#94a3b8", marginBottom: 6 }}>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#6b7280", marginBottom: 6 }}>
                 Password
               </label>
               <input
@@ -200,8 +196,8 @@ export default function Login() {
                 required minLength={6}
                 style={{
                   width: "100%", padding: "12px 14px",
-                  borderRadius: 12, border: "1px solid rgba(148, 163, 184, 0.15)",
-                  background: "rgba(15, 23, 42, 0.5)", color: "#f8fafc",
+                  borderRadius: 10, border: "1px solid rgba(0, 0, 0, 0.1)",
+                  background: "rgba(255,255,255,0.72)", color: "#171717",
                   fontSize: 14, outline: "none",
                   transition: "border-color 0.2s",
                   boxSizing: "border-box",
@@ -222,7 +218,7 @@ export default function Login() {
             <button type="submit" disabled={loading}
               style={{
                 width: "100%", padding: "13px 0",
-                borderRadius: 12, border: "none", cursor: loading ? "wait" : "pointer",
+                borderRadius: 6, border: "none", cursor: loading ? "wait" : "pointer",
                 fontSize: 14, fontWeight: 600,
                 background: "linear-gradient(135deg, #FF4D35, #FFB74D)",
                 color: "white", letterSpacing: "0.3px",
@@ -235,8 +231,8 @@ export default function Login() {
           </form>
         </div>
 
-        <p style={{ textAlign: "center", marginTop: 24, fontSize: 12, color: "#475569" }}>
-          © {new Date().getFullYear()} Angel Fly · Cockpit
+        <p style={{ textAlign: "center", marginTop: 24, fontSize: 12, color: "#737373" }}>
+          © {new Date().getFullYear()}
         </p>
       </div>
     </div>
