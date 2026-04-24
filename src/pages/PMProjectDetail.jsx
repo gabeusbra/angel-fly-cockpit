@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import StatusBadge from "../components/StatusBadge";
+import { getAssignableMembers } from "@/lib/team-store";
 
 const COLUMNS = ["backlog", "assigned", "in_progress", "review", "client_approval", "done"];
 
@@ -53,10 +54,11 @@ function HtmlDocViewer({ doc }) {
 
 function parseTags(str) { return str ? str.split(",").map(s => s.trim()).filter(Boolean) : []; }
 function parseJson(str, fallback) { try { return JSON.parse(str || "null") || fallback; } catch { return fallback; } }
+function toId(v) { return v == null ? "" : String(v); }
 
 function scoreProfessionals(pros, allTasks, projectName) {
   return pros.map(pro => {
-    const myTasks = allTasks.filter(t => t.assigned_to === pro.id);
+    const myTasks = allTasks.filter(t => toId(t.assigned_to) === toId(pro.id));
     const active = myTasks.filter(t => t.status !== "done").length;
     const done = myTasks.filter(t => t.status === "done").length;
     const overdue = myTasks.filter(t => t.deadline && new Date(t.deadline) < new Date() && t.status !== "done").length;
@@ -88,6 +90,7 @@ export default function PMProjectDetail() {
   const [tasks, setTasks] = useState([]);
   const [allTasks, setAllTasks] = useState([]);
   const [pros, setPros] = useState([]);
+  const [assignees, setAssignees] = useState([]);
   const [clientUsers, setClientUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -122,23 +125,61 @@ export default function PMProjectDetail() {
     let proj = null;
     try { const r = await api.entities.Project.filter({ id }); proj = r[0] || null; } catch { /* ignore */ }
     if (!proj) {
-      try { const all = await api.entities.Project.list(); proj = all.find(p => p.id === id) || null; } catch { /* ignore */ }
+      try { const all = await api.entities.Project.list(); proj = all.find(p => toId(p.id) === toId(id)) || null; } catch { /* ignore */ }
     }
 
     let t = [], at = [], u = [];
     try { t = await api.entities.Task.filter({ project_id: id }); } catch {
-      try { const allT = await api.entities.Task.list(); t = allT.filter(tk => tk.project_id === id); } catch { /* ignore */ }
+      try { const allT = await api.entities.Task.list(); t = allT.filter(tk => toId(tk.project_id) === toId(id)); } catch { /* ignore */ }
     }
     try { at = await api.entities.Task.list(); } catch { /* ignore */ }
     try { u = await api.entities.User.filter({ role: "professional", status: "active" }); } catch {
       try { const allU = await api.entities.User.list(); u = allU.filter(usr => usr.role === "professional" && usr.status === "active"); } catch { /* ignore */ }
     }
 
+    let teamMembers = [];
+    try { teamMembers = await getAssignableMembers(); } catch { /* ignore */ }
+
+    const professionalUsers = u
+      .map(usr => ({
+        ...usr,
+        id: toId(usr.id),
+        full_name: usr.full_name || usr.name || usr.email || "Professional",
+        specialty: usr.specialty || "",
+        isTeamOnly: false,
+      }))
+      .filter(usr => /^\d+$/.test(toId(usr.id)));
+
+    const teamOnlyMembers = teamMembers
+      .filter(m => m.status === "active")
+      .filter(m => {
+        const email = String(m.user_email || m.email || "").toLowerCase();
+        const name = String(m.name || "").toLowerCase();
+        return !professionalUsers.some(p =>
+          (email && String(p.email || "").toLowerCase() === email) ||
+          (name && String(p.full_name || "").toLowerCase() === name)
+        );
+      })
+      .map(m => ({
+        id: `team:${m.id}`,
+        full_name: m.name || m.user_email || m.email || "Team member",
+        email: m.user_email || m.email || "",
+        specialty: m.specialty || "",
+        isTeamOnly: true,
+      }));
+
+    const assigneePool = [...professionalUsers, ...teamOnlyMembers];
+
     // For professionals: only show their tasks
     const myTasks = isPro
-      ? t.filter(tk => tk.assigned_to === user?.id || tk.assigned_to_name?.toLowerCase() === user?.full_name?.toLowerCase())
+      ? t.filter(tk => toId(tk.assigned_to) === toId(user?.id) || tk.assigned_to_name?.toLowerCase() === user?.full_name?.toLowerCase())
       : t;
-    setProject(proj); setTasks(myTasks); setAllTasks(at); setPros(u); setLoading(false);
+    setProject(proj);
+    setTasks(myTasks);
+    setAllTasks(at);
+    setPros(professionalUsers);
+    setAssignees(assigneePool);
+    setLoading(false);
     try { const allU = await api.entities.User.list(); setClientUsers(allU.filter(usr => usr.role === "client" && usr.status !== "inactive")); } catch { /* ignore */ }
 
     // Load docs after project is set
@@ -146,6 +187,18 @@ export default function PMProjectDetail() {
       const docsData = await loadDocsData(proj);
       setProjectDocs(docsData);
     }
+  };
+
+  const resolveAssignee = (selectedValue) => {
+    const selected = assignees.find(a => toId(a.id) === toId(selectedValue));
+    if (!selected) {
+      return { assigned_to: null, assigned_to_name: "" };
+    }
+    const selectedId = toId(selected.id);
+    if (selectedId.startsWith("team:") || !/^\d+$/.test(selectedId)) {
+      return { assigned_to: null, assigned_to_name: selected.full_name || "" };
+    }
+    return { assigned_to: Number(selectedId), assigned_to_name: selected.full_name || "" };
   };
 
   const loadDocsData = async (proj) => {
@@ -187,20 +240,24 @@ export default function PMProjectDetail() {
   };
 
   const reloadTasks = async () => {
-    const [t, at] = await Promise.all([
-      api.entities.Task.filter({ project_id: id }),
-      api.entities.Task.list(),
-    ]);
+    let t = [];
+    let at = [];
+    try { t = await api.entities.Task.filter({ project_id: id }); } catch { /* ignore */ }
+    try { at = await api.entities.Task.list(); } catch { /* ignore */ }
+    if (!t.length && at.length) {
+      t = at.filter(tk => toId(tk.project_id) === toId(id));
+    }
     setTasks(t); setAllTasks(at);
   };
 
   // --- Create ---
   const handleCreate = async () => {
-    const pro = pros.find(u => u.id === form.assigned_to);
+    const assignee = resolveAssignee(form.assigned_to);
     await api.entities.Task.create({
       ...form,
+      assigned_to: assignee.assigned_to,
       project_id: id, project_name: project?.name || "", client_name: project?.client_name || "",
-      assigned_to_name: pro?.full_name || "",
+      assigned_to_name: assignee.assigned_to_name,
       status: form.assigned_to ? "assigned" : "backlog",
       estimated_hours: form.estimated_hours ? parseFloat(form.estimated_hours) : 0,
       subtasks: "[]", comments: "[]",
@@ -212,10 +269,14 @@ export default function PMProjectDetail() {
 
   // --- Edit ---
   const openTask = (task) => {
+    const linkedAssignee = assignees.find(a => task.assigned_to_name && a.full_name?.toLowerCase() === task.assigned_to_name.toLowerCase());
     setActiveTask(task);
     setEditForm({
       title: task.title || "", description: task.description || "",
-      assigned_to: task.assigned_to || "", priority: task.priority || "medium",
+      assigned_to: task.assigned_to != null && task.assigned_to !== ""
+        ? toId(task.assigned_to)
+        : (linkedAssignee ? toId(linkedAssignee.id) : ""),
+      priority: task.priority || "medium",
       deadline: task.deadline || "", estimated_hours: task.estimated_hours ? String(task.estimated_hours) : "",
       status: task.status || "backlog", milestone: task.milestone || "", tags: task.tags || "",
     });
@@ -224,10 +285,13 @@ export default function PMProjectDetail() {
 
   const handleEditSave = async () => {
     if (!activeTask) return;
-    const pro = pros.find(u => u.id === editForm.assigned_to);
+    const assignee = resolveAssignee(editForm.assigned_to);
+    const rest = { ...editForm };
+    delete rest.assigned_to;
     await api.entities.Task.update(activeTask.id, {
-      ...editForm,
-      assigned_to_name: pro?.full_name || activeTask.assigned_to_name || "",
+      ...rest,
+      assigned_to: assignee.assigned_to,
+      assigned_to_name: assignee.assigned_to_name || activeTask.assigned_to_name || "",
       estimated_hours: editForm.estimated_hours ? parseFloat(editForm.estimated_hours) : 0,
     });
     setActiveTask(null);
@@ -493,9 +557,9 @@ export default function PMProjectDetail() {
               <Input value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} className="text-base font-semibold" />
               <Textarea value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} placeholder="Description..." rows={3} />
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <Select value={editForm.assigned_to} onValueChange={v => setEditForm({ ...editForm, assigned_to: v })}>
+                <Select value={toId(editForm.assigned_to)} onValueChange={v => setEditForm({ ...editForm, assigned_to: v })}>
                   <SelectTrigger className="text-xs"><SelectValue placeholder="Assignee" /></SelectTrigger>
-                  <SelectContent>{pros.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>)}</SelectContent>
+                  <SelectContent>{assignees.map(u => <SelectItem key={u.id} value={toId(u.id)}>{u.full_name}</SelectItem>)}</SelectContent>
                 </Select>
                 <Select value={editForm.status} onValueChange={v => setEditForm({ ...editForm, status: v })}>
                   <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
@@ -626,8 +690,8 @@ export default function PMProjectDetail() {
                 <div className="flex items-center gap-1.5 mb-2"><Sparkles className="w-3.5 h-3.5 text-blue-600" /><span className="text-xs font-semibold text-blue-700">AI Recommendation</span></div>
                 <div className="space-y-1.5">
                   {rankedPros.slice(0, 3).map((p, i) => (
-                    <button key={p.id} onClick={() => setForm({ ...form, assigned_to: p.id })}
-                      className={`w-full text-left px-2.5 py-1.5 rounded text-xs flex items-center justify-between transition-colors ${form.assigned_to === p.id ? "bg-blue-200 text-blue-900" : "hover:bg-blue-100 text-blue-800"}`}>
+                    <button key={p.id} onClick={() => setForm({ ...form, assigned_to: toId(p.id) })}
+                      className={`w-full text-left px-2.5 py-1.5 rounded text-xs flex items-center justify-between transition-colors ${toId(form.assigned_to) === toId(p.id) ? "bg-blue-200 text-blue-900" : "hover:bg-blue-100 text-blue-800"}`}>
                       <span className="font-medium">{i === 0 && "\u2605 "}{p.full_name}{p.specialty ? ` (${p.specialty})` : ""}</span>
                       <span className="text-blue-600">{p.active} active · {p.onTimeRate}% on-time</span>
                     </button>
@@ -635,9 +699,9 @@ export default function PMProjectDetail() {
                 </div>
               </div>
             )}
-            <Select value={form.assigned_to} onValueChange={v => setForm({ ...form, assigned_to: v })}>
+            <Select value={toId(form.assigned_to)} onValueChange={v => setForm({ ...form, assigned_to: v })}>
               <SelectTrigger><SelectValue placeholder="Assign to professional" /></SelectTrigger>
-              <SelectContent>{pros.map(u => <SelectItem key={u.id} value={u.id}>{u.full_name} {u.specialty ? `(${u.specialty})` : ""}</SelectItem>)}</SelectContent>
+              <SelectContent>{assignees.map(u => <SelectItem key={u.id} value={toId(u.id)}>{u.full_name} {u.specialty ? `(${u.specialty})` : ""}</SelectItem>)}</SelectContent>
             </Select>
             <div className="grid grid-cols-2 gap-3">
               <Select value={form.priority} onValueChange={v => setForm({ ...form, priority: v })}>
@@ -771,14 +835,14 @@ export default function PMProjectDetail() {
             <div>
               <label className="text-xs font-medium text-muted-foreground block mb-1">Client</label>
               {clientUsers.length > 0 ? (
-                <Select value={projectForm.client_id || ""} onValueChange={v => {
-                  const c = clientUsers.find(cl => cl.id === v);
+                <Select value={toId(projectForm.client_id)} onValueChange={v => {
+                  const c = clientUsers.find(cl => toId(cl.id) === toId(v));
                   setProjectForm({ ...projectForm, client_id: v, client_name: c?.full_name || c?.company || "" });
                 }}>
                   <SelectTrigger><SelectValue placeholder={projectForm.client_name || "Select client"} /></SelectTrigger>
                   <SelectContent>
                     {clientUsers.map(c => (
-                      <SelectItem key={c.id} value={c.id}>
+                      <SelectItem key={c.id} value={toId(c.id)}>
                         {c.full_name || c.email}{c.company ? ` — ${c.company}` : ""}
                       </SelectItem>
                     ))}

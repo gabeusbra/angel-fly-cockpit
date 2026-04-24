@@ -39,7 +39,7 @@ export default function Login() {
       alignItems: "center",
       justifyContent: "center",
       background: "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)",
-      fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
+      fontFamily: "'Work Sans', system-ui, -apple-system, sans-serif",
     }}>
       <div style={{
         width: "100%",

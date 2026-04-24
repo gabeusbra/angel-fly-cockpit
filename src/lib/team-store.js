@@ -45,7 +45,7 @@ export function getTeamMembersSync() {
 
 export async function getTeamMemberById(id) {
   const members = await getTeamMembers();
-  return members.find(m => m.id === id) || null;
+  return members.find(m => String(m.id) === String(id)) || null;
 }
 
 export async function getTeamMemberByEmail(email) {
@@ -89,7 +89,7 @@ export async function updateTeamMember(id, data) {
     await getTeamMembers();
   } catch {
     const members = getLocalMembers();
-    const idx = members.findIndex(m => m.id === id);
+    const idx = members.findIndex(m => String(m.id) === String(id));
     if (idx >= 0) { members[idx] = { ...members[idx], ...data }; saveLocal(members); }
   }
 }
@@ -99,7 +99,7 @@ export async function deleteTeamMember(id) {
     await api.entities.Ticket.delete(id);
     await getTeamMembers();
   } catch {
-    const members = getLocalMembers().filter(m => m.id !== id);
+    const members = getLocalMembers().filter(m => String(m.id) !== String(id));
     saveLocal(members);
   }
 }

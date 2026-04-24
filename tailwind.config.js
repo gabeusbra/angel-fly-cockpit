@@ -4,7 +4,10 @@ module.exports = {
   content: ["./index.html", "./src/**/*.{ts,tsx,js,jsx}"],
   theme: {
     extend: {
-      fontFamily: { inter: ['var(--font-inter)'] },
+      fontFamily: {
+        sans: ['var(--font-sans)'],
+        inter: ['var(--font-sans)'],
+      },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
@@ -25,13 +28,13 @@ module.exports = {
         ring: 'hsl(var(--ring))',
         chart: { '1': 'hsl(var(--chart-1))', '2': 'hsl(var(--chart-2))', '3': 'hsl(var(--chart-3))', '4': 'hsl(var(--chart-4))', '5': 'hsl(var(--chart-5))' },
         sidebar: {
-          DEFAULT: 'hsl(var(--sidebar-bg, 240 22% 11%))',
-          foreground: 'hsl(240 5% 82%)',
+          DEFAULT: 'hsl(var(--sidebar-bg))',
+          foreground: 'hsl(var(--sidebar-foreground))',
           primary: 'hsl(var(--primary))',
           'primary-foreground': 'hsl(0 0% 100%)',
-          accent: 'hsl(240 15% 18%)',
-          'accent-foreground': 'hsl(240 5% 92%)',
-          border: 'hsl(240 15% 20%)',
+          accent: 'hsl(var(--sidebar-hover))',
+          'accent-foreground': 'hsl(var(--sidebar-foreground))',
+          border: 'hsl(var(--border))',
         }
       },
       keyframes: {

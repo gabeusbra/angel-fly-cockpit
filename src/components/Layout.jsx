@@ -9,7 +9,7 @@ const COCKPIT_ROLES = ["admin", "pm", "professional", "client"];
 
 function BlockedScreen({ title, message }) {
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center" style={{ fontFamily: "var(--font-inter)" }}>
+    <div className="min-h-screen bg-background flex items-center justify-center" style={{ fontFamily: "var(--font-sans)" }}>
       <div className="text-center max-w-md px-6">
         <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
           <ShieldX className="w-8 h-8 text-red-600" />
@@ -107,20 +107,22 @@ export default function Layout() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col md:flex-row" style={{ fontFamily: "var(--font-inter)" }}>
+    <div className="min-h-screen bg-background flex flex-col md:flex-row" style={{ fontFamily: "var(--font-sans)" }}>
       {/* Mobile Top Bar */}
-      <div className="md:hidden flex items-center justify-between px-4 h-16 bg-[#131624] border-b border-white/5 sticky top-0 z-30">
+      <div className="md:hidden flex items-center justify-between px-4 h-16 bg-white/85 dark:bg-[#0d111d]/85 border-b border-black/10 dark:border-white/10 sticky top-0 z-30 glass">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center font-extrabold text-white text-[10px] tracking-tight brand-gradient shadow-lg shadow-primary/20">
-            AF
-          </div>
-          <span className="font-extrabold text-sm text-white tracking-tight">Angel Fly</span>
+          <img
+            src="/branding/logo-angelfly.png"
+            alt="Angel Fly"
+            className="w-8 h-8 rounded-md object-cover border border-black/10 dark:border-white/10"
+          />
+          <span className="font-bold text-sm text-foreground tracking-tight">Angel Fly</span>
         </div>
         <Button 
           variant="ghost" 
           size="icon" 
           onClick={() => setMobileMenuOpen(true)}
-          className="text-white hover:bg-white/10"
+          className="text-foreground hover:bg-black/5 dark:hover:bg-white/10"
         >
           <Menu className="w-5 h-5" />
         </Button>

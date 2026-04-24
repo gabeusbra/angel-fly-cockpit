@@ -160,7 +160,7 @@ export default function QuoteView() {
   );
 
   return (
-    <div className="min-h-screen bg-[#f5f5f0]" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div className="min-h-screen bg-[#f5f5f0]" style={{ fontFamily: "'Work Sans', system-ui, sans-serif" }}>
       <div className="max-w-xl mx-auto py-10 px-5">
 
         {/* Header */}
