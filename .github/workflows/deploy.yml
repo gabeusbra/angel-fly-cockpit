@@ -146,6 +146,23 @@ jobs:
           server-dir: ${{ steps.ftp_dir.outputs.api_dir }}
           timeout: 120000
 
+      - name: Upload root .htaccess
+        shell: bash
+        run: |
+          dist_dir="${{ steps.ftp_dir.outputs.dist_dir }}"
+          if [ "$dist_dir" = "./" ]; then
+            remote_htaccess=".htaccess"
+          else
+            clean="${dist_dir#./}"
+            remote_htaccess="${clean}.htaccess"
+          fi
+
+          curl --silent --show-error --fail \
+            --ftp-create-dirs \
+            --user "$DEPLOY_FTP_USERNAME:$DEPLOY_FTP_PASSWORD" \
+            -T ./public/.htaccess \
+            "ftp://${{ steps.ftp_target.outputs.server }}:${{ steps.ftp_target.outputs.port }}/${remote_htaccess}"
+
       # Fallback to root in case FTP user is already chrooted at public_html.
       - name: Fallback upload frontend dist to FTP root
         if: ${{ steps.ftp_dir.outputs.dist_dir != './' }}
@@ -170,3 +187,13 @@ jobs:
           local-dir: ./public/api/
           server-dir: ./api/
           timeout: 120000
+
+      - name: Fallback upload root .htaccess
+        if: ${{ steps.ftp_dir.outputs.dist_dir != './' }}
+        shell: bash
+        run: |
+          curl --silent --show-error --fail \
+            --ftp-create-dirs \
+            --user "$DEPLOY_FTP_USERNAME:$DEPLOY_FTP_PASSWORD" \
+            -T ./public/.htaccess \
+            "ftp://${{ steps.ftp_target.outputs.server }}:${{ steps.ftp_target.outputs.port }}/.htaccess"
