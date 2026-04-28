@@ -1,0 +1,145 @@
+{
+  "name": "Jarvis Overdue Chase — Cobra Atrasados (v1.0)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "cronExpression", "expression": "0 12,16,20,24 * * 1-5" }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule: 9h/13h/17h/21h BRT",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 400],
+      "notes": "BRT (UTC-3): 9h, 13h, 17h, 21h em dias de semana. Em UTC: 12, 16, 20, 24/0."
+    },
+
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://cockpit.angelfly.io/api/jarvis_groups",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "is_active", "value": "1" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer 5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "fetch-groups",
+      "name": "Fetch Active Groups",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [420, 320]
+    },
+
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://cockpit.angelfly.io/api/tasks",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "limit", "value": "500" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer 5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "fetch-tasks",
+      "name": "Fetch All Tasks",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [420, 480]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// ─────────────────────────────────────────────\n// Detect overdue tasks per group, build chase msgs\n// Skip group if no overdue.\n// ─────────────────────────────────────────────\nconst norm = (v) => String(v||'').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');\n\nconst groupsResp = $('Fetch Active Groups').item.json;\nconst groupsList = Array.isArray(groupsResp) ? groupsResp : (groupsResp?.data || []);\nconst FALLBACK = [\n  { wa_chat_id: '120363426390515923@g.us', label: 'Angel Fly', context_key: 'angelfly' },\n  { wa_chat_id: '120363420996892188@g.us', label: 'Garlic',    context_key: 'garlic' },\n  { wa_chat_id: '120363422948599063@g.us', label: 'Ernesto',   context_key: 'ernesto' }\n];\nconst groups = groupsList.length ? groupsList : FALLBACK;\n\nconst collect = (items) => {\n  const all = [];\n  for (const it of items) {\n    const j = it.json;\n    if (Array.isArray(j)) j.forEach(r => r?.id && all.push(r));\n    else if (Array.isArray(j?.data)) j.data.forEach(r => r?.id && all.push(r));\n    else if (j?.id) all.push(j);\n  }\n  return all;\n};\nconst tasks = collect($('Fetch All Tasks').all());\n\nconst today = new Date(Date.now() - 3*3600000).toISOString().slice(0,10);\nconst isOpen = (s) => !['done','closed','cancelled','resolved','completed'].includes(norm(s));\nconst groupMatch = (t, ctx) => {\n  const blob = norm(t.project_name||'') + ' ' + norm(t.client_name||'');\n  if (ctx==='garlic')   return /garlic|gnl/.test(blob);\n  if (ctx==='ernesto')  return /ernesto/.test(blob);\n  if (ctx==='angelfly') return /angel\\s*fly|cockpit/.test(blob);\n  return true;\n};\n\nconst daysOverdue = (deadline) => {\n  if (!deadline) return 0;\n  const d = new Date(deadline.slice(0,10) + 'T12:00:00Z');\n  const t = new Date(today + 'T12:00:00Z');\n  return Math.max(0, Math.round((t - d) / 86400000));\n};\n\n// Tone variants — Jarvis gets progressively saltier\nconst toneByDays = (d) => {\n  if (d <= 1) return '👀';\n  if (d <= 3) return '🕸️';\n  if (d <= 7) return '🚨';\n  return '💀';\n};\n\nconst openings = [\n  '👀 *Galera, alerta de atraso:*',\n  '⏰ *Olha aí, time — coisa parada:*',\n  '🚨 *Atenção, papo de cobrança:*',\n  '⚠️ *Pequeno aviso de PM-chato:*',\n  '🕵️ *Detective Jarvis na área. Achei isto:*'\n];\nconst closings = [\n  '\\n\\nQuem tá com qual? Atualiza o status que eu páro de encher. 🙏',\n  '\\n\\nMe avisa se algum precisa de prazo novo ou tá bloqueado.',\n  '\\n\\nSe alguma já tá feita, marca como done no Cockpit que eu paro de cobrar.',\n  '\\n\\nPM mode: cobrança feita. Bola pra vocês.'\n];\n\nconst results = [];\nfor (const g of groups) {\n  const ctx = g.context_key || g.context;\n  const label = g.label || ctx;\n  const chatId = g.wa_chat_id;\n\n  const overdue = tasks\n    .filter(t => isOpen(t.status) && t.deadline && t.deadline.slice(0,10) < today && groupMatch(t, ctx))\n    .map(t => ({ ...t, dOver: daysOverdue(t.deadline) }))\n    .sort((a,b) => b.dOver - a.dOver);\n\n  if (!overdue.length) continue; // pula grupo sem atrasados\n\n  let msg = openings[Math.floor(Math.random()*openings.length)] + '\\n';\n\n  for (const t of overdue.slice(0, 8)) {\n    const owner = t.assigned_to_name ? '👤 ' + t.assigned_to_name : '👤 _sem dono_';\n    const proj = t.project_name ? ' (' + t.project_name + ')' : '';\n    const emoji = toneByDays(t.dOver);\n    msg += '\\n' + emoji + ' *' + (t.title || 'sem título') + '*' + proj;\n    msg += '\\n   ' + owner + ' · prazo ' + (t.deadline||'').slice(0,10) + ' · *' + t.dOver + 'd atrasada*';\n  }\n\n  if (overdue.length > 8) msg += '\\n\\n_… e mais ' + (overdue.length-8) + ' atrasadas._';\n\n  msg += closings[Math.floor(Math.random()*closings.length)];\n\n  results.push({ json: { number: chatId, text: msg, count: overdue.length } });\n}\n\nif (!results.length) return [{ json: { skip: true, reason: 'no_overdue_anywhere' } }];\n\nreturn results;"
+      },
+      "id": "build-chase",
+      "name": "Build Chase Messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 400]
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "loose" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "notEqual" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-has-overdue",
+      "name": "Has Overdue?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [940, 400]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://angelfly.uazapi.com/send/text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "token", "value": "a232b655-1733-46c1-b872-1f82782b9cbe" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"number\": \"{{ $json.number }}\", \"text\": {{ JSON.stringify($json.text) }} }",
+        "options": {}
+      },
+      "id": "send-chase",
+      "name": "Send Chase Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1160, 320]
+    }
+  ],
+
+  "connections": {
+    "Schedule: 9h/13h/17h/21h BRT": {
+      "main": [[
+        { "node": "Fetch Active Groups", "type": "main", "index": 0 },
+        { "node": "Fetch All Tasks", "type": "main", "index": 0 }
+      ]]
+    },
+    "Fetch Active Groups": { "main": [[{ "node": "Build Chase Messages", "type": "main", "index": 0 }]] },
+    "Fetch All Tasks":     { "main": [[{ "node": "Build Chase Messages", "type": "main", "index": 0 }]] },
+    "Build Chase Messages": { "main": [[{ "node": "Has Overdue?", "type": "main", "index": 0 }]] },
+    "Has Overdue?": { "main": [[{ "node": "Send Chase Message", "type": "main", "index": 0 }], []] }
+  },
+
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo"
+  },
+  "pinData": {},
+  "meta": { "instanceId": "jarvis-overdue-chase-v1" }
+}
