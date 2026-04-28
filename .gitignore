@@ -30,3 +30,8 @@ dist-ssr
 .env
 .vite
 client_secret_*.json
+
+# Credentials (Google OAuth, secrets) — never commit
+credentials/*
+!credentials/README.md
+!credentials/.gitkeep

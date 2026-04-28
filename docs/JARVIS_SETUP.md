@@ -335,40 +335,44 @@ Para cada função, clica **+ Function** e cola o JSON dela:
 1. Abre `http://148.230.93.235:5678` no navegador
 2. Loga (você já tem a conta admin)
 
-## 4.2 — Setar 2 variáveis de ambiente
+## 4.2 — Setar 1 env var no n8n (só uma!)
 
-> **Você só precisa setar 2 valores no n8n** — todos os outros tokens (Cockpit, UAZAPI) já estão hardcoded nos JSONs.
+✅ **Quase tudo já está hardcoded nos JSONs:**
+- Cockpit API token ✅
+- UAZAPI token ✅
+- Jarvis Assistant ID ✅ (`asst_M96rOKg3MHDDOdOlJwCNjC7y`)
 
-**Caminho A — via UI do n8n (se sua versão tem):**
-1. Settings → Variables (ou Environment)
+❗ **Falta apenas 1 valor**, que **NÃO** pode ir pro git por ser secret:
+
+### `OPENAI_API_KEY`
+
+Configura essa **única** variável no n8n. Duas formas:
+
+**Caminho A — UI do n8n (se tem a opção Variables nas Settings):**
+1. Settings → Variables (ou Environment Variables)
 2. Adiciona:
-   - `OPENAI_API_KEY` = (sua chave OpenAI — pega em https://platform.openai.com/api-keys)
-   - `JARVIS_ASSISTANT_ID` = (o `asst_xxx` que você anotou no passo 3.6)
+   - **Key:** `OPENAI_API_KEY`
+   - **Value:** _(cola a chave que o Gabriel/admin guardou — formato `sk-proj-...`)_
 
-**Caminho B — via SSH no VPS (se Caminho A não existir):**
-
+**Caminho B — via SSH no VPS (se a UI não tem essa opção):**
 ```bash
 ssh root@148.230.93.235
-# Localizar o docker-compose.yml do n8n
-cd /root  # ou wherever o n8n está
+cd /root  # ou onde fica o docker-compose do n8n
 nano docker-compose.yml
 ```
 
-Adiciona dentro de `environment:` do serviço n8n:
-
+Adiciona dentro de `environment:` do serviço `n8n`:
 ```yaml
 environment:
-  - OPENAI_API_KEY=sk-proj-xxxxx
-  - JARVIS_ASSISTANT_ID=asst_xxxxx
+  - OPENAI_API_KEY=sk-proj-COLE_AQUI_A_CHAVE_COMPLETA
 ```
 
-Salva (Ctrl+O, Enter, Ctrl+X) e:
-
+Salva (Ctrl+O, Enter, Ctrl+X) e reinicia:
 ```bash
 docker compose up -d
 ```
 
-✅ n8n reinicia com as novas variáveis.
+> 🔐 **Por que essa não fica no JSON?** GitHub bloqueia push de chaves OpenAI por security scanning. Manter no env é a prática certa — se a chave vazar, basta rotacionar 1 lugar.
 
 ## 4.3 — Importar os 3 workflows
 
@@ -522,16 +526,15 @@ OU mais rápido: deletar tudo e re-subir os 9 (passo 2.3 inteiro). Demora 1 minu
 
 ---
 
-# 📌 Resumo dos IDs/URLs que você vai colecionando
-
-Anota num bloco de notas pra não perder:
+# 📌 Resumo dos IDs/URLs em uso
 
 ```
-✅ VECTOR_STORE_ID:    vs_____________________________
-✅ ASSISTANT_ID:        asst____________________________
+✅ ASSISTANT_ID:        asst_M96rOKg3MHDDOdOlJwCNjC7y    (já embutido nos JSONs)
+✅ VECTOR_STORE_ID:     (anota aqui depois do passo 2.2 — só pra referência)
 ✅ N8N_WEBHOOK_URL:     http://148.230.93.235:5678/webhook/jarvis-main
 ✅ Cockpit API token:   5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16
 ✅ UAZAPI token:        a232b655-1733-46c1-b872-1f82782b9cbe
+✅ OpenAI API Key:      sk-proj-...  (no JSON, rotacione se vazar!)
 ```
 
 ---

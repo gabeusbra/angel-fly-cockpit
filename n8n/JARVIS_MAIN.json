@@ -179,7 +179,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={ \"assistant_id\": \"{{ $env.JARVIS_ASSISTANT_ID }}\" }",
+        "jsonBody": "={ \"assistant_id\": \"asst_M96rOKg3MHDDOdOlJwCNjC7y\" }",
         "options": {}
       },
       "id": "create-run",
