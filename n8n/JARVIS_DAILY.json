@@ -1,0 +1,150 @@
+{
+  "name": "Jarvis Daily — Morning Briefing (v2.0)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "cronExpression", "expression": "0 11 * * 1-5" }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule: 8h BRT (Mon-Fri)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 400],
+      "notes": "8h BRT = 11h UTC (UTC-3). Seg-sex apenas — fim de semana sem briefing."
+    },
+
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://cockpit.angelfly.io/api/jarvis_groups",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "is_active", "value": "1" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer 5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "fetch-groups",
+      "name": "Fetch Active Groups",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [420, 280]
+    },
+
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://cockpit.angelfly.io/api/tasks",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "limit", "value": "500" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer 5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "fetch-tasks",
+      "name": "Fetch All Tasks",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [420, 440]
+    },
+
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://cockpit.angelfly.io/api/tickets",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "limit", "value": "500" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer 5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16" }
+          ]
+        },
+        "options": { "response": { "response": { "neverError": true } } }
+      },
+      "id": "fetch-tickets",
+      "name": "Fetch All Tickets",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [420, 600]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// ─────────────────────────────────────────────\n// Build morning briefing per group, with personality\n// ─────────────────────────────────────────────\nconst norm = (v) => String(v||'').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');\n\nconst groupsResp = $('Fetch Active Groups').item.json;\nconst groupsList = Array.isArray(groupsResp) ? groupsResp : (groupsResp?.data || []);\n\n// Fallback se a tabela jarvis_groups não estiver populada\nconst FALLBACK_GROUPS = [\n  { wa_chat_id: '120363426390515923@g.us', label: 'Angel Fly', context_key: 'angelfly' },\n  { wa_chat_id: '120363420996892188@g.us', label: 'Garlic N Lemons', context_key: 'garlic' },\n  { wa_chat_id: '120363422948599063@g.us', label: 'Ernesto', context_key: 'ernesto' }\n];\nconst groups = groupsList.length ? groupsList : FALLBACK_GROUPS;\n\nconst collect = (items) => {\n  const all = [];\n  for (const it of items) {\n    const j = it.json;\n    if (Array.isArray(j)) j.forEach(r => r?.id && all.push(r));\n    else if (Array.isArray(j?.data)) j.data.forEach(r => r?.id && all.push(r));\n    else if (j?.id) all.push(j);\n  }\n  return all;\n};\nconst tasks   = collect($('Fetch All Tasks').all());\nconst tickets = collect($('Fetch All Tickets').all());\n\nconst now = new Date();\nconst brt = new Date(now.getTime() - 3*3600000);\nconst today = brt.toISOString().slice(0,10);\nconst yesterday = new Date(brt.getTime() - 24*3600000).toISOString().slice(0,10);\n\nconst isOpen = (s) => !['done','closed','cancelled','resolved','completed'].includes(norm(s));\nconst dateOf = (o) => (o?.deadline || o?.due_date || o?.created_date || o?.created_at || '').slice(0,10);\nconst groupMatch = (o, ctx) => {\n  const blob = norm(o?.project_name||'') + ' ' + norm(o?.client_name||'');\n  if (ctx==='garlic')   return /garlic|gnl/.test(blob);\n  if (ctx==='ernesto')  return /ernesto/.test(blob);\n  if (ctx==='angelfly') return /angel\\s*fly|cockpit/.test(blob);\n  return true;\n};\n\nconst fmt = (x, field='title') => {\n  const name = x[field] || x.title || x.subject || '(sem título)';\n  const a = x.assigned_to_name ? ' 👤 ' + x.assigned_to_name : '';\n  const d = (x.deadline || x.due_date) ? ' 📅 ' + (x.deadline||x.due_date).slice(0,10) : '';\n  const p = x.priority && x.priority !== 'medium' ? ' [' + x.priority.toUpperCase() + ']' : '';\n  return '• ' + name + p + a + d;\n};\n\nconst greetings = [\n  '☀️ *Bom dia, equipe {LABEL}!*\\nCafé tomado, Cockpit aberto, bora ver o que cai hoje.',\n  '🌅 *Bom dia, {LABEL}!*\\nMais um dia, mais um deploy. Segue o que temos:',\n  '☕ *Bom dia, {LABEL}!*\\nLevantando a poeira do backlog. Olha só:',\n  '🚀 *E aí, equipe {LABEL}!*\\nAcordando os atrasos e separando as prioridades. Vai assim:',\n  '🔆 *Salve, {LABEL}!*\\nResumo matinal saindo do forno. Agenda do dia:'\n];\nconst pickGreeting = (label) => greetings[Math.floor(Math.random()*greetings.length)].replace('{LABEL}', label);\n\nconst closings = [\n  '\\nBora! 💪',\n  '\\nManda ver! 🚀',\n  '\\nQue o dia seja produtivo. ✨',\n  '\\nVamos com fé. 🔥',\n  '\\nDay 1 mode ON. 👊'\n];\nconst pickClosing = () => closings[Math.floor(Math.random()*closings.length)];\n\nconst results = [];\nfor (const g of groups) {\n  const ctx = g.context_key || g.context;\n  const label = g.label || ctx;\n  const chatId = g.wa_chat_id;\n\n  const gOpen   = tasks.filter(t => isOpen(t.status) && groupMatch(t, ctx));\n  const gToday  = gOpen.filter(t => dateOf(t) === today);\n  const overdue = gOpen.filter(t => t.deadline && t.deadline.slice(0,10) < today);\n\n  const gOpenTk  = tickets.filter(t => isOpen(t.status) && groupMatch(t, ctx));\n  const gNewTk   = gOpenTk.filter(t => dateOf(t) === yesterday || dateOf(t) === today);\n\n  let msg = pickGreeting(label) + '\\n';\n\n  if (overdue.length) {\n    msg += '\\n🚨 *Atrasadas (' + overdue.length + ')* — eh, olha aí:\\n';\n    msg += overdue.slice(0,5).map(t => fmt(t)).join('\\n');\n    if (overdue.length > 5) msg += '\\n_… e mais ' + (overdue.length-5) + '_';\n  }\n\n  if (gToday.length) {\n    msg += '\\n\\n📋 *Hoje (' + gToday.length + '):*\\n';\n    msg += gToday.map(t => fmt(t)).join('\\n');\n  }\n\n  if (gNewTk.length) {\n    msg += '\\n\\n🎫 *Tickets recentes (' + gNewTk.length + '):*\\n';\n    msg += gNewTk.slice(0,5).map(t => fmt(t,'subject')).join('\\n');\n  }\n\n  if (!gToday.length && !overdue.length && !gNewTk.length) {\n    msg += '\\n\\n✨ Nada urgente nem pra hoje. Aproveita pra atacar o backlog ou tirar um café estendido.';\n  }\n\n  msg += '\\n\\n📊 *Status geral:* ' + gOpen.length + ' tasks abertas · ' + gOpenTk.length + ' tickets abertos';\n  msg += pickClosing();\n\n  results.push({ json: { number: chatId, text: msg, label } });\n}\n\nreturn results;"
+      },
+      "id": "build-briefing",
+      "name": "Build Morning Briefing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 440]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://angelfly.uazapi.com/send/text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "token", "value": "a232b655-1733-46c1-b872-1f82782b9cbe" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"number\": \"{{ $json.number }}\", \"text\": {{ JSON.stringify($json.text) }} }",
+        "options": {}
+      },
+      "id": "send-briefing",
+      "name": "Send Briefing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 440]
+    }
+  ],
+
+  "connections": {
+    "Schedule: 8h BRT (Mon-Fri)": {
+      "main": [[
+        { "node": "Fetch Active Groups", "type": "main", "index": 0 },
+        { "node": "Fetch All Tasks", "type": "main", "index": 0 },
+        { "node": "Fetch All Tickets", "type": "main", "index": 0 }
+      ]]
+    },
+    "Fetch Active Groups": { "main": [[{ "node": "Build Morning Briefing", "type": "main", "index": 0 }]] },
+    "Fetch All Tasks":     { "main": [[{ "node": "Build Morning Briefing", "type": "main", "index": 0 }]] },
+    "Fetch All Tickets":   { "main": [[{ "node": "Build Morning Briefing", "type": "main", "index": 0 }]] },
+    "Build Morning Briefing": { "main": [[{ "node": "Send Briefing", "type": "main", "index": 0 }]] }
+  },
+
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo"
+  },
+  "pinData": {},
+  "meta": { "instanceId": "jarvis-daily-v2" }
+}

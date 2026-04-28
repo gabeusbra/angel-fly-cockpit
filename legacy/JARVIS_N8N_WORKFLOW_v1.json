@@ -1,5 +1,5 @@
 {
-  "name": "Jarvis v22.1 — 24-Abr 10h53",
+  "name": "Jarvis v22.2 — 24-Abr 11h00",
   "nodes": [
     {
       "parameters": {
@@ -995,7 +995,7 @@
     },
     {
       "parameters": {
-        "content": "## v22.1 — 24/Abr 10:53 BRT\n\nFix: Intent Override $input.item mode",
+        "content": "## v22.2 — 24/Abr 11:00 BRT\n\nFix: Intent Override mode=runOnceForAllItems",
         "width": 400,
         "height": 200
       },
@@ -1010,8 +1010,8 @@
     },
     {
       "parameters": {
-        "jsCode": "// Intent Override: simple keyword check that ALWAYS wins\nconst item = $input.item.json;\nconst msg = (item.currentMessage || item.originalMessage || '').toLowerCase()\n  .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\n\nlet intent = item.intent || 'none';\n\n// --- REPORT: must be checked FIRST ---\nconst reportWords = /(quais|qual|listar|lista|resumo|relatorio|status|ativos|ativas|abertos|abertas|quantas|quantos|temos|mande|mostre|mostra|pendentes)/.test(msg);\nconst reportTargets = /(task|tasks|tarefa|tarefas|ticket|tickets|chamado|chamados|cockpit)/.test(msg);\nconst hasCreateVerb = /(^|\\s)(cria|crie|criar|gera|gerar|adiciona|adicione|registra|registre|abre|abrir|novo|nova)($|\\s)/.test(msg);\n\nif (reportWords && reportTargets && !hasCreateVerb) {\n  intent = 'fetch_report';\n}\n\n// --- TICKET: \"ticket\" or \"chamado\" WITH a create verb ---\nif ((msg.includes('ticket') || msg.includes('chamado')) && hasCreateVerb) {\n  intent = 'create_ticket';\n}\n\n// --- TASK: only if explicitly creating a task, NOT listing ---\nif ((msg.includes('tarefa') || (msg.includes('task') && !msg.includes('ticket'))) && hasCreateVerb && !reportWords) {\n  intent = 'create_task';\n}\n\n// Build reply based on OpenAI's original reply\nlet reply = item.reply || '';\nif (reply.includes('Processando') || reply.includes('Consultando') || reply.length < 5) {\n  if (intent === 'fetch_report') reply = '';\n  else if (intent === 'create_ticket') reply = '';\n  else if (intent === 'create_task') reply = '';\n  else reply = 'Entendido!';\n}\n\nreturn [{ json: {\n  ...item,\n  intent,\n  reply,\n  _debug: 'override: intent=' + intent + ' | report=' + (reportWords && reportTargets && !hasCreateVerb) + ' | ticket=' + ((msg.includes('ticket') || msg.includes('chamado')) && hasCreateVerb) + ' | task=' + ((msg.includes('tarefa') || msg.includes('task')) && hasCreateVerb && !reportWords) + ' | msg=' + msg.substring(0, 60)\n}}];\n",
-        "mode": "runOnceForEachItem"
+        "jsCode": "// Intent Override: simple keyword check that ALWAYS wins\nconst item = $input.first().json;\nconst msg = (item.currentMessage || item.originalMessage || '').toLowerCase()\n  .normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\n\nlet intent = item.intent || 'none';\n\n// --- REPORT: must be checked FIRST ---\nconst reportWords = /(quais|qual|listar|lista|resumo|relatorio|status|ativos|ativas|abertos|abertas|quantas|quantos|temos|mande|mostre|mostra|pendentes)/.test(msg);\nconst reportTargets = /(task|tasks|tarefa|tarefas|ticket|tickets|chamado|chamados|cockpit)/.test(msg);\nconst hasCreateVerb = /(^|\\s)(cria|crie|criar|gera|gerar|adiciona|adicione|registra|registre|abre|abrir|novo|nova)($|\\s)/.test(msg);\n\nif (reportWords && reportTargets && !hasCreateVerb) {\n  intent = 'fetch_report';\n}\n\n// --- TICKET: \"ticket\" or \"chamado\" WITH a create verb ---\nif ((msg.includes('ticket') || msg.includes('chamado')) && hasCreateVerb) {\n  intent = 'create_ticket';\n}\n\n// --- TASK: only if explicitly creating a task, NOT listing ---\nif ((msg.includes('tarefa') || (msg.includes('task') && !msg.includes('ticket'))) && hasCreateVerb && !reportWords) {\n  intent = 'create_task';\n}\n\n// Build reply based on OpenAI's original reply\nlet reply = item.reply || '';\nif (reply.includes('Processando') || reply.includes('Consultando') || reply.length < 5) {\n  if (intent === 'fetch_report') reply = '';\n  else if (intent === 'create_ticket') reply = '';\n  else if (intent === 'create_task') reply = '';\n  else reply = 'Entendido!';\n}\n\nreturn [{ json: {\n  ...item,\n  intent,\n  reply,\n  _debug: 'override: intent=' + intent + ' | report=' + (reportWords && reportTargets && !hasCreateVerb) + ' | ticket=' + ((msg.includes('ticket') || msg.includes('chamado')) && hasCreateVerb) + ' | task=' + ((msg.includes('tarefa') || msg.includes('task')) && hasCreateVerb && !reportWords) + ' | msg=' + msg.substring(0, 60)\n}}];\n",
+        "mode": "runOnceForAllItems"
       },
       "id": "node-intent-override",
       "name": "Intent Override",
