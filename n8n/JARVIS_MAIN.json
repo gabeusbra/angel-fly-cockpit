@@ -19,7 +19,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// ─────────────────────────────────────────────\n// Parse incoming WhatsApp message + filter\n// ─────────────────────────────────────────────\nconst body = $input.item.json.body || $input.item.json;\nconst msg = body.message || body;\n\n// Extract core fields (UAZAPI shape)\nconst chatId = msg.chatid || msg.chat?.id || msg.from || '';\nconst messageId = msg.messageid || msg.id || '';\nconst senderName = msg.sender?.name || msg.pushname || msg.notifyName || 'Unknown';\nconst senderPhone = (msg.sender?.id || msg.author || msg.from || '').replace(/@.*/, '');\nconst rawText = msg.text || msg.body || msg.message?.conversation || msg.conversation || '';\nconst fromMe = !!msg.fromMe;\nconst isGroup = chatId.endsWith('@g.us');\n\n// Skip own messages\nif (fromMe) {\n  return [{ json: { skip: true, reason: 'fromMe' } }];\n}\n\n// Group registry (kept in code as fast-path; jarvis_groups MySQL table is source of truth for new groups)\nconst GROUPS = {\n  '120363426390515923@g.us': { context: 'angelfly', label: 'Angel Fly Marketing Geral' },\n  '120363420996892188@g.us': { context: 'garlic',   label: 'Garlic N Lemon | Branding' },\n  '120363422948599063@g.us': { context: 'ernesto',  label: 'Ernesto | Site & Identidade Visual' }\n};\nconst group = GROUPS[chatId] || { context: 'unknown', label: 'Unknown' };\n\n// Mention detection\nconst lower = String(rawText).toLowerCase();\nconst mentioned = /@\\s*jarvis\\b/.test(lower)\n  || /\\bjarvis\\b/.test(lower)\n  || (msg.mentioned_jid || []).some(j => String(j).includes('59739253801103'));\n\nif (!mentioned) {\n  return [{ json: { skip: true, reason: 'not_mentioned', chatId, messageId } }];\n}\n\n// Clean text — remove the @Jarvis token\nconst cleanText = String(rawText)\n  .replace(/@\\s*jarvis\\b/gi, '')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\nif (!cleanText) {\n  return [{ json: { skip: true, reason: 'empty_after_clean', chatId, messageId } }];\n}\n\nreturn [{\n  json: {\n    skip: false,\n    chatId,\n    messageId,\n    senderName,\n    senderPhone,\n    rawText,\n    cleanText,\n    isGroup,\n    groupContext: group.context,\n    groupLabel: group.label,\n    receivedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "// ─────────────────────────────────────────────\n// Parse incoming WhatsApp message + filter + media detection\n// ─────────────────────────────────────────────\nconst body = $input.item.json.body || $input.item.json;\nconst msg = body.message || body;\n\nconst chatId = msg.chatid || msg.chat?.id || msg.from || body.chat?.wa_chatid || '';\nconst messageId = msg.messageid || msg.id || '';\nconst senderName = msg.senderName || msg.sender?.name || msg.pushname || msg.notifyName || 'Unknown';\nconst senderPhone = String(msg.sender_pn || msg.sender?.id || msg.author || msg.from || '').replace(/@.*/, '');\nconst rawText = msg.text || msg.body || msg.message?.conversation || msg.conversation || msg.caption || '';\nconst fromMe = !!msg.fromMe;\nconst isGroup = chatId.endsWith('@g.us');\n\nif (fromMe) {\n  return [{ json: { skip: true, reason: 'fromMe' } }];\n}\n\n// Media detection — UAZAPI fields\nconst mediaTypeRaw = String(msg.mediaType || msg.type || msg.messageType || '').toLowerCase();\nconst isMedia = ['document','image','audio','video','sticker'].some(t => mediaTypeRaw.includes(t));\nconst mediaInfo = isMedia ? {\n  type: mediaTypeRaw,\n  fileName: msg.fileName || msg.filename || msg.documentName || msg.title || '',\n  caption: msg.caption || msg.text || '',\n  mimeType: msg.mimetype || msg.mimeType || '',\n  url: msg.url || msg.fileUrl || msg.mediaUrl || ''\n} : null;\n\nconst GROUPS = {\n  '120363426390515923@g.us': { context: 'angelfly', label: 'Angel Fly Marketing Geral' },\n  '120363420996892188@g.us': { context: 'garlic',   label: 'Garlic N Lemon | Branding' },\n  '120363422948599063@g.us': { context: 'ernesto',  label: 'Ernesto | Site & Identidade Visual' }\n};\nconst group = GROUPS[chatId] || { context: 'unknown', label: 'Unknown' };\n\nconst lower = String(rawText).toLowerCase();\nconst mentioned = /@\\s*jarvis\\b/.test(lower)\n  || /\\bjarvis\\b/.test(lower)\n  || (msg.mentioned_jid || []).some(j => String(j).includes('59739253801103'));\n\nif (!mentioned && !isMedia) {\n  return [{ json: { skip: true, reason: 'not_mentioned', chatId, messageId } }];\n}\n\n// If only media without mention, also skip (avoid responding to every photo in group)\nif (!mentioned) {\n  return [{ json: { skip: true, reason: 'media_without_mention', chatId, messageId } }];\n}\n\nconst cleanText = String(rawText).replace(/@\\s*jarvis\\b/gi, '').replace(/\\s+/g, ' ').trim();\n\n// Allow empty cleanText if media (the file is the message)\nif (!cleanText && !isMedia) {\n  return [{ json: { skip: true, reason: 'empty_after_clean', chatId, messageId } }];\n}\n\nreturn [{\n  json: {\n    skip: false,\n    chatId, messageId, senderName, senderPhone,\n    rawText, cleanText: cleanText || '(sem texto, só anexo)',\n    isGroup,\n    groupContext: group.context,\n    groupLabel: group.label,\n    hasMedia: isMedia,\n    mediaInfo,\n    receivedAt: new Date().toISOString()\n  }\n}];"
       },
       "id": "parse-filter",
       "name": "Parse & Filter Mention",
@@ -224,7 +224,11 @@
       "position": [
         2400,
         420
-      ]
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 3000,
+      "continueOnFail": false
     },
     {
       "parameters": {
@@ -259,7 +263,11 @@
       "position": [
         2620,
         420
-      ]
+      ],
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 3000,
+      "continueOnFail": false
     },
     {
       "parameters": {
@@ -667,7 +675,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Build user message with live context (projects + team)\nconst meta = $('Merge New Thread').first()?.json || $('Resolve Thread').first().json;\nconst projResp = $('Fetch Projects (context)').item.json;\nconst userResp = $('Fetch Users (context)').item.json;\n\nconst projects = Array.isArray(projResp) ? projResp : (projResp?.data || []);\nconst users    = Array.isArray(userResp) ? userResp : (userResp?.data || []);\n\nconst activeProjects = projects.filter(p => (p.status || 'active') !== 'inactive')\n  .map(p => `- ${p.name}${p.client_name ? ' (cliente: ' + p.client_name + ')' : ''} [id=${p.id}]`)\n  .join('\\n');\nconst teamList = users.filter(u => u.status !== 'inactive')\n  .map(u => `- ${u.name || u.full_name || u.username} [id=${u.id}, role=${u.role || 'unknown'}]`)\n  .join('\\n');\n\nconst content = `[Grupo: ${meta.groupLabel} | Contexto: ${meta.groupContext} | De: ${meta.senderName}]\n\nCONTEXTO ATUAL DO COCKPIT (use estes nomes EXATOS ao chamar tools):\n\nPROJETOS ATIVOS:\n${activeProjects || '(nenhum)'}\n\nEQUIPE:\n${teamList || '(nenhum)'}\n\nMENSAGEM DO USUARIO:\n${meta.cleanText}`;\n\nreturn [{ json: { ...meta, content, threadId: meta.threadId } }];"
+        "jsCode": "// Build user message with live context (projects + team + media)\nconst meta = $('Merge New Thread').first()?.json || $('Resolve Thread').first().json;\nconst projResp = $('Fetch Projects (context)').item.json;\nconst userResp = $('Fetch Users (context)').item.json;\n\nconst projects = Array.isArray(projResp) ? projResp : (projResp?.data || []);\nconst users    = Array.isArray(userResp) ? userResp : (userResp?.data || []);\n\nconst activeProjects = projects.filter(p => (p.status || 'active') !== 'inactive')\n  .map(p => `- ${p.name}${p.client_name ? ' (cliente: ' + p.client_name + ')' : ''} [id=${p.id}]`)\n  .join('\\n');\nconst teamList = users.filter(u => u.status !== 'inactive')\n  .map(u => `- ${u.name || u.full_name || u.username} [id=${u.id}, role=${u.role || 'unknown'}]`)\n  .join('\\n');\n\nlet mediaBlock = '';\nif (meta.hasMedia && meta.mediaInfo) {\n  const m = meta.mediaInfo;\n  mediaBlock = `\\n\\n[ARQUIVO ANEXO RECEBIDO: tipo=${m.type}${m.fileName ? ', nome=\"' + m.fileName + '\"' : ''}${m.mimeType ? ', mime=' + m.mimeType : ''}${m.caption ? ', legenda=\"' + m.caption + '\"' : ''}]`;\n}\n\nconst content = `[Grupo: ${meta.groupLabel} | Contexto: ${meta.groupContext} | De: ${meta.senderName}]\n\nCONTEXTO ATUAL DO COCKPIT (use estes nomes EXATOS ao chamar tools):\n\nPROJETOS ATIVOS:\n${activeProjects || '(nenhum)'}\n\nEQUIPE:\n${teamList || '(nenhum)'}\n\nMENSAGEM DO USUARIO:\n${meta.cleanText}${mediaBlock}`;\n\nreturn [{ json: { ...meta, content, threadId: meta.threadId } }];"
       },
       "id": "build-context-msg",
       "name": "Build Context Message",
