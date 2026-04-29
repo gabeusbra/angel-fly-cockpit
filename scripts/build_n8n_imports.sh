@@ -40,9 +40,10 @@ with open('credentials/JARVIS_MAIN.json', 'w') as f:
     f.write(out)
 " "$KEY"
 
-# 2) Copy DAILY and OVERDUE_CHASE (no OpenAI key needed there)
+# 2) Copy workflows that don't need OpenAI key embedding
 cp n8n/JARVIS_DAILY.json credentials/JARVIS_DAILY.json
 cp n8n/JARVIS_OVERDUE_CHASE.json credentials/JARVIS_OVERDUE_CHASE.json
+cp n8n/JARVIS_RANDOM_PINGS.json credentials/JARVIS_RANDOM_PINGS.json
 
 echo ""
 echo "Files ready in credentials/:"

@@ -1,0 +1,254 @@
+{
+  "name": "Jarvis Random Pings — Interatividade Espontanea (v1.0)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 10,12,15,17 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Schedule: 10h/12h/15h/17h BRT",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        200,
+        400
+      ],
+      "notes": "4 disparos por dia em BRT (seg-sex). Cada disparo tem ~40% chance de ser pulado, e cada grupo tem chance independente. Media: ~2 mensagens espontaneas por grupo por dia."
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://cockpit.angelfly.io/api/jarvis_groups",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "is_active",
+              "value": "1"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "fetch-groups",
+      "name": "Fetch Active Groups",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        420,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://cockpit.angelfly.io/api/tasks",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limit",
+              "value": "300"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "fetch-tasks",
+      "name": "Fetch All Tasks",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        420,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ─────────────────────────────────────────────\n// Random Pings — mensagens espontâneas pra interatividade\n// 40% de chance de pular cada grupo (independente)\n// Mistura prompts genéricos com prompts contextuais\n// ─────────────────────────────────────────────\nconst SKIP_CHANCE = 0.4;\n\nconst norm = (v) => String(v||'').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');\n\nconst groupsResp = $('Fetch Active Groups').item.json;\nconst groupsList = Array.isArray(groupsResp) ? groupsResp : (groupsResp?.data || []);\nconst FALLBACK = [\n  { wa_chat_id: '120363426390515923@g.us', label: 'Angel Fly', context_key: 'angelfly' },\n  { wa_chat_id: '120363420996892188@g.us', label: 'Garlic',    context_key: 'garlic' },\n  { wa_chat_id: '120363422948599063@g.us', label: 'Ernesto',   context_key: 'ernesto' }\n];\nconst groups = groupsList.length ? groupsList : FALLBACK;\n\nconst collect = (items) => {\n  const all = [];\n  for (const it of items) {\n    const j = it.json;\n    if (Array.isArray(j)) j.forEach(r => r?.id && all.push(r));\n    else if (Array.isArray(j?.data)) j.data.forEach(r => r?.id && all.push(r));\n    else if (j?.id) all.push(j);\n  }\n  return all;\n};\nconst tasks = collect($('Fetch All Tasks').all());\n\nconst today = new Date(Date.now() - 3*3600000).toISOString().slice(0,10);\nconst isOpen = (s) => !['done','closed','cancelled','resolved','completed'].includes(norm(s));\nconst groupMatch = (t, ctx) => {\n  const blob = norm(t.project_name||'') + ' ' + norm(t.client_name||'');\n  if (ctx==='garlic')   return /garlic|gnl|lemons/.test(blob);\n  if (ctx==='ernesto')  return /ernesto|northend|north end|somerville|fax bridge|faxbridge/.test(blob);\n  if (ctx==='angelfly') return /angel\\s*fly|cockpit|jarvis/.test(blob);\n  return true;\n};\n\nconst hour = new Date(Date.now() - 3*3600000).getUTCHours();\nconst timeOfDay = hour < 12 ? 'morning' : (hour < 16 ? 'afternoon' : 'late');\n\n// Prompts genéricos por horário\nconst PINGS_MORNING = [\n  '☕ Bom dia! Como tá o pique da manhã? Algo novo pra registrar?',\n  '👋 E aí, time! Café tomado? Posso ajudar a organizar algo?',\n  'Manhã rolando. Se aparecer demanda nova, manda que eu registro 🚀',\n  '🌤️ Bom dia! Algo pegando fogo ou tudo no flow?',\n  'Bom diaaa. Tô aqui de plantão pra task/ticket/orçamento. Alguma coisa?'\n];\nconst PINGS_AFTERNOON = [\n  '👋 Como tá o dia? Alguma novidade que vale virar task?',\n  'Status check rápido: tudo flowing? Bloqueio pra reportar?',\n  '🌞 Meio do dia — algum bug aparecendo ou tudo de boa?',\n  'Pausa pro almoço logo? Antes disso, alguma demanda nova?',\n  'Hora do check-in! Se tem algo na cabeça que vale anotar, é agora 👀',\n  'PM mode: ritmo OK? Se algo precisa registrar, manda ver.'\n];\nconst PINGS_LATE = [\n  '🌅 Reta final do dia. Algo que ficou pra registrar antes de fechar?',\n  'Final de tarde — última chance pra criar task antes do café da manhã 😅',\n  'Dia tá indo bem? Algo novo apareceu no fim da tarde?',\n  '☕ Café da tarde + status update? Conta aí o que tá rolando.',\n  'Encerrando o dia logo. Bug, demanda, atualização — qualquer coisa, manda.',\n  '👀 Olhando o cockpit aqui... alguém quer dar update no que tá In Progress?'\n];\n\n// Prompts contextuais (mais inteligentes — só usa se tiver dados)\nfunction contextualPrompt(ctx, label) {\n  const groupTasks = tasks.filter(t => isOpen(t.status) && groupMatch(t, ctx));\n  const overdue = groupTasks.filter(t => t.deadline && t.deadline.slice(0,10) < today);\n  const backlog = groupTasks.filter(t => norm(t.status) === 'backlog');\n  const inProgress = groupTasks.filter(t => norm(t.status) === 'in_progress' || norm(t.status) === 'assigned');\n  const noOwner = groupTasks.filter(t => !t.assigned_to_name);\n\n  const options = [];\n  if (overdue.length >= 2) {\n    options.push(`👀 Tem ${overdue.length} tasks atrasadas no ${label}. Quer que eu chame nominalmente quem tá com cada uma?`);\n  }\n  if (backlog.length >= 3) {\n    options.push(`📋 Backlog do ${label} tem ${backlog.length} tasks paradas. Bora distribuir alguma hoje?`);\n  }\n  if (inProgress.length >= 1) {\n    const t = inProgress[Math.floor(Math.random() * inProgress.length)];\n    const who = t.assigned_to_name ? t.assigned_to_name : 'galera';\n    options.push(`Olha só, '${t.title}' tá In Progress há um tempo. Tudo correndo, ${who}?`);\n  }\n  if (noOwner.length >= 2) {\n    options.push(`🔍 Tem ${noOwner.length} tasks sem dono no ${label}. Quem pega?`);\n  }\n  return options.length ? options[Math.floor(Math.random() * options.length)] : null;\n}\n\nfunction pickGenericPrompt() {\n  const pool = timeOfDay === 'morning' ? PINGS_MORNING : (timeOfDay === 'afternoon' ? PINGS_AFTERNOON : PINGS_LATE);\n  return pool[Math.floor(Math.random() * pool.length)];\n}\n\nconst results = [];\nfor (const g of groups) {\n  // Independent skip dice for each group\n  if (Math.random() < SKIP_CHANCE) continue;\n\n  const ctx = g.context_key || g.context;\n  const label = g.label || ctx;\n\n  // 40% chance: try contextual prompt (if data supports it)\n  // 60% chance: generic prompt\n  let msg = null;\n  if (Math.random() < 0.4) {\n    msg = contextualPrompt(ctx, label);\n  }\n  if (!msg) {\n    msg = pickGenericPrompt();\n  }\n\n  results.push({ json: { number: g.wa_chat_id, text: msg, label } });\n}\n\nif (!results.length) return [{ json: { skip: true, reason: 'all_groups_skipped_or_no_groups' } }];\n\nreturn results;"
+      },
+      "id": "build-pings",
+      "name": "Build Random Pings",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEqual"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-has-msg",
+      "name": "Has Message?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        940,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://angelfly.uazapi.com/send/text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "a232b655-1733-46c1-b872-1f82782b9cbe"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"number\": \"{{ $json.number }}\", \"text\": {{ JSON.stringify($json.text) }} }",
+        "options": {}
+      },
+      "id": "send-ping",
+      "name": "Send Random Ping",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1160,
+        320
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule: 10h/12h/15h/17h BRT": {
+      "main": [
+        [
+          {
+            "node": "Fetch Active Groups",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch All Tasks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Active Groups": {
+      "main": [
+        [
+          {
+            "node": "Build Random Pings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch All Tasks": {
+      "main": [
+        [
+          {
+            "node": "Build Random Pings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Random Pings": {
+      "main": [
+        [
+          {
+            "node": "Has Message?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Message?": {
+      "main": [
+        [
+          {
+            "node": "Send Random Ping",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo"
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "jarvis-random-pings-v1"
+  },
+  "active": false,
+  "tags": [],
+  "versionId": "e047aae8-59ee-4fce-9e68-68cc84d70055",
+  "id": "89c63a155e9b4b1f",
+  "staticData": null,
+  "triggerCount": 0
+}
