@@ -214,7 +214,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"role\": \"user\",\n  \"content\": \"[Grupo: {{ $json.groupLabel }} | Contexto: {{ $json.groupContext }} | De: {{ $json.senderName }}]\\n\\n{{ $json.cleanText }}\"\n}",
+        "jsonBody": "={ \"role\": \"user\", \"content\": {{ JSON.stringify($json.content) }} }",
         "options": {}
       },
       "id": "add-message",
@@ -222,8 +222,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1960,
-        320
+        2180,
+        420
       ]
     },
     {
@@ -257,8 +257,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2180,
-        320
+        2400,
+        420
       ]
     },
     {
@@ -271,8 +271,8 @@
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        2400,
-        320
+        2620,
+        420
       ],
       "webhookId": "137ef579-d252-47ca-a08c-cfaa540f7eda"
     },
@@ -300,8 +300,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2620,
-        320
+        2840,
+        420
       ]
     },
     {
@@ -381,21 +381,21 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
-        2840,
-        320
+        3060,
+        420
       ]
     },
     {
       "parameters": {
-        "jsCode": "// ─────────────────────────────────────────────\n// Tool Dispatcher v2.1 — handles all tool_calls\n// Improvements:\n//  - filterByGroup with extended aliases\n//  - Returns include status, project_name, deadline, days_overdue\n//  - get_today_briefing returns expanded scope (today + overdue + recent)\n// ─────────────────────────────────────────────\nconst run = $input.item.json;\nconst toolCalls = run.required_action?.submit_tool_outputs?.tool_calls || [];\nconst COCKPIT = 'https://cockpit.angelfly.io/api';\nconst TOKEN = '5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16';\nconst headers = { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' };\n\nasync function cockpitGet(path) {\n  return await this.helpers.httpRequest({ method: 'GET', url: COCKPIT + path, headers, json: true, returnFullResponse: false });\n}\nasync function cockpitPost(path, body) {\n  return await this.helpers.httpRequest({ method: 'POST', url: COCKPIT + path, headers, body, json: true, returnFullResponse: false });\n}\n\nfunction norm(v) { return String(v||'').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').trim(); }\n\nasync function resolveProjectId(name) {\n  if (!name) return null;\n  try {\n    const list = await cockpitGet.call(this, '/projects');\n    const arr = Array.isArray(list) ? list : (list?.data || []);\n    const t = norm(name);\n    return (arr.find(p => norm(p.name) === t)\n      || arr.find(p => norm(p.name).includes(t))\n      || arr.find(p => t.includes(norm(p.name))))?.id || null;\n  } catch (e) { return null; }\n}\nasync function resolveUserId(name) {\n  if (!name) return null;\n  try {\n    const list = await cockpitGet.call(this, '/users');\n    const arr = Array.isArray(list) ? list : (list?.data || []);\n    const t = norm(name);\n    return (arr.find(u => norm(u.name||u.full_name||u.username) === t)\n      || arr.find(u => norm(u.name||u.full_name||u.username).includes(t)))?.id || null;\n  } catch (e) { return null; }\n}\n\n// Expanded aliases — matches everything in knowledge/groups/*.md\nfunction filterByGroup(items, ctx) {\n  if (!ctx || ctx === 'all') return items;\n  return items.filter(it => {\n    const blob = norm(it.project_name||'') + ' ' + norm(it.client_name||'');\n    if (ctx === 'garlic')   return /garlic|gnl|lemons/.test(blob);\n    if (ctx === 'ernesto')  return /ernesto|northend|north end|somerville|fax bridge|faxbridge/.test(blob);\n    if (ctx === 'angelfly') return /angel\\s*fly|angelfly|cockpit|jarvis/.test(blob);\n    return true;\n  });\n}\n\nconst today = new Date(Date.now() - 3*3600000).toISOString().slice(0,10); // BRT\nconst isOpen = (s) => !['done','closed','cancelled','resolved','completed'].includes(norm(s));\nconst daysOverdue = (deadline) => {\n  if (!deadline) return 0;\n  const d = new Date(deadline.slice(0,10) + 'T12:00:00Z');\n  const t = new Date(today + 'T12:00:00Z');\n  return Math.max(0, Math.round((t - d) / 86400000));\n};\n\nfunction summarize(t) {\n  return {\n    id: t.id,\n    title: t.title || t.subject,\n    status: t.status || 'unknown',\n    project_name: t.project_name || null,\n    client_name: t.client_name || null,\n    assigned_to_name: t.assigned_to_name || null,\n    priority: t.priority || 'medium',\n    deadline: t.deadline || null,\n    days_overdue: t.deadline && t.deadline < today ? daysOverdue(t.deadline) : 0\n  };\n}\n\nasync function handleTool(call) {\n  const name = call.function.name;\n  let args = {};\n  try { args = JSON.parse(call.function.arguments || '{}'); } catch (e) {}\n  try {\n    let output;\n    switch (name) {\n      case 'create_task': {\n        const project_id = await resolveProjectId.call(this, args.project_name);\n        const assigned_to = await resolveUserId.call(this, args.assigned_to_name);\n        const body = {\n          title: args.title, description: args.description || '',\n          project_id, project_name: args.project_name || null,\n          priority: args.priority || 'medium', status: 'backlog',\n          deadline: args.deadline || null,\n          assigned_to, assigned_to_name: args.assigned_to_name || null\n        };\n        const created = await cockpitPost.call(this, '/tasks', body);\n        output = { success: true, id: created.id || created.data?.id, ...body };\n        break;\n      }\n      case 'create_ticket': {\n        const project_id = await resolveProjectId.call(this, args.project_name);\n        const body = {\n          subject: args.subject, description: args.description || '',\n          category: args.category || 'bug', priority: args.priority || 'medium',\n          status: 'open', client_name: args.client_name || null,\n          project_id, project_name: args.project_name || null\n        };\n        const created = await cockpitPost.call(this, '/tickets', body);\n        output = { success: true, id: created.id || created.data?.id, ...body };\n        break;\n      }\n      case 'create_project': {\n        const body = {\n          name: args.name, client_name: args.client_name,\n          scope_description: args.scope_description || '', status: 'active',\n          payment_type: args.payment_type || 'one-time',\n          total_budget: args.total_budget || 0\n        };\n        const created = await cockpitPost.call(this, '/projects', body);\n        output = { success: true, id: created.id || created.data?.id, ...body };\n        break;\n      }\n      case 'create_payment_incoming': {\n        const body = {\n          description: args.description || '', amount: args.amount,\n          client_name: args.client_name, status: args.status || 'pending'\n        };\n        const created = await cockpitPost.call(this, '/payments_incoming', body);\n        output = { success: true, id: created.id || created.data?.id, ...body };\n        break;\n      }\n      case 'create_payment_outgoing': {\n        const body = {\n          description: args.description || '', amount: args.amount,\n          recipient_name: args.recipient_name\n        };\n        const created = await cockpitPost.call(this, '/payments_outgoing', body);\n        output = { success: true, id: created.id || created.data?.id, ...body };\n        break;\n      }\n      case 'create_quote': {\n        const body = {\n          title: args.title, description: args.description || '',\n          client_name: args.client_name, amount: args.amount,\n          valid_until: args.valid_until || null, status: 'draft'\n        };\n        const created = await cockpitPost.call(this, '/quotes', body);\n        output = { success: true, id: created.id || created.data?.id, ...body };\n        break;\n      }\n      case 'list_projects': {\n        const list = await cockpitGet.call(this, '/projects');\n        const arr = Array.isArray(list) ? list : (list?.data || []);\n        output = arr.map(p => ({ id: p.id, name: p.name, client_name: p.client_name, status: p.status }));\n        break;\n      }\n      case 'list_users': {\n        const list = await cockpitGet.call(this, '/users');\n        const arr = Array.isArray(list) ? list : (list?.data || []);\n        output = arr.map(u => ({ id: u.id, name: u.name || u.full_name || u.username, role: u.role }));\n        break;\n      }\n      case 'get_overdue_tasks': {\n        const list = await cockpitGet.call(this, '/tasks?limit=300');\n        const arr = Array.isArray(list) ? list : (list?.data || []);\n        let overdue = arr.filter(t => isOpen(t.status) && t.deadline && t.deadline.slice(0,10) < today);\n        if (args.group_context && args.group_context !== 'all') overdue = filterByGroup(overdue, args.group_context);\n        overdue.sort((a,b) => daysOverdue(b.deadline) - daysOverdue(a.deadline));\n        output = overdue.map(summarize);\n        break;\n      }\n      case 'get_today_briefing': {\n        const [tasksR, ticketsR] = await Promise.all([\n          cockpitGet.call(this, '/tasks?limit=300'),\n          cockpitGet.call(this, '/tickets?limit=300')\n        ]);\n        const allTasks   = filterByGroup(Array.isArray(tasksR)   ? tasksR   : (tasksR?.data || []),   args.group_context);\n        const allTickets = filterByGroup(Array.isArray(ticketsR) ? ticketsR : (ticketsR?.data || []), args.group_context);\n        const openTasks   = allTasks.filter(t => isOpen(t.status));\n        const openTickets = allTickets.filter(t => isOpen(t.status));\n        output = {\n          group: args.group_context,\n          today_tasks:    openTasks.filter(t => (t.deadline||'').slice(0,10) === today).map(summarize),\n          overdue_tasks:  openTasks.filter(t => t.deadline && t.deadline.slice(0,10) < today).map(summarize),\n          in_progress:    openTasks.filter(t => norm(t.status) === 'in_progress' || norm(t.status) === 'assigned').map(summarize),\n          backlog:        openTasks.filter(t => norm(t.status) === 'backlog').slice(0, 10).map(summarize),\n          review:         openTasks.filter(t => norm(t.status) === 'review' || norm(t.status) === 'client_approval').map(summarize),\n          recent_tickets: openTickets.slice(0, 10).map(summarize),\n          totals: { open_tasks: openTasks.length, open_tickets: openTickets.length }\n        };\n        break;\n      }\n      default:\n        output = { error: 'unknown_tool: ' + name };\n    }\n    return { tool_call_id: call.id, output: JSON.stringify(output) };\n  } catch (err) {\n    return { tool_call_id: call.id, output: JSON.stringify({ success: false, error: err.message }) };\n  }\n}\n\nconst results = [];\nfor (const c of toolCalls) {\n  const r = await handleTool.call(this, c);\n  results.push(r);\n}\n\nreturn [{ json: { tool_outputs: results, runId: run.id, threadId: run.thread_id } }];"
+        "jsCode": "// ─────────────────────────────────────────────\n// Tool Dispatcher v2.2 — fail-loud on unresolved project/user\n//  - If project_name given but not in DB -> error with available list\n//  - If assigned_to_name given but not in DB -> error with team list\n//  - get_today_briefing returns expanded scope (today + overdue + recent)\n// ─────────────────────────────────────────────\nconst run = $input.item.json;\nconst toolCalls = run.required_action?.submit_tool_outputs?.tool_calls || [];\nconst COCKPIT = 'https://cockpit.angelfly.io/api';\nconst TOKEN = '5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16';\nconst headers = { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' };\n\nasync function cockpitGet(path) {\n  return await this.helpers.httpRequest({ method: 'GET', url: COCKPIT + path, headers, json: true, returnFullResponse: false });\n}\nasync function cockpitPost(path, body) {\n  return await this.helpers.httpRequest({ method: 'POST', url: COCKPIT + path, headers, body, json: true, returnFullResponse: false });\n}\n\nfunction norm(v) { return String(v||'').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').trim(); }\n\nasync function fetchProjects() {\n  const list = await cockpitGet.call(this, '/projects');\n  return Array.isArray(list) ? list : (list?.data || []);\n}\nasync function fetchUsers() {\n  const list = await cockpitGet.call(this, '/users');\n  return Array.isArray(list) ? list : (list?.data || []);\n}\n\nfunction resolveProject(name, projects) {\n  if (!name) return { id: null, found: true, project: null };\n  const t = norm(name);\n  const match = projects.find(p => norm(p.name) === t)\n    || projects.find(p => norm(p.name).includes(t))\n    || projects.find(p => t.includes(norm(p.name)));\n  if (match) return { id: match.id, found: true, project: match };\n  return { id: null, found: false, available: projects.map(p => p.name) };\n}\nfunction resolveUser(name, users) {\n  if (!name) return { id: null, found: true, user: null };\n  const t = norm(name);\n  const userName = (u) => u.name || u.full_name || u.username || '';\n  const match = users.find(u => norm(userName(u)) === t)\n    || users.find(u => norm(userName(u)).includes(t))\n    || users.find(u => t.includes(norm(userName(u))));\n  if (match) return { id: match.id, found: true, user: match };\n  return { id: null, found: false, available: users.map(u => userName(u)) };\n}\n\nfunction filterByGroup(items, ctx) {\n  if (!ctx || ctx === 'all') return items;\n  return items.filter(it => {\n    const blob = norm(it.project_name||'') + ' ' + norm(it.client_name||'');\n    if (ctx === 'garlic')   return /garlic|gnl|lemons/.test(blob);\n    if (ctx === 'ernesto')  return /ernesto|northend|north end|somerville|fax bridge|faxbridge/.test(blob);\n    if (ctx === 'angelfly') return /angel\\s*fly|angelfly|cockpit|jarvis/.test(blob);\n    return true;\n  });\n}\n\nconst today = new Date(Date.now() - 3*3600000).toISOString().slice(0,10);\nconst isOpen = (s) => !['done','closed','cancelled','resolved','completed'].includes(norm(s));\nconst daysOverdue = (deadline) => {\n  if (!deadline) return 0;\n  const d = new Date(deadline.slice(0,10) + 'T12:00:00Z');\n  const t = new Date(today + 'T12:00:00Z');\n  return Math.max(0, Math.round((t - d) / 86400000));\n};\n\nfunction summarize(t) {\n  return {\n    id: t.id, title: t.title || t.subject,\n    status: t.status || 'unknown',\n    project_name: t.project_name || null,\n    client_name: t.client_name || null,\n    assigned_to_name: t.assigned_to_name || null,\n    priority: t.priority || 'medium',\n    deadline: t.deadline || null,\n    days_overdue: t.deadline && t.deadline < today ? daysOverdue(t.deadline) : 0\n  };\n}\n\nasync function handleTool(call) {\n  const name = call.function.name;\n  let args = {};\n  try { args = JSON.parse(call.function.arguments || '{}'); } catch (e) {}\n  try {\n    let output;\n    switch (name) {\n      case 'create_task':\n      case 'create_ticket': {\n        const projects = await fetchProjects.call(this);\n        const users    = name === 'create_task' ? await fetchUsers.call(this) : [];\n\n        const projRes = resolveProject(args.project_name, projects);\n        if (args.project_name && !projRes.found) {\n          output = {\n            success: false,\n            error: 'project_not_found',\n            message: `Projeto '${args.project_name}' nao existe no Cockpit. Pergunte ao usuario qual eh o correto.`,\n            available_projects: projRes.available\n          };\n          break;\n        }\n        const userRes = name === 'create_task' ? resolveUser(args.assigned_to_name, users) : { id: null, found: true };\n        if (name === 'create_task' && args.assigned_to_name && !userRes.found) {\n          output = {\n            success: false,\n            error: 'user_not_found',\n            message: `Usuario '${args.assigned_to_name}' nao existe no Cockpit. Pergunte ao usuario quem deve receber a task.`,\n            available_users: userRes.available\n          };\n          break;\n        }\n\n        const body = name === 'create_task' ? {\n          title: args.title,\n          description: args.description || '',\n          project_id: projRes.id,\n          project_name: projRes.project?.name || args.project_name || null,\n          priority: args.priority || 'medium',\n          status: 'backlog',\n          deadline: args.deadline || null,\n          assigned_to: userRes.id,\n          assigned_to_name: userRes.user ? (userRes.user.name || userRes.user.full_name || userRes.user.username) : null\n        } : {\n          subject: args.subject,\n          description: args.description || '',\n          category: args.category || 'bug',\n          priority: args.priority || 'medium',\n          status: 'open',\n          client_name: args.client_name || projRes.project?.client_name || null,\n          project_id: projRes.id,\n          project_name: projRes.project?.name || args.project_name || null\n        };\n        const created = await cockpitPost.call(this, name === 'create_task' ? '/tasks' : '/tickets', body);\n        const newId = created.id || created.data?.id;\n        if (!newId) {\n          output = { success: false, error: 'create_failed', message: 'POST retornou sem id. Backend pode ter rejeitado.', raw: created };\n        } else {\n          output = { success: true, id: newId, ...body };\n        }\n        break;\n      }\n      case 'create_project': {\n        const body = {\n          name: args.name, client_name: args.client_name,\n          scope_description: args.scope_description || '',\n          status: 'active',\n          payment_type: args.payment_type || 'one-time',\n          total_budget: args.total_budget || 0\n        };\n        const created = await cockpitPost.call(this, '/projects', body);\n        output = { success: true, id: created.id || created.data?.id, ...body };\n        break;\n      }\n      case 'create_payment_incoming': {\n        const body = {\n          description: args.description || '', amount: args.amount,\n          client_name: args.client_name, status: args.status || 'pending'\n        };\n        const created = await cockpitPost.call(this, '/payments_incoming', body);\n        output = { success: true, id: created.id || created.data?.id, ...body };\n        break;\n      }\n      case 'create_payment_outgoing': {\n        const body = {\n          description: args.description || '', amount: args.amount,\n          recipient_name: args.recipient_name\n        };\n        const created = await cockpitPost.call(this, '/payments_outgoing', body);\n        output = { success: true, id: created.id || created.data?.id, ...body };\n        break;\n      }\n      case 'create_quote': {\n        const body = {\n          title: args.title, description: args.description || '',\n          client_name: args.client_name, amount: args.amount,\n          valid_until: args.valid_until || null, status: 'draft'\n        };\n        const created = await cockpitPost.call(this, '/quotes', body);\n        output = { success: true, id: created.id || created.data?.id, ...body };\n        break;\n      }\n      case 'list_projects': {\n        const projects = await fetchProjects.call(this);\n        output = projects.map(p => ({ id: p.id, name: p.name, client_name: p.client_name, status: p.status }));\n        break;\n      }\n      case 'list_users': {\n        const users = await fetchUsers.call(this);\n        output = users.map(u => ({ id: u.id, name: u.name || u.full_name || u.username, role: u.role }));\n        break;\n      }\n      case 'get_overdue_tasks': {\n        const list = await cockpitGet.call(this, '/tasks?limit=300');\n        const arr = Array.isArray(list) ? list : (list?.data || []);\n        let overdue = arr.filter(t => isOpen(t.status) && t.deadline && t.deadline.slice(0,10) < today);\n        if (args.group_context && args.group_context !== 'all') overdue = filterByGroup(overdue, args.group_context);\n        overdue.sort((a,b) => daysOverdue(b.deadline) - daysOverdue(a.deadline));\n        output = overdue.map(summarize);\n        break;\n      }\n      case 'get_today_briefing': {\n        const [tasksR, ticketsR] = await Promise.all([\n          cockpitGet.call(this, '/tasks?limit=300'),\n          cockpitGet.call(this, '/tickets?limit=300')\n        ]);\n        const allTasks   = filterByGroup(Array.isArray(tasksR)   ? tasksR   : (tasksR?.data || []),   args.group_context);\n        const allTickets = filterByGroup(Array.isArray(ticketsR) ? ticketsR : (ticketsR?.data || []), args.group_context);\n        const openTasks   = allTasks.filter(t => isOpen(t.status));\n        const openTickets = allTickets.filter(t => isOpen(t.status));\n        output = {\n          group: args.group_context,\n          today_tasks:    openTasks.filter(t => (t.deadline||'').slice(0,10) === today).map(summarize),\n          overdue_tasks:  openTasks.filter(t => t.deadline && t.deadline.slice(0,10) < today).map(summarize),\n          in_progress:    openTasks.filter(t => norm(t.status) === 'in_progress' || norm(t.status) === 'assigned').map(summarize),\n          backlog:        openTasks.filter(t => norm(t.status) === 'backlog').slice(0, 10).map(summarize),\n          review:         openTasks.filter(t => norm(t.status) === 'review' || norm(t.status) === 'client_approval').map(summarize),\n          recent_tickets: openTickets.slice(0, 10).map(summarize),\n          totals: { open_tasks: openTasks.length, open_tickets: openTickets.length }\n        };\n        break;\n      }\n      default:\n        output = { error: 'unknown_tool: ' + name };\n    }\n    return { tool_call_id: call.id, output: JSON.stringify(output) };\n  } catch (err) {\n    return { tool_call_id: call.id, output: JSON.stringify({ success: false, error: 'exception', message: err.message }) };\n  }\n}\n\nconst results = [];\nfor (const c of toolCalls) {\n  const r = await handleTool.call(this, c);\n  results.push(r);\n}\n\nreturn [{ json: { tool_outputs: results, runId: run.id, threadId: run.thread_id } }];"
       },
       "id": "tool-dispatcher",
       "name": "Tool Dispatcher",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3060,
-        200
+        3280,
+        280
       ]
     },
     {
@@ -429,8 +429,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3280,
-        200
+        3500,
+        280
       ]
     },
     {
@@ -470,8 +470,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3060,
-        440
+        3280,
+        540
       ]
     },
     {
@@ -483,8 +483,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3280,
-        440
+        3500,
+        540
       ]
     },
     {
@@ -514,8 +514,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3500,
-        440
+        3720,
+        540
       ]
     },
     {
@@ -551,8 +551,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3720,
-        440
+        3940,
+        540
       ]
     },
     {
@@ -564,8 +564,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3060,
-        640
+        3280,
+        720
       ]
     },
     {
@@ -601,8 +601,81 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3280,
-        640
+        3500,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://cockpit.angelfly.io/api/projects",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "fetch-projects-ctx",
+      "name": "Fetch Projects (context)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1740,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://cockpit.angelfly.io/api/users",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "fetch-users-ctx",
+      "name": "Fetch Users (context)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1740,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build user message with live context (projects + team)\nconst meta = $('Merge New Thread').first()?.json || $('Resolve Thread').first().json;\nconst projResp = $('Fetch Projects (context)').item.json;\nconst userResp = $('Fetch Users (context)').item.json;\n\nconst projects = Array.isArray(projResp) ? projResp : (projResp?.data || []);\nconst users    = Array.isArray(userResp) ? userResp : (userResp?.data || []);\n\nconst activeProjects = projects.filter(p => (p.status || 'active') !== 'inactive')\n  .map(p => `- ${p.name}${p.client_name ? ' (cliente: ' + p.client_name + ')' : ''} [id=${p.id}]`)\n  .join('\\n');\nconst teamList = users.filter(u => u.status !== 'inactive')\n  .map(u => `- ${u.name || u.full_name || u.username} [id=${u.id}, role=${u.role || 'unknown'}]`)\n  .join('\\n');\n\nconst content = `[Grupo: ${meta.groupLabel} | Contexto: ${meta.groupContext} | De: ${meta.senderName}]\n\nCONTEXTO ATUAL DO COCKPIT (use estes nomes EXATOS ao chamar tools):\n\nPROJETOS ATIVOS:\n${activeProjects || '(nenhum)'}\n\nEQUIPE:\n${teamList || '(nenhum)'}\n\nMENSAGEM DO USUARIO:\n${meta.cleanText}`;\n\nreturn [{ json: { ...meta, content, threadId: meta.threadId } }];"
+      },
+      "id": "build-context-msg",
+      "name": "Build Context Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1960,
+        420
       ]
     }
   ],
@@ -674,7 +747,12 @@
         ],
         [
           {
-            "node": "Add Message to Thread",
+            "node": "Fetch Projects (context)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Users (context)",
             "type": "main",
             "index": 0
           }
@@ -696,7 +774,12 @@
       "main": [
         [
           {
-            "node": "Add Message to Thread",
+            "node": "Fetch Projects (context)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Users (context)",
             "type": "main",
             "index": 0
           }
@@ -839,6 +922,39 @@
         [
           {
             "node": "Send Error Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Projects (context)": {
+      "main": [
+        [
+          {
+            "node": "Build Context Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Users (context)": {
+      "main": [
+        [
+          {
+            "node": "Build Context Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Context Message": {
+      "main": [
+        [
+          {
+            "node": "Add Message to Thread",
             "type": "main",
             "index": 0
           }
