@@ -222,7 +222,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2400,
+        3500,
         420
       ],
       "retryOnFail": true,
@@ -261,7 +261,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2620,
+        3720,
         420
       ],
       "retryOnFail": true,
@@ -279,7 +279,7 @@
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        2840,
+        3940,
         420
       ],
       "webhookId": "137ef579-d252-47ca-a08c-cfaa540f7eda"
@@ -308,7 +308,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3060,
+        4160,
         420
       ]
     },
@@ -389,7 +389,7 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
-        3280,
+        4380,
         420
       ]
     },
@@ -402,7 +402,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3500,
+        4600,
         280
       ]
     },
@@ -437,7 +437,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3720,
+        4820,
         280
       ]
     },
@@ -478,7 +478,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3500,
+        4600,
         540
       ]
     },
@@ -491,7 +491,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3720,
+        4820,
         540
       ]
     },
@@ -522,7 +522,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3940,
+        5040,
         540
       ]
     },
@@ -559,7 +559,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        4160,
+        5260,
         540
       ]
     },
@@ -572,7 +572,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3500,
+        4600,
         720
       ]
     },
@@ -609,7 +609,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3720,
+        4820,
         720
       ]
     },
@@ -675,7 +675,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Build Context Message v4 — defensivo + transcrição de áudio + upload PDF/imagem\nconst UAZAPI_TOKEN = 'a232b655-1733-46c1-b872-1f82782b9cbe';\nconst OPENAI_KEY = '__JARVIS_OPENAI_KEY__';\n\n// ── 1. Resolve meta (defensivo: Merge New Thread só existe se thread foi criada agora) ──\nlet meta = {};\ntry {\n  const m = $('Merge New Thread').first()?.json;\n  if (m?.chatId) meta = m;\n} catch (e) {}\nif (!meta.chatId) {\n  try { meta = $('Resolve Thread').first()?.json || {}; } catch (e) {}\n}\n\n// ── 2. Get projects + users (defensivo, com fallback) ──\nlet projects = [];\nlet projErr = null;\ntry {\n  const p = $('Fetch Projects (context)').first()?.json;\n  projects = Array.isArray(p) ? p : (p?.data || []);\n} catch (e) { projErr = e.message; }\n\nlet users = [];\nlet userErr = null;\ntry {\n  const u = $('Fetch Users (context)').first()?.json;\n  users = Array.isArray(u) ? u : (u?.data || []);\n} catch (e) { userErr = e.message; }\n\n// Fallback final: $input é o nó upstream direto (Fetch Users)\nif (!users.length) {\n  try {\n    const u = $input.first()?.json;\n    if (u && (Array.isArray(u) || u?.data)) {\n      users = Array.isArray(u) ? u : (u?.data || []);\n    }\n  } catch (e) {}\n}\n\nconst activeProjects = projects.filter(p => (p.status || 'active') !== 'inactive')\n  .map(p => `- ${p.name}${p.client_name ? ' (cliente: ' + p.client_name + ')' : ''} [id=${p.id}]`)\n  .join('\\n');\nconst teamList = users.filter(u => u.status !== 'inactive')\n  .map(u => `- ${u.name || u.full_name || u.username} [id=${u.id}, role=${u.role || 'unknown'}]`)\n  .join('\\n');\n\n// ── 3. Media handling (download + transcribe ou upload OpenAI) ──\nlet openai_file_id = null;\nlet mediaBlock = '';\nlet mediaError = null;\nlet audioTranscription = null;\n\nif (meta.hasMedia && meta.messageId) {\n  const m = meta.mediaInfo || {};\n  const isAudio = String(m.type || '').toLowerCase().includes('audio') || String(m.type || '').toLowerCase().includes('ptt');\n  const isImage = String(m.type || '').toLowerCase().includes('image') || String(m.type || '').toLowerCase().includes('sticker');\n  const isDocument = String(m.type || '').toLowerCase().includes('document');\n  const isVideo = String(m.type || '').toLowerCase().includes('video');\n\n  try {\n    // 1. Pedir UAZAPI o arquivo (com transcricao se for audio)\n    const requestBody = {\n      id: meta.messageId,\n      return_link: true,\n      transcribe: isAudio\n    };\n    if (isAudio && OPENAI_KEY && OPENAI_KEY !== '__JARVIS_OPENAI_KEY__') {\n      requestBody.openai_apikey = OPENAI_KEY;\n    }\n\n    const dl = await this.helpers.httpRequest({\n      method: 'POST',\n      url: 'https://angelfly.uazapi.com/message/download',\n      headers: { 'token': UAZAPI_TOKEN, 'Content-Type': 'application/json' },\n      body: requestBody,\n      json: true,\n      returnFullResponse: false\n    });\n\n    // 2a. Audio com transcrição → usa o texto direto\n    if (isAudio) {\n      audioTranscription = dl?.transcription || dl?.text || dl?.transcript || dl?.data?.transcription;\n      if (audioTranscription) {\n        mediaBlock = `\\n\\n[ÁUDIO TRANSCRITO: \"${audioTranscription}\"]`;\n      } else {\n        mediaError = 'audio_no_transcription';\n      }\n    }\n\n    // 2b. Video → não suportado\n    else if (isVideo) {\n      mediaError = 'video_not_supported';\n    }\n\n    // 2c. PDF/imagem → download binário + upload OpenAI Files\n    else if (isDocument || isImage) {\n      const fileURL = dl?.fileURL || dl?.url || dl?.link || dl?.fileUrl || dl?.data?.fileURL;\n      if (!fileURL) {\n        mediaError = 'no_url_returned: ' + JSON.stringify(dl).slice(0, 300);\n      } else {\n        // Download binário\n        const binary = await this.helpers.httpRequest({\n          method: 'GET', url: fileURL,\n          encoding: 'arraybuffer',\n          returnFullResponse: false\n        });\n        const buf = Buffer.from(binary);\n\n        // Upload pra OpenAI Files\n        const filename = m.fileName || ('attachment_' + Date.now() + (m.mimeType?.includes('pdf') ? '.pdf' : (isImage ? '.png' : '.bin')));\n        const upload = await this.helpers.httpRequest({\n          method: 'POST',\n          url: 'https://api.openai.com/v1/files',\n          headers: { 'Authorization': 'Bearer ' + OPENAI_KEY },\n          formData: {\n            file: { value: buf, options: { filename, contentType: m.mimeType || 'application/octet-stream' } },\n            purpose: 'assistants'\n          },\n          json: true,\n          returnFullResponse: false\n        });\n        openai_file_id = upload?.id || upload?.data?.id;\n        if (!openai_file_id) mediaError = 'no_file_id_from_openai: ' + JSON.stringify(upload).slice(0, 300);\n      }\n    }\n\n    else {\n      mediaError = 'unknown_media_type: ' + m.type;\n    }\n  } catch (err) {\n    mediaError = 'exception: ' + (err.message || String(err)).slice(0, 300);\n  }\n\n  // Build mediaBlock baseado no resultado\n  if (!audioTranscription) {\n    if (openai_file_id) {\n      mediaBlock = `\\n\\n[ARQUIVO ANEXO: tipo=${m.type || '?'}${m.fileName ? ', nome=\"' + m.fileName + '\"' : ''}${m.caption ? ', legenda=\"' + m.caption + '\"' : ''}]\\n[FILE_ID OPENAI: ${openai_file_id} — você TEM acesso ao conteúdo via file_search]`;\n    } else {\n      mediaBlock = `\\n\\n[ARQUIVO ANEXO: tipo=${m.type || '?'}${m.fileName ? ', nome=\"' + m.fileName + '\"' : ''}${m.caption ? ', legenda=\"' + m.caption + '\"' : ''}]\\n[Erro ao processar: ${mediaError || 'desconhecido'} — peca pro usuario descrever em texto]`;\n    }\n  }\n}\n\n// ── 4. Build content ──\nconst content = `[Grupo: ${meta.groupLabel} | Contexto: ${meta.groupContext} | De: ${meta.senderName}]\n\nCONTEXTO ATUAL DO COCKPIT (use estes nomes EXATOS ao chamar tools):\n\nPROJETOS ATIVOS:\n${activeProjects || '(nenhum)'}\n\nEQUIPE:\n${teamList || '(nenhum)'}\n\nMENSAGEM DO USUARIO:\n${meta.cleanText || '(sem texto)'}${mediaBlock}`;\n\n// Build OpenAI message body (com attachments se file uploaded)\nconst messageBody = { role: 'user', content };\nif (openai_file_id) {\n  messageBody.attachments = [{ file_id: openai_file_id, tools: [{ type: 'file_search' }] }];\n}\n\nreturn [{\n  json: {\n    ...meta,\n    content,\n    messageBody,\n    openai_file_id,\n    audioTranscription,\n    mediaError,\n    debug: { projErr, userErr, projectsCount: projects.length, usersCount: users.length },\n    threadId: meta.threadId\n  }\n}];"
+        "jsCode": "// Build Context Message v5 — simplified, just routing\nlet meta = {};\ntry { const m = $('Merge New Thread').first()?.json; if (m?.chatId) meta = m; } catch (e) {}\nif (!meta.chatId) { try { meta = $('Resolve Thread').first()?.json || {}; } catch (e) {} }\n\nlet projects = [];\ntry { const p = $('Fetch Projects (context)').first()?.json; projects = Array.isArray(p) ? p : (p?.data || []); } catch (e) {}\n\nlet users = [];\ntry { const u = $('Fetch Users (context)').first()?.json; users = Array.isArray(u) ? u : (u?.data || []); } catch (e) {}\nif (!users.length) { try { const u = $input.first()?.json; users = Array.isArray(u) ? u : (u?.data || []); } catch (e) {} }\n\nconst activeProjects = projects.filter(p => (p.status || 'active') !== 'inactive')\n  .map(p => `- ${p.name}${p.client_name ? ' (cliente: ' + p.client_name + ')' : ''} [id=${p.id}]`).join('\\n');\nconst teamList = users.filter(u => u.status !== 'inactive')\n  .map(u => `- ${u.name || u.full_name || u.username} [id=${u.id}, role=${u.role || 'unknown'}]`).join('\\n');\n\n// Decide media action path\nlet mediaActionPath = 'skip';\nif (meta.hasMedia && meta.messageId) {\n  const t = String(meta.mediaInfo?.type || '').toLowerCase();\n  if (t.includes('audio') || t.includes('ptt')) mediaActionPath = 'transcribe';\n  else if (t.includes('document') || t.includes('image') || t.includes('sticker')) mediaActionPath = 'upload';\n  else mediaActionPath = 'skip';\n}\n\nconst baseContent = `[Grupo: ${meta.groupLabel} | Contexto: ${meta.groupContext} | De: ${meta.senderName}]\n\nCONTEXTO ATUAL DO COCKPIT (use estes nomes EXATOS ao chamar tools):\n\nPROJETOS ATIVOS:\n${activeProjects || '(nenhum)'}\n\nEQUIPE:\n${teamList || '(nenhum)'}\n\nMENSAGEM DO USUARIO:\n${meta.cleanText || '(sem texto)'}`;\n\nreturn [{\n  json: {\n    ...meta,\n    baseContent,\n    mediaActionPath,\n    messageBody: { role: 'user', content: baseContent },\n    threadId: meta.threadId\n  }\n}];"
       },
       "id": "build-context-msg",
       "name": "Build Context Message",
@@ -684,6 +684,227 @@
       "position": [
         2180,
         420
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.mediaActionPath }}",
+                    "rightValue": "transcribe",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "transcribe"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.mediaActionPath }}",
+                    "rightValue": "upload",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "upload"
+            }
+          ]
+        },
+        "fallbackOutput": "extra",
+        "options": {}
+      },
+      "id": "switch-media",
+      "name": "Route by Media",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        2400,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://angelfly.uazapi.com/message/download",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "a232b655-1733-46c1-b872-1f82782b9cbe"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"id\": \"{{ $json.messageId }}\", \"transcribe\": true, \"return_link\": true }",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "audio-download",
+      "name": "UAZAPI Audio + Transcribe",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2620,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Append transcription to messageBody.content\nconst ctx = $('Build Context Message').first().json;\nconst dl = $input.first().json;\n\nconst transcription = dl?.transcription || dl?.text || dl?.transcript || dl?.data?.transcription || '';\nconst mediaBlock = transcription\n  ? `\\n\\n[ÁUDIO TRANSCRITO: \"${transcription}\"]`\n  : `\\n\\n[ÁUDIO RECEBIDO mas não foi possível transcrever — peça pro usuário descrever]`;\n\nconst finalContent = ctx.baseContent + mediaBlock;\nreturn [{ json: { ...ctx, content: finalContent, messageBody: { role: 'user', content: finalContent } } }];"
+      },
+      "id": "audio-finalize",
+      "name": "Append Transcription",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2840,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://angelfly.uazapi.com/message/download",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "a232b655-1733-46c1-b872-1f82782b9cbe"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"id\": \"{{ $json.messageId }}\", \"return_link\": true, \"transcribe\": false }",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "file-download-url",
+      "name": "UAZAPI Get File URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2620,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.fileURL || $json.url || $json.link || $json.fileUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      },
+      "id": "file-get-binary",
+      "name": "Download File Binary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2840,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/files",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENAI_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "purpose",
+              "value": "assistants"
+            },
+            {
+              "name": "file",
+              "parameterType": "formBinaryData",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "file-upload-openai",
+      "name": "OpenAI Upload File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3060,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build final messageBody with file_id attachment\nconst ctx = $('Build Context Message').first().json;\nconst upload = $input.first().json;\n\nconst file_id = upload?.id || upload?.data?.id;\nlet mediaBlock, messageBody;\n\nif (file_id) {\n  const m = ctx.mediaInfo || {};\n  mediaBlock = `\\n\\n[ARQUIVO ANEXO: tipo=${m.type || '?'}${m.fileName ? ', nome=\"' + m.fileName + '\"' : ''}${m.caption ? ', legenda=\"' + m.caption + '\"' : ''}]\\n[FILE_ID: ${file_id} — você TEM acesso via file_search]`;\n  const finalContent = ctx.baseContent + mediaBlock;\n  messageBody = {\n    role: 'user',\n    content: finalContent,\n    attachments: [{ file_id, tools: [{ type: 'file_search' }] }]\n  };\n  return [{ json: { ...ctx, content: finalContent, messageBody, openai_file_id: file_id } }];\n} else {\n  mediaBlock = `\\n\\n[ARQUIVO RECEBIDO mas upload OpenAI falhou: ${JSON.stringify(upload).slice(0,200)}]`;\n  const finalContent = ctx.baseContent + mediaBlock;\n  return [{ json: { ...ctx, content: finalContent, messageBody: { role: 'user', content: finalContent } } }];\n}"
+      },
+      "id": "file-finalize",
+      "name": "Finalize with File ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3280,
+        600
       ]
     }
   ],
@@ -949,6 +1170,97 @@
       ]
     },
     "Build Context Message": {
+      "main": [
+        [
+          {
+            "node": "Route by Media",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Media": {
+      "main": [
+        [
+          {
+            "node": "UAZAPI Audio + Transcribe",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "UAZAPI Get File URL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Add Message to Thread",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UAZAPI Audio + Transcribe": {
+      "main": [
+        [
+          {
+            "node": "Append Transcription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Transcription": {
+      "main": [
+        [
+          {
+            "node": "Add Message to Thread",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UAZAPI Get File URL": {
+      "main": [
+        [
+          {
+            "node": "Download File Binary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download File Binary": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Upload File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Upload File": {
+      "main": [
+        [
+          {
+            "node": "Finalize with File ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalize with File ID": {
       "main": [
         [
           {
