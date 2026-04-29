@@ -253,7 +253,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={ \"assistant_id\": \"asst_M96rOKg3MHDDOdOlJwCNjC7y\" }",
+        "jsonBody": "={ \"assistant_id\": \"asst_M96rOKg3MHDDOdOlJwCNjC7y\", \"truncation_strategy\": { \"type\": \"auto\" }, \"max_prompt_tokens\": 18000, \"max_completion_tokens\": 4000 }",
         "options": {}
       },
       "id": "create-run",
@@ -586,7 +586,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Build Error Reply v2 — extracts OpenAI run error details\nconst run = $input.first()?.json || {};\nconst meta = $('Parse & Filter Mention').first()?.json || {};\n\nconst status = run.status || 'unknown';\nconst errCode = run.last_error?.code || run.incomplete_details?.reason || null;\nconst errMsg  = run.last_error?.message || run.incomplete_details?.reason || null;\n\n// Map OpenAI errors to friendly messages\nlet friendly = '⚠️ Jarvis travou na OpenAI. ';\nif (status === 'failed') {\n  friendly += `Run falhou (${errCode || 'sem código'})`;\n  if (errMsg) friendly += `: ${errMsg}`;\n} else if (status === 'expired') {\n  friendly += 'Demorou demais (>10min) — tenta de novo com mensagem mais simples ou arquivo menor.';\n} else if (status === 'incomplete') {\n  friendly += `Run encerrou incompleto. Motivo: ${errCode || 'desconhecido'}.`;\n} else if (status === 'cancelled' || status === 'cancelling') {\n  friendly += 'Run foi cancelado. Tenta de novo.';\n} else {\n  friendly += `Status inesperado: ${status}.`;\n}\n\nfriendly += '\\n\\n_Manda de novo ou simplifica que eu tento outra vez._';\n\nreturn [{ json: { ...meta, replyText: friendly, threadId: meta.threadId, runStatus: status, errCode, errMsg } }];"
+        "jsCode": "// Build Error Reply v3 — friendly handling for rate_limit + others\nconst run = $input.first()?.json || {};\nconst meta = $('Parse & Filter Mention').first()?.json || {};\n\nconst status = run.status || 'unknown';\nconst errCode = run.last_error?.code || run.incomplete_details?.reason || null;\nconst errMsg  = run.last_error?.message || run.incomplete_details?.reason || null;\n\nlet friendly = '';\n\nif (errCode === 'rate_limit_exceeded') {\n  // Parse \"try again in X.XXs\"\n  const waitMatch = (errMsg || '').match(/try again in (\\d+\\.?\\d*)\\s*s/i);\n  const waitSec = waitMatch ? Math.ceil(parseFloat(waitMatch[1])) : null;\n\n  friendly = '⏸️ *Rate limit da OpenAI* — Tier 1 só permite 30K tokens/min.\\n';\n  if (waitSec) friendly += `\\nEspera ~${waitSec + 5}s e me chama de novo.`;\n  else friendly += '\\nEspera ~30s e tenta de novo.';\n  friendly += '\\n\\n_Solução permanente: upgrade pra Tier 2 ($50 em créditos = 450K TPM, 15x mais)._';\n} else if (status === 'expired') {\n  friendly = '⌛ Run expirou (>10min processando). Tenta de novo com mensagem mais simples ou arquivo menor.';\n} else if (status === 'incomplete') {\n  friendly = `⚠️ Run incompleto: ${errCode || 'limite de tokens'}. Tenta resumir mais a mensagem.`;\n} else if (status === 'cancelled' || status === 'cancelling') {\n  friendly = '🛑 Run foi cancelado. Tenta de novo.';\n} else if (status === 'failed') {\n  friendly = `⚠️ Jarvis travou: ${errCode || 'erro desconhecido'}`;\n  if (errMsg) friendly += `\\n\\n_${errMsg.slice(0, 200)}_`;\n} else {\n  friendly = `⚠️ Status inesperado: ${status}. Tenta de novo.`;\n}\n\nreturn [{ json: { ...meta, replyText: friendly, threadId: meta.threadId, runStatus: status, errCode, errMsg } }];"
       },
       "id": "build-error",
       "name": "Build Error Reply",
