@@ -11,10 +11,12 @@
       "name": "UAZAPI Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [200, 400],
-      "webhookId": "jarvis-main-webhook"
+      "position": [
+        200,
+        400
+      ],
+      "webhookId": "8324a664-d55c-4556-85c6-33c5de2958cb"
     },
-
     {
       "parameters": {
         "jsCode": "// ─────────────────────────────────────────────\n// Parse incoming WhatsApp message + filter\n// ─────────────────────────────────────────────\nconst body = $input.item.json.body || $input.item.json;\nconst msg = body.message || body;\n\n// Extract core fields (UAZAPI shape)\nconst chatId = msg.chatid || msg.chat?.id || msg.from || '';\nconst messageId = msg.messageid || msg.id || '';\nconst senderName = msg.sender?.name || msg.pushname || msg.notifyName || 'Unknown';\nconst senderPhone = (msg.sender?.id || msg.author || msg.from || '').replace(/@.*/, '');\nconst rawText = msg.text || msg.body || msg.message?.conversation || msg.conversation || '';\nconst fromMe = !!msg.fromMe;\nconst isGroup = chatId.endsWith('@g.us');\n\n// Skip own messages\nif (fromMe) {\n  return [{ json: { skip: true, reason: 'fromMe' } }];\n}\n\n// Group registry (kept in code as fast-path; jarvis_groups MySQL table is source of truth for new groups)\nconst GROUPS = {\n  '120363426390515923@g.us': { context: 'angelfly', label: 'Angel Fly Marketing Geral' },\n  '120363420996892188@g.us': { context: 'garlic',   label: 'Garlic N Lemon | Branding' },\n  '120363422948599063@g.us': { context: 'ernesto',  label: 'Ernesto | Site & Identidade Visual' }\n};\nconst group = GROUPS[chatId] || { context: 'unknown', label: 'Unknown' };\n\n// Mention detection\nconst lower = String(rawText).toLowerCase();\nconst mentioned = /@\\s*jarvis\\b/.test(lower)\n  || /\\bjarvis\\b/.test(lower)\n  || (msg.mentioned_jid || []).some(j => String(j).includes('59739253801103'));\n\nif (!mentioned) {\n  return [{ json: { skip: true, reason: 'not_mentioned', chatId, messageId } }];\n}\n\n// Clean text — remove the @Jarvis token\nconst cleanText = String(rawText)\n  .replace(/@\\s*jarvis\\b/gi, '')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\nif (!cleanText) {\n  return [{ json: { skip: true, reason: 'empty_after_clean', chatId, messageId } }];\n}\n\nreturn [{\n  json: {\n    skip: false,\n    chatId,\n    messageId,\n    senderName,\n    senderPhone,\n    rawText,\n    cleanText,\n    isGroup,\n    groupContext: group.context,\n    groupLabel: group.label,\n    receivedAt: new Date().toISOString()\n  }\n}];"
@@ -23,19 +25,28 @@
       "name": "Parse & Filter Mention",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [420, 400]
+      "position": [
+        420,
+        400
+      ]
     },
-
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "id": "skip-check",
               "leftValue": "={{ $json.skip }}",
               "rightValue": false,
-              "operator": { "type": "boolean", "operation": "equals" }
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
             }
           ],
           "combinator": "and"
@@ -45,9 +56,11 @@
       "name": "Should Process?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [640, 400]
+      "position": [
+        640,
+        400
+      ]
     },
-
     {
       "parameters": {
         "method": "GET",
@@ -55,24 +68,38 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "wa_chat_id", "value": "={{ $json.chatId }}" }
+            {
+              "name": "wa_chat_id",
+              "value": "={{ $json.chatId }}"
+            }
           ]
         },
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "Bearer 5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16" }
+            {
+              "name": "Authorization",
+              "value": "Bearer 5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16"
+            }
           ]
         },
-        "options": { "response": { "response": { "neverError": true } } }
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
       },
       "id": "get-conv-state",
       "name": "Get Conversation State",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [860, 320]
+      "position": [
+        860,
+        320
+      ]
     },
-
     {
       "parameters": {
         "jsCode": "// ─────────────────────────────────────────────\n// Resolve OpenAI thread_id (existing or null = create)\n// ─────────────────────────────────────────────\nconst parsed = $('Parse & Filter Mention').item.json;\nconst convResp = $input.item.json;\nconst rows = Array.isArray(convResp) ? convResp : (convResp?.data || []);\nconst existing = rows.find(r => r && r.wa_chat_id === parsed.chatId);\n\nreturn [{\n  json: {\n    ...parsed,\n    threadId: existing?.openai_thread_id || null,\n    convId: existing?.id || null,\n    humorLevel: existing?.humor_level || 50,\n    needsThread: !existing?.openai_thread_id\n  }\n}];"
@@ -81,19 +108,27 @@
       "name": "Resolve Thread",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1080, 320]
+      "position": [
+        1080,
+        320
+      ]
     },
-
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "id": "needs-thread",
               "leftValue": "={{ $json.needsThread }}",
               "rightValue": true,
-              "operator": { "type": "boolean", "operation": "equals" }
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
             }
           ],
           "combinator": "and"
@@ -103,9 +138,11 @@
       "name": "Needs New Thread?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [1300, 320]
+      "position": [
+        1300,
+        320
+      ]
     },
-
     {
       "parameters": {
         "method": "POST",
@@ -113,9 +150,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.OPENAI_API_KEY }}" },
-            { "name": "OpenAI-Beta", "value": "assistants=v2" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENAI_API_KEY }}"
+            },
+            {
+              "name": "OpenAI-Beta",
+              "value": "assistants=v2"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -127,9 +173,11 @@
       "name": "Create OpenAI Thread",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1520, 200]
+      "position": [
+        1520,
+        200
+      ]
     },
-
     {
       "parameters": {
         "jsCode": "// Merge new threadId back into the data\nconst meta = $('Resolve Thread').item.json;\nconst threadResp = $input.item.json;\nconst threadId = threadResp.id || meta.threadId;\nreturn [{ json: { ...meta, threadId, justCreatedThread: true } }];"
@@ -138,9 +186,11 @@
       "name": "Merge New Thread",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1740, 200]
+      "position": [
+        1740,
+        200
+      ]
     },
-
     {
       "parameters": {
         "method": "POST",
@@ -148,9 +198,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.OPENAI_API_KEY }}" },
-            { "name": "OpenAI-Beta", "value": "assistants=v2" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENAI_API_KEY }}"
+            },
+            {
+              "name": "OpenAI-Beta",
+              "value": "assistants=v2"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -162,9 +221,11 @@
       "name": "Add Message to Thread",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1960, 320]
+      "position": [
+        1960,
+        320
+      ]
     },
-
     {
       "parameters": {
         "method": "POST",
@@ -172,9 +233,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.OPENAI_API_KEY }}" },
-            { "name": "OpenAI-Beta", "value": "assistants=v2" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENAI_API_KEY }}"
+            },
+            {
+              "name": "OpenAI-Beta",
+              "value": "assistants=v2"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -186,9 +256,11 @@
       "name": "Create Run",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2180, 320]
+      "position": [
+        2180,
+        320
+      ]
     },
-
     {
       "parameters": {
         "amount": 2,
@@ -198,10 +270,12 @@
       "name": "Wait 2s",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [2400, 320],
-      "webhookId": "jarvis-main-wait"
+      "position": [
+        2400,
+        320
+      ],
+      "webhookId": "137ef579-d252-47ca-a08c-cfaa540f7eda"
     },
-
     {
       "parameters": {
         "method": "GET",
@@ -209,8 +283,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.OPENAI_API_KEY }}" },
-            { "name": "OpenAI-Beta", "value": "assistants=v2" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENAI_API_KEY }}"
+            },
+            {
+              "name": "OpenAI-Beta",
+              "value": "assistants=v2"
+            }
           ]
         },
         "options": {}
@@ -219,16 +299,78 @@
       "name": "Get Run Status",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2620, 320]
+      "position": [
+        2620,
+        320
+      ]
     },
-
     {
       "parameters": {
         "rules": {
           "values": [
-            { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "conditions": [{ "leftValue": "={{ $json.status }}", "rightValue": "completed", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" }, "renameOutput": true, "outputKey": "completed" },
-            { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "conditions": [{ "leftValue": "={{ $json.status }}", "rightValue": "requires_action", "operator": { "type": "string", "operation": "equals" } }], "combinator": "and" }, "renameOutput": true, "outputKey": "requires_action" },
-            { "conditions": { "options": { "caseSensitive": true, "typeValidation": "strict" }, "conditions": [{ "leftValue": "={{ $json.status }}", "rightValue": "queued|in_progress", "operator": { "type": "string", "operation": "regex" } }], "combinator": "and" }, "renameOutput": true, "outputKey": "in_progress" }
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "completed",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "completed"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "requires_action",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "requires_action"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "queued|in_progress",
+                    "operator": {
+                      "type": "string",
+                      "operation": "regex"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "in_progress"
+            }
           ]
         },
         "fallbackOutput": "extra",
@@ -238,9 +380,11 @@
       "name": "Switch Run Status",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
-      "position": [2840, 320]
+      "position": [
+        2840,
+        320
+      ]
     },
-
     {
       "parameters": {
         "jsCode": "// ─────────────────────────────────────────────\n// Tool Dispatcher — handles all tool_calls in parallel\n// Calls Cockpit API for each, returns tool_outputs array\n// ─────────────────────────────────────────────\nconst run = $input.item.json;\nconst toolCalls = run.required_action?.submit_tool_outputs?.tool_calls || [];\nconst COCKPIT = 'https://cockpit.angelfly.io/api';\nconst TOKEN = '5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16';\n\nconst headers = { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' };\n\nasync function cockpitGet(path) {\n  const r = await this.helpers.httpRequest({ method: 'GET',  url: COCKPIT + path, headers, json: true, returnFullResponse: false });\n  return r;\n}\nasync function cockpitPost(path, body) {\n  const r = await this.helpers.httpRequest({ method: 'POST', url: COCKPIT + path, headers, body, json: true, returnFullResponse: false });\n  return r;\n}\n\nfunction normalizeProjectName(name) { return String(name||'').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').trim(); }\n\nasync function resolveProjectId(projectName) {\n  if (!projectName) return null;\n  try {\n    const projs = await cockpitGet.call(this, '/projects');\n    const list = Array.isArray(projs) ? projs : (projs?.data || []);\n    const target = normalizeProjectName(projectName);\n    const match = list.find(p => normalizeProjectName(p.name) === target)\n               || list.find(p => normalizeProjectName(p.name).includes(target))\n               || list.find(p => target.includes(normalizeProjectName(p.name)));\n    return match?.id || null;\n  } catch (e) { return null; }\n}\nasync function resolveUserId(name) {\n  if (!name) return null;\n  try {\n    const users = await cockpitGet.call(this, '/users');\n    const list = Array.isArray(users) ? users : (users?.data || []);\n    const target = normalizeProjectName(name);\n    const match = list.find(u => normalizeProjectName(u.name||u.full_name||u.username) === target)\n               || list.find(u => normalizeProjectName(u.name||u.full_name||u.username).includes(target));\n    return match?.id || null;\n  } catch (e) { return null; }\n}\n\nfunction filterByGroup(items, groupContext) {\n  const norm = (v) => normalizeProjectName(v||'');\n  return items.filter(it => {\n    const blob = norm(it.project_name) + ' ' + norm(it.client_name);\n    if (groupContext === 'garlic')   return /garlic|gnl/.test(blob);\n    if (groupContext === 'ernesto')  return /ernesto/.test(blob);\n    if (groupContext === 'angelfly') return /angel\\s*fly|cockpit/.test(blob);\n    return true;\n  });\n}\n\nasync function handleTool(call) {\n  const name = call.function.name;\n  let args = {};\n  try { args = JSON.parse(call.function.arguments || '{}'); } catch (e) {}\n\n  try {\n    let output;\n    switch (name) {\n      case 'create_task': {\n        const project_id = await resolveProjectId.call(this, args.project_name);\n        const assigned_to = await resolveUserId.call(this, args.assigned_to_name);\n        const body = {\n          title: args.title,\n          description: args.description || '',\n          project_id, project_name: args.project_name || null,\n          priority: args.priority || 'medium',\n          status: 'backlog',\n          deadline: args.deadline || null,\n          assigned_to, assigned_to_name: args.assigned_to_name || null\n        };\n        const created = await cockpitPost.call(this, '/tasks', body);\n        output = { success: true, id: created.id || created.data?.id, ...body };\n        break;\n      }\n      case 'create_ticket': {\n        const project_id = await resolveProjectId.call(this, args.project_name);\n        const body = {\n          subject: args.subject,\n          description: args.description || '',\n          category: args.category || 'bug',\n          priority: args.priority || 'medium',\n          status: 'open',\n          client_name: args.client_name || null,\n          project_id, project_name: args.project_name || null\n        };\n        const created = await cockpitPost.call(this, '/tickets', body);\n        output = { success: true, id: created.id || created.data?.id, ...body };\n        break;\n      }\n      case 'create_project': {\n        const body = {\n          name: args.name,\n          client_name: args.client_name,\n          scope_description: args.scope_description || '',\n          status: 'active',\n          payment_type: args.payment_type || 'one-time',\n          total_budget: args.total_budget || 0\n        };\n        const created = await cockpitPost.call(this, '/projects', body);\n        output = { success: true, id: created.id || created.data?.id, ...body };\n        break;\n      }\n      case 'create_payment_incoming': {\n        const body = {\n          description: args.description || '',\n          amount: args.amount,\n          client_name: args.client_name,\n          status: args.status || 'pending'\n        };\n        const created = await cockpitPost.call(this, '/payments_incoming', body);\n        output = { success: true, id: created.id || created.data?.id, ...body };\n        break;\n      }\n      case 'create_payment_outgoing': {\n        const body = {\n          description: args.description || '',\n          amount: args.amount,\n          recipient_name: args.recipient_name\n        };\n        const created = await cockpitPost.call(this, '/payments_outgoing', body);\n        output = { success: true, id: created.id || created.data?.id, ...body };\n        break;\n      }\n      case 'create_quote': {\n        const body = {\n          title: args.title,\n          description: args.description || '',\n          client_name: args.client_name,\n          amount: args.amount,\n          valid_until: args.valid_until || null,\n          status: 'draft'\n        };\n        const created = await cockpitPost.call(this, '/quotes', body);\n        output = { success: true, id: created.id || created.data?.id, ...body };\n        break;\n      }\n      case 'list_projects': {\n        const projs = await cockpitGet.call(this, '/projects');\n        const list = Array.isArray(projs) ? projs : (projs?.data || []);\n        output = list.map(p => ({ id: p.id, name: p.name, client_name: p.client_name, status: p.status }));\n        break;\n      }\n      case 'list_users': {\n        const users = await cockpitGet.call(this, '/users');\n        const list = Array.isArray(users) ? users : (users?.data || []);\n        output = list.map(u => ({ id: u.id, name: u.name || u.full_name || u.username, role: u.role }));\n        break;\n      }\n      case 'get_overdue_tasks': {\n        const tasks = await cockpitGet.call(this, '/tasks?limit=200');\n        const list = Array.isArray(tasks) ? tasks : (tasks?.data || []);\n        const today = new Date().toISOString().slice(0,10);\n        let overdue = list.filter(t => t.deadline && t.deadline < today && !['done','closed','cancelled'].includes((t.status||'').toLowerCase()));\n        if (args.group_context && args.group_context !== 'all') overdue = filterByGroup(overdue, args.group_context);\n        output = overdue.map(t => ({ id: t.id, title: t.title, deadline: t.deadline, assigned_to_name: t.assigned_to_name, project_name: t.project_name, priority: t.priority }));\n        break;\n      }\n      case 'get_today_briefing': {\n        const [tasksR, ticketsR] = await Promise.all([\n          cockpitGet.call(this, '/tasks?limit=200'),\n          cockpitGet.call(this, '/tickets?limit=200')\n        ]);\n        const tasks   = filterByGroup(Array.isArray(tasksR)   ? tasksR   : (tasksR?.data || []),   args.group_context);\n        const tickets = filterByGroup(Array.isArray(ticketsR) ? ticketsR : (ticketsR?.data || []), args.group_context);\n        const today = new Date().toISOString().slice(0,10);\n        const open = (s) => !['done','closed','cancelled','resolved'].includes((s||'').toLowerCase());\n        output = {\n          today_tasks:   tasks.filter(t => open(t.status) && (t.deadline||'').slice(0,10) === today)\n                              .map(t => ({ title: t.title, assigned_to_name: t.assigned_to_name, priority: t.priority })),\n          open_tasks:    tasks.filter(t => open(t.status)).length,\n          today_tickets: tickets.filter(t => open(t.status) && (t.created_date||t.created_at||'').slice(0,10) === today)\n                                .map(t => ({ subject: t.subject, priority: t.priority })),\n          open_tickets:  tickets.filter(t => open(t.status)).length\n        };\n        break;\n      }\n      default:\n        output = { error: 'unknown_tool: ' + name };\n    }\n    return { tool_call_id: call.id, output: JSON.stringify(output) };\n  } catch (err) {\n    return { tool_call_id: call.id, output: JSON.stringify({ success: false, error: err.message }) };\n  }\n}\n\nconst results = [];\nfor (const c of toolCalls) {\n  const r = await handleTool.call(this, c);\n  results.push(r);\n}\n\nreturn [{ json: { tool_outputs: results, runId: run.id, threadId: run.thread_id } }];"
@@ -249,9 +393,11 @@
       "name": "Tool Dispatcher",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3060, 200]
+      "position": [
+        3060,
+        200
+      ]
     },
-
     {
       "parameters": {
         "method": "POST",
@@ -259,9 +405,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.OPENAI_API_KEY }}" },
-            { "name": "OpenAI-Beta", "value": "assistants=v2" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENAI_API_KEY }}"
+            },
+            {
+              "name": "OpenAI-Beta",
+              "value": "assistants=v2"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -273,9 +428,11 @@
       "name": "Submit Tool Outputs",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3280, 200]
+      "position": [
+        3280,
+        200
+      ]
     },
-
     {
       "parameters": {
         "method": "GET",
@@ -283,15 +440,27 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "limit", "value": "1" },
-            { "name": "order", "value": "desc" }
+            {
+              "name": "limit",
+              "value": "1"
+            },
+            {
+              "name": "order",
+              "value": "desc"
+            }
           ]
         },
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.OPENAI_API_KEY }}" },
-            { "name": "OpenAI-Beta", "value": "assistants=v2" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENAI_API_KEY }}"
+            },
+            {
+              "name": "OpenAI-Beta",
+              "value": "assistants=v2"
+            }
           ]
         },
         "options": {}
@@ -300,9 +469,11 @@
       "name": "Get Last Message",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3060, 440]
+      "position": [
+        3060,
+        440
+      ]
     },
-
     {
       "parameters": {
         "jsCode": "// Extract assistant text from response\nconst data = $input.item.json;\nconst messages = data.data || [];\nconst assistantMsg = messages.find(m => m.role === 'assistant');\nlet text = '';\nif (assistantMsg) {\n  const blocks = assistantMsg.content || [];\n  text = blocks.filter(b => b.type === 'text').map(b => b.text?.value || '').join('\\n').trim();\n}\nif (!text) text = '🤖 (sem resposta)';\n\nconst meta = $('Resolve Thread').item.json;\nreturn [{ json: { ...meta, replyText: text, threadId: $('Merge New Thread').item.json?.threadId || meta.threadId } }];"
@@ -311,9 +482,11 @@
       "name": "Format Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3280, 440]
+      "position": [
+        3280,
+        440
+      ]
     },
-
     {
       "parameters": {
         "method": "POST",
@@ -321,8 +494,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "token", "value": "a232b655-1733-46c1-b872-1f82782b9cbe" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "token",
+              "value": "a232b655-1733-46c1-b872-1f82782b9cbe"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -334,9 +513,11 @@
       "name": "Send WhatsApp Reply",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3500, 440]
+      "position": [
+        3500,
+        440
+      ]
     },
-
     {
       "parameters": {
         "method": "POST",
@@ -344,22 +525,36 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "Bearer 5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "Bearer 5415d97c31b4ab3198a637234c4a76af86bd3d28ee9ebe9fe9c348f2f2c54c16"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"wa_chat_id\": \"{{ $json.chatId }}\",\n  \"group_context\": \"{{ $json.groupContext }}\",\n  \"openai_thread_id\": \"{{ $json.threadId }}\",\n  \"last_message_id\": \"{{ $json.messageId }}\",\n  \"last_processed_at\": \"{{ $now.toISO() }}\"\n}",
-        "options": { "response": { "response": { "neverError": true } } }
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
       },
       "id": "upsert-conv",
       "name": "Upsert Conversation State",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3720, 440]
+      "position": [
+        3720,
+        440
+      ]
     },
-
     {
       "parameters": {
         "jsCode": "// Build error reply\nconst run = $input.item.json;\nconst meta = $('Parse & Filter Mention').item.json;\nlet text = '⚠️ Jarvis: deu ruim aqui. ';\nif (run.last_error?.message) text += '(' + run.last_error.message + ') ';\ntext += 'Tenta de novo em 30s.';\nreturn [{ json: { ...meta, replyText: text } }];"
@@ -368,9 +563,11 @@
       "name": "Build Error Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3060, 640]
+      "position": [
+        3060,
+        640
+      ]
     },
-
     {
       "parameters": {
         "method": "POST",
@@ -378,57 +575,277 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "token", "value": "a232b655-1733-46c1-b872-1f82782b9cbe" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "token",
+              "value": "a232b655-1733-46c1-b872-1f82782b9cbe"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={ \"number\": \"{{ $json.chatId }}\", \"text\": {{ JSON.stringify($json.replyText) }} }",
-        "options": { "response": { "response": { "neverError": true } } }
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
       },
       "id": "send-error",
       "name": "Send Error Reply",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3280, 640]
+      "position": [
+        3280,
+        640
+      ]
     }
   ],
-
   "connections": {
-    "UAZAPI Webhook": { "main": [[{ "node": "Parse & Filter Mention", "type": "main", "index": 0 }]] },
-    "Parse & Filter Mention": { "main": [[{ "node": "Should Process?", "type": "main", "index": 0 }]] },
-    "Should Process?": { "main": [[{ "node": "Get Conversation State", "type": "main", "index": 0 }], []] },
-    "Get Conversation State": { "main": [[{ "node": "Resolve Thread", "type": "main", "index": 0 }]] },
-    "Resolve Thread": { "main": [[{ "node": "Needs New Thread?", "type": "main", "index": 0 }]] },
+    "UAZAPI Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse & Filter Mention",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Filter Mention": {
+      "main": [
+        [
+          {
+            "node": "Should Process?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Process?": {
+      "main": [
+        [
+          {
+            "node": "Get Conversation State",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Get Conversation State": {
+      "main": [
+        [
+          {
+            "node": "Resolve Thread",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Thread": {
+      "main": [
+        [
+          {
+            "node": "Needs New Thread?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Needs New Thread?": {
       "main": [
-        [{ "node": "Create OpenAI Thread", "type": "main", "index": 0 }],
-        [{ "node": "Add Message to Thread", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Create OpenAI Thread",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Add Message to Thread",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "Create OpenAI Thread": { "main": [[{ "node": "Merge New Thread", "type": "main", "index": 0 }]] },
-    "Merge New Thread": { "main": [[{ "node": "Add Message to Thread", "type": "main", "index": 0 }]] },
-    "Add Message to Thread": { "main": [[{ "node": "Create Run", "type": "main", "index": 0 }]] },
-    "Create Run": { "main": [[{ "node": "Wait 2s", "type": "main", "index": 0 }]] },
-    "Wait 2s": { "main": [[{ "node": "Get Run Status", "type": "main", "index": 0 }]] },
-    "Get Run Status": { "main": [[{ "node": "Switch Run Status", "type": "main", "index": 0 }]] },
+    "Create OpenAI Thread": {
+      "main": [
+        [
+          {
+            "node": "Merge New Thread",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge New Thread": {
+      "main": [
+        [
+          {
+            "node": "Add Message to Thread",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Message to Thread": {
+      "main": [
+        [
+          {
+            "node": "Create Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Run": {
+      "main": [
+        [
+          {
+            "node": "Wait 2s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 2s": {
+      "main": [
+        [
+          {
+            "node": "Get Run Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Run Status": {
+      "main": [
+        [
+          {
+            "node": "Switch Run Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Switch Run Status": {
       "main": [
-        [{ "node": "Get Last Message", "type": "main", "index": 0 }],
-        [{ "node": "Tool Dispatcher", "type": "main", "index": 0 }],
-        [{ "node": "Wait 2s", "type": "main", "index": 0 }],
-        [{ "node": "Build Error Reply", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Get Last Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tool Dispatcher",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 2s",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Error Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
-    "Tool Dispatcher": { "main": [[{ "node": "Submit Tool Outputs", "type": "main", "index": 0 }]] },
-    "Submit Tool Outputs": { "main": [[{ "node": "Wait 2s", "type": "main", "index": 0 }]] },
-    "Get Last Message": { "main": [[{ "node": "Format Reply", "type": "main", "index": 0 }]] },
-    "Format Reply": { "main": [[{ "node": "Send WhatsApp Reply", "type": "main", "index": 0 }]] },
-    "Send WhatsApp Reply": { "main": [[{ "node": "Upsert Conversation State", "type": "main", "index": 0 }]] },
-    "Build Error Reply": { "main": [[{ "node": "Send Error Reply", "type": "main", "index": 0 }]] }
+    "Tool Dispatcher": {
+      "main": [
+        [
+          {
+            "node": "Submit Tool Outputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Submit Tool Outputs": {
+      "main": [
+        [
+          {
+            "node": "Wait 2s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Last Message": {
+      "main": [
+        [
+          {
+            "node": "Format Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Reply": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WhatsApp Reply": {
+      "main": [
+        [
+          {
+            "node": "Upsert Conversation State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Error Reply": {
+      "main": [
+        [
+          {
+            "node": "Send Error Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-
   "settings": {
     "executionOrder": "v1",
     "timezone": "America/Sao_Paulo",
@@ -436,5 +853,13 @@
     "saveManualExecutions": true
   },
   "pinData": {},
-  "meta": { "instanceId": "jarvis-main-v2" }
+  "meta": {
+    "instanceId": "jarvis-main-v2"
+  },
+  "active": false,
+  "tags": [],
+  "versionId": "bd76c96c-055f-4082-bda5-f0ce08257ff0",
+  "id": "4a374a1ad80243d7",
+  "staticData": null,
+  "triggerCount": 0
 }
