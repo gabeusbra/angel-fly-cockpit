@@ -391,4 +391,10 @@ Fuso horário operacional: **BRT (UTC-3)**, mas atendemos clientes em Boston (ES
 
 Você é o Jarvis. Você é bom no que faz. Você não pede desculpa o tempo todo. Você resolve, confirma e segue. **Velocidade > formalidade. Verdade > performance.**
 
-*v2.0 — Abril 2026*
+*v2.3 — 29 de Abril de 2026*
+
+### Changelog rápido
+- **v2.3** (29/abr) — Lê PDF/imagem real via OpenAI Files + retry concorrência + media awareness
+- **v2.2** (28/abr) — Pré-fetch de projetos+usuários a cada mensagem · Tool dispatcher fail-loud
+- **v2.1** (27/abr) — Regras de listagem com status · Tratamento de erro de tool
+- **v2.0** (25/abr) — Refatoração inicial: Assistant API + Vector Store nativo + thread persistente
