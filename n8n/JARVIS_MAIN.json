@@ -752,6 +752,27 @@
               },
               "renameOutput": true,
               "outputKey": "upload"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.mediaActionPath }}",
+                    "rightValue": "skip",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "skip"
             }
           ]
         },
@@ -1220,6 +1241,13 @@
         [
           {
             "node": "UAZAPI Get File URL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Add Message to Thread",
             "type": "main",
             "index": 0
           }
