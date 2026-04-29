@@ -2,30 +2,57 @@
 
 > ⚠️ **NUNCA COMMITAR ARQUIVOS DESTA PASTA**
 >
-> A pasta inteira está no `.gitignore` (exceto este README). Apenas `README.md` e `.gitkeep` são versionados.
+> A pasta inteira está no `.gitignore` (exceto este README). O git não vê nada aqui.
 
 ## O que vai aqui
 
-- `google_oauth_client.json` — credenciais do Google OAuth (Sign in with Google)
-- Outros tokens/secrets que precisem ficar no servidor mas fora do código
+| Arquivo | Conteúdo |
+|---|---|
+| `JARVIS_MAIN.json` | Workflow principal com a OpenAI key embutida — pronto pra importar no n8n |
+| `JARVIS_DAILY.json` | Workflow do briefing matinal |
+| `JARVIS_OVERDUE_CHASE.json` | Workflow de cobrança de atrasados |
+| `google_oauth_client.json` | Credenciais do Google OAuth (Login Google) |
+| `openai_key.txt` *(opcional)* | A chave OpenAI atual (usada pelo script de regen) |
 
-## Setup
+## Importar no n8n
 
-Em uma máquina nova (ou no VPS), copie os arquivos manualmente para esta pasta. Eles **não estão no git** por motivo de segurança.
+1. Abre o n8n: https://n8n.srv942429.hstgr.cloud
+2. Workflows → **+ Add → Import from file**
+3. Seleciona um dos JSONs de `credentials/`
+4. Repete pros 3 (MAIN, DAILY, OVERDUE_CHASE)
+5. Ativa cada um (toggle no topo direito)
 
-Para enviar pro servidor de produção via SCP:
+## Regerar os JSONs (se mudar a chave OpenAI ou se eu atualizar a base)
+
 ```bash
-scp credentials/google_oauth_client.json root@148.230.93.235:/var/www/cockpit/credentials/
+# Opção A: Usa a chave default hardcoded no script
+bash scripts/build_n8n_imports.sh
+
+# Opção B: Pra usar uma chave diferente, salva em arquivo:
+echo "sk-proj-NOVA-CHAVE-AQUI" > credentials/openai_key.txt
+bash scripts/build_n8n_imports.sh
 ```
 
-## Onde estão os tokens da API atualmente
+O script lê `n8n/JARVIS_MAIN.json` (versão limpa, com `$env.OPENAI_API_KEY`), substitui pela chave real, e salva em `credentials/JARVIS_MAIN.json`.
 
-| Token | Localização atual |
+## Fluxo recomendado de update
+
+Quando eu (ou outra IA) atualizar os workflows na branch:
+
+```bash
+git pull origin main          # ou a branch correspondente
+bash scripts/build_n8n_imports.sh   # regera os JSONs com a chave
+# Re-importa em n8n.srv942429.hstgr.cloud
+```
+
+## Onde estão os tokens em uso
+
+| Token | Localização |
 |---|---|
-| Cockpit API Bearer | hardcoded em `n8n/JARVIS_*.json` |
-| UAZAPI token | hardcoded em `n8n/JARVIS_*.json` |
-| OpenAI API Key | hardcoded em `n8n/JARVIS_MAIN.json` |
-| OpenAI Assistant ID | hardcoded em `n8n/JARVIS_MAIN.json` |
-| Google OAuth | `credentials/google_oauth_client.json` (não commitado) |
+| Cockpit API Bearer | hardcoded em `n8n/JARVIS_*.json` (público OK) |
+| UAZAPI token | hardcoded em `n8n/JARVIS_*.json` (público OK) |
+| OpenAI Assistant ID | hardcoded em `n8n/JARVIS_MAIN.json` (não é secret) |
+| **OpenAI API Key** | **somente em `credentials/JARVIS_MAIN.json` (gitignored)** |
+| Google OAuth | `credentials/google_oauth_client.json` (gitignored) |
 
-> 💡 Se algum desses vazar, **rotacione imediatamente** no painel correspondente (OpenAI Platform, Google Cloud Console, Hostinger).
+> 💡 Se a OpenAI key vazar, **rotaciona em platform.openai.com/api-keys**, edita o `DEFAULT_KEY` em `scripts/build_n8n_imports.sh`, e roda o script de novo.
