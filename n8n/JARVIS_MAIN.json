@@ -222,7 +222,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2180,
+        2400,
         420
       ]
     },
@@ -257,7 +257,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2400,
+        2620,
         420
       ]
     },
@@ -271,7 +271,7 @@
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        2620,
+        2840,
         420
       ],
       "webhookId": "137ef579-d252-47ca-a08c-cfaa540f7eda"
@@ -300,7 +300,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2840,
+        3060,
         420
       ]
     },
@@ -381,7 +381,7 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
-        3060,
+        3280,
         420
       ]
     },
@@ -394,7 +394,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3280,
+        3500,
         280
       ]
     },
@@ -429,7 +429,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3500,
+        3720,
         280
       ]
     },
@@ -470,7 +470,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3280,
+        3500,
         540
       ]
     },
@@ -483,7 +483,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3500,
+        3720,
         540
       ]
     },
@@ -514,7 +514,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3720,
+        3940,
         540
       ]
     },
@@ -551,7 +551,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3940,
+        4160,
         540
       ]
     },
@@ -564,7 +564,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3280,
+        3500,
         720
       ]
     },
@@ -601,7 +601,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3500,
+        3720,
         720
       ]
     },
@@ -632,7 +632,7 @@
       "typeVersion": 4.2,
       "position": [
         1740,
-        360
+        420
       ]
     },
     {
@@ -661,8 +661,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1740,
-        480
+        1960,
+        420
       ]
     },
     {
@@ -674,7 +674,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1960,
+        2180,
         420
       ]
     }
@@ -750,11 +750,6 @@
             "node": "Fetch Projects (context)",
             "type": "main",
             "index": 0
-          },
-          {
-            "node": "Fetch Users (context)",
-            "type": "main",
-            "index": 0
           }
         ]
       ]
@@ -775,11 +770,6 @@
         [
           {
             "node": "Fetch Projects (context)",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Fetch Users (context)",
             "type": "main",
             "index": 0
           }
@@ -932,7 +922,7 @@
       "main": [
         [
           {
-            "node": "Build Context Message",
+            "node": "Fetch Users (context)",
             "type": "main",
             "index": 0
           }
