@@ -29,13 +29,16 @@ fi
 KEY=$(tr -d '[:space:]' < "$KEY_FILE")
 echo "Using key from $KEY_FILE (length: ${#KEY} chars)"
 
-# 1) Generate JARVIS_MAIN.json with embedded key
+# 1) Generate JARVIS_MAIN.json with embedded key (2 patterns)
 python3 -c "
 import sys
 key = sys.argv[1]
 with open('n8n/JARVIS_MAIN.json') as f:
     raw = f.read()
+# pattern 1: env reference in HTTP Authorization headers
 out = raw.replace('\"=Bearer {{ \$env.OPENAI_API_KEY }}\"', '\"Bearer ' + key + '\"')
+# pattern 2: literal placeholder inside Code nodes (jsCode)
+out = out.replace('__JARVIS_OPENAI_KEY__', key)
 with open('credentials/JARVIS_MAIN.json', 'w') as f:
     f.write(out)
 " "$KEY"
