@@ -7,7 +7,7 @@
           "interval": [
             {
               "field": "cronExpression",
-              "expression": "0 11 * * 1-5"
+              "expression": "0 8 * * 1-5"
             }
           ]
         }
@@ -20,7 +20,7 @@
         200,
         400
       ],
-      "notes": "8h BRT = 11h UTC (UTC-3). Seg-sex apenas — fim de semana sem briefing."
+      "notes": "8h BRT seg-sex. Workflow timezone=America/Sao_Paulo cuida da conversao para UTC."
     },
     {
       "parameters": {

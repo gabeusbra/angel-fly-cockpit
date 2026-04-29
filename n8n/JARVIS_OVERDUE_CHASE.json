@@ -7,7 +7,7 @@
           "interval": [
             {
               "field": "cronExpression",
-              "expression": "0 12,16,20,24 * * 1-5"
+              "expression": "0 9,13,17,21 * * 1-5"
             }
           ]
         }
@@ -20,7 +20,7 @@
         200,
         400
       ],
-      "notes": "BRT (UTC-3): 9h, 13h, 17h, 21h em dias de semana. Em UTC: 12, 16, 20, 24/0."
+      "notes": "9h, 13h, 17h, 21h BRT em dias de semana. Workflow timezone=America/Sao_Paulo cuida da conversao."
     },
     {
       "parameters": {
